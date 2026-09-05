@@ -1,0 +1,4 @@
+.playwright-mcp
+specs
+*.md
+opencode.json
