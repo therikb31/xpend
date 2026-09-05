@@ -1080,6 +1080,18 @@ const App={
       <input type="text" id="aa-o" inputmode="decimal" placeholder="0" style="margin-top:0">
       <button class="btn" style="margin-top:16px" data-act="acc-add-save">${IC.plus} Create account</button>`;
   },
+  accRenameSheet(id){
+    const a=accById(id);if(!a)return "";
+    App._accId=id;
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">Rename account</div>
+      <input type="text" id="aa-n" placeholder="Name" value="${esc(a.name)}">
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn ghost" style="flex:1" data-act="close-sheet">Cancel</button>
+        <button class="btn" style="flex:1" data-act="acc-rename-save">${IC.check} Save</button>
+      </div>`;
+  },
 
   /* ---------- sheet plumbing ---------- */
   openSheet(html){
@@ -1240,7 +1252,13 @@ const App={
       App.data.accounts.push({id:"acc-u-"+uid(),name:n,kind:App._accKind||"cash",opening:Math.round(o*100),color:"#7C9AA6"});
       App.save();App.closeSheet();App.render();App.toast("Account created");
     },
-    "acc-open":()=>{},
+    "acc-open":(el)=>App.openSheet(App.accRenameSheet(el.dataset.id)),
+    "acc-rename-save":()=>{
+      const n=($("#aa-n").value||"").trim();
+      if(!n){App.toast("Enter a name");return}
+      const a=accById(App._accId);if(!a)return;
+      a.name=n;App.save();App.closeSheet();App.render();App.toast("Account renamed");
+    },
     "sample-load":()=>{
       if(App.data.transactions.length){if(!confirm("Replace existing data with sample?"))return}
       sampleData();
