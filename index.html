@@ -636,6 +636,42 @@ const Gist={
     this.saveCfg();
   },
 
+  /* Connect = find the newest existing backup and restore it.
+     Creates a new gist ONLY when no backup with xpend-backup.json exists. */
+  async connect(pass,pat){
+    if(!C.sup()||!window.fetch)throw new Error("WebCrypto or fetch unavailable");
+    pat=pat.trim();
+    const h={"Accept":"application/vnd.github+json","Authorization":"token "+pat};
+    const raw=await fetch("https://api.github.com/gists?per_page=100",{headers:h});
+    if(!raw.ok){const j=await raw.json().catch(()=>({}));throw new Error(j.message||"HTTP "+raw.status)}
+    const list=await raw.json();
+    const cand=(list||[])
+      .filter(g=>g.files&&g.files["xpend-backup.json"])
+      .sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at))[0];
+    if(cand){
+      const gid=cand.id;
+      const g=await fetch("https://api.github.com/gists/"+gid,{headers:h})
+        .then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)));
+      const file=g.files&&g.files["xpend-backup.json"];
+      if(!file)throw new Error("xpend-backup.json not found in gist");
+      const env=JSON.parse(file.content);
+      if(!env||env.v!==1||!env.kdf||!env.kdf.salt)throw new Error("Unsupported backup format");
+      const key=await C.der(pass,env.kdf.salt);
+      const doc=JSON.parse(await C.dec(key,env.iv,env.ct));
+      if(!doc||doc.schemaVersion!==1||!Array.isArray(doc.transactions))throw new Error("Not a Xpend backup");
+      this.key=key;
+      const prev=doc.settings&&doc.settings.gist;
+      doc.settings=doc.settings||{};
+      doc.settings.gist={gistId:gid,salt:env.kdf.salt,patCipher:await C.enc(key,pat),dirty:false,
+        lastPushedAt:(prev&&prev.lastPushedAt)||undefined};
+      App.data=doc;
+      this.saveCfg();
+      return {restored:true,gistId:gid};
+    }
+    await this.setup(pass,pat);
+    return {restored:false,gistId:this.cfg().gistId};
+  },
+
   async unlock(pass){
     const c=this.cfg();
     if(!c||!c.salt)throw new Error("No backup configured");
@@ -1483,16 +1519,14 @@ const App={
       if(!C.sup()){App.toast("Backup needs a secure connection — open Xpend over https://");return}
       App.closeSheet();
       try{
-        if(Gist.connected()){
-          /* already have a gist — reconnect in place instead of spawning a new one */
-          await Gist.unlock(pass);
-          await Gist.push(true);
-          App.render();App.toast("Backed up to existing gist");
-        }else{
-          await Gist.setup(pass,pat);
-          App.render();App.toast("Backup connected");
-        }
-      }catch(e){App.toast("Setup failed: "+(e&&e.name?e.name+": ":"")+(e&&e.message||e));App.render()}
+        const r=await Gist.connect(pass,pat);
+        App.add=App.freshAdd();App.render();
+        App.toast(r.restored?("Restored backup · "+r.gistId.slice(0,7)):"Backup connected");
+      }catch(e){
+        if(e&&e.name==="OperationError")App.toast("Wrong passphrase or corrupt backup");
+        else App.toast("Setup failed: "+(e&&e.name?e.name+": ":"")+(e&&e.message||e));
+        App.render();
+      }
     },
     "gb-unlock":()=>App.openSheet(App.gbUnlockSheet()),
     "gb-unlock-save":async()=>{
