@@ -646,14 +646,15 @@ const Gist={
 
   async restore(pass,gid){
     const c=this.cfg();
-    if(!c||!c.salt)throw new Error("No backup configured");
-    const key=await C.der(pass,c.salt);
-    this.key=key;
+    if(!c)throw new Error("No backup configured");
     const g=await this.api("GET","/gists/"+((gid&&gid.trim())||c.gistId));
     const file=g.files&&g.files["xpend-backup.json"];
     if(!file)throw new Error("xpend-backup.json not found in gist");
     const env=JSON.parse(file.content);
     if(!env||env.v!==1)throw new Error("Unsupported backup format");
+    if(!env.kdf||!env.kdf.salt)throw new Error("Unsupported backup format");
+    const key=await C.der(pass,env.kdf.salt);       /* key is tied to the backup's own salt */
+    this.key=key;
     const doc=JSON.parse(await C.dec(key,env.iv,env.ct));
     if(!doc||doc.schemaVersion!==1||!Array.isArray(doc.transactions))throw new Error("Not a Xpend backup");
     if(!doc.settings||!doc.settings.gist){
