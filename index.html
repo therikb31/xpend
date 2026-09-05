@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#060809">
-<title>Quanto</title>
+<title>Xpend</title>
 <style>
 /* ============================ DESIGN TOKENS (UI_DESIGN_SPEC.md) ============================ */
 :root{
@@ -226,6 +226,7 @@ svg{display:block}
 .set .s-sub{font-size:12.5px;color:var(--muted);margin-top:1px}
 .set:active{background:var(--faint)}
 .set > svg{width:18px;height:18px;color:var(--muted-2);flex:none}
+.set.gh{color:inherit;text-decoration:none}
 .switch{width:50px;height:30px;border-radius:99px;background:var(--control);position:relative;flex:none;transition:background .2s}
 .switch::after{
   content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;
@@ -482,7 +483,9 @@ const IC={
   pen:svg('<path d="M4.5 19.5l.9-4 10.6-10.6 3 3L8.4 18.6z"/><path d="M14 6l3 3"/>'),
   empty:svg('<path d="M4 5h16v14H4z"/><path d="M4 10h16M9 15h6"/>'),
   shield:svg('<path d="M12 3l7 2.5v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9v-5z"/><path d="M9 12l2 2 4-4"/>'),
-  note:svg('<path d="M5 3.5h14v17l-3.5-2.5L12 20.5l-3.5-2.5L5 20.5z"/>')
+  note:svg('<path d="M5 3.5h14v17l-3.5-2.5L12 20.5l-3.5-2.5L5 20.5z"/>'),
+  open:svg('<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 13.5V19H5.5V6.5H11"/>'),
+  share:svg('<path d="M12 15V4"/><path d="M8 7.5 12 3.5l4 4"/><path d="M6 12v6.5h12V12"/>')
 };
 
 /* ============================ STORAGE (IDB → localStorage → memory) ============================ */
@@ -494,25 +497,175 @@ const Store={
     let idb=null;try{idb=window.indexedDB}catch(e){}
     if(!idb){this.kind=this._k;return res(this)}
     try{
-      const rq=idb.open("quanto",1);
+      const rq=idb.open("xpend",1);
       rq.onupgradeneeded=e=>{e.target.result.createObjectStore("kv")};
-      rq.onsuccess=()=>{this.db=rq.result;this.kind="idb";res(this)};
+      rq.onsuccess=()=>{this.db=rq.result;this.kind="idb";this.migrate().then(()=>res(this))};
       rq.onerror=()=>{this.kind=this._k;res(this)};
       rq.onblocked=()=>{this.kind=this._k;res(this)};
     }catch(e){this.kind=this._k;res(this)}
   })},
+  _has(k){return new Promise(r=>{
+    try{const st=this.db.transaction("kv");const t=st.objectStore("kv").get(k);t.onsuccess=()=>r(t.result!=null);t.onerror=()=>r(false)}catch(e){r(false)}
+  })},
+  _put(k,v){return new Promise(r=>{
+    try{const t=this.db.transaction("kv","readwrite").objectStore("kv").put(v,k);t.onsuccess=()=>r(true);t.onerror=()=>r(false)}catch(e){r(false)}
+  })},
+  async migrate(){
+    if(!(await this._has("doc"))){
+      /* legacy IDB db from the "quanto" era */
+      try{
+        const old=await new Promise(r=>{const q=indexedDB.open("quanto",1);q.onupgradeneeded=()=>{};q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)});
+        if(old){
+          try{
+            const doc=await new Promise(r=>{try{const t=old.transaction("kv").objectStore("kv").get("doc");t.onsuccess=()=>r(t.result||null);t.onerror=()=>r(null)}catch(e){r(null)}});
+            if(doc)await this._put("doc",doc);
+          }catch(e){}
+          try{old.close()}catch(e){}
+        }
+      }catch(e){}
+    }
+    /* legacy localStorage prefix */
+    try{
+      const oldR=localStorage.getItem("quanto:doc");
+      if(oldR){
+        localStorage.setItem("xpend:doc",oldR);localStorage.removeItem("quanto:doc");
+      }
+      const newR=localStorage.getItem("xpend:doc");
+      if(newR&&this.kind==="idb"){await this._put("doc",JSON.parse(newR));localStorage.removeItem("xpend:doc")}
+    }catch(e){}
+  },
   get(k){return new Promise(res=>{
     if(this.kind==="idb"){
       let t=null;try{const st=this.db.transaction("kv");t=st.objectStore("kv").get(k);t.onsuccess=()=>res(t.result||null);t.onerror=()=>res(null)}catch(e){res(null)}
-    }else if(this.kind==="local"){try{const r=localStorage.getItem("quanto:"+k);res(r?JSON.parse(r):null)}catch(e){res(null)}}
+    }else if(this.kind==="local"){try{const r=localStorage.getItem("xpend:"+k);res(r?JSON.parse(r):null)}catch(e){res(null)}}
     else{res(k in this.mem?this.mem[k]:null)}
   })},
   set(k,v){return new Promise(res=>{
     if(this.kind==="idb"){
       try{const t=this.db.transaction("kv","readwrite").objectStore("kv").put(v,k);t.onsuccess=()=>res(true);t.onerror=()=>res(false)}catch(e){res(false)}
-    }else if(this.kind==="local"){try{localStorage.setItem("quanto:"+k,JSON.stringify(v));res(true)}catch(e){res(false)}}
+    }else if(this.kind==="local"){try{localStorage.setItem("xpend:"+k,JSON.stringify(v));res(true)}catch(e){res(false)}}
     else{this.mem[k]=v;res(true)}
   })}
+};
+
+/* ============================ CRYPTO (WebCrypto AES-256-GCM + PBKDF2) ============================ */
+const C={
+  b64(u){let s="";for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)},
+  unb(b){const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u},
+  rand(n){return crypto.getRandomValues(new Uint8Array(n))},
+  der(pass,salt){
+    return crypto.subtle.importKey("raw",new TextEncoder().encode(pass),"PBKDF2",false,["deriveKey"])
+      .then(k=>crypto.subtle.deriveKey({name:"PBKDF2",salt:this.unb(salt),iterations:210000,hash:"SHA-256"},k,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]));
+  },
+  enc(key,str){
+    const iv=this.rand(12);
+    return crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(str))
+      .then(ct=>({iv:this.b64(iv),ct:this.b64(new Uint8Array(ct))}));
+  },
+  dec(key,iv,ct){
+    return crypto.subtle.decrypt({name:"AES-GCM",iv:this.unb(iv)},key,this.unb(ct))
+      .then(pt=>new TextDecoder().decode(pt));
+  },
+  sup(){return !!(window.crypto&&window.crypto.subtle&&crypto.getRandomValues)}
+};
+
+/* ============================ GIST BACKUP (M5) ============================ */
+const Gist={
+  key:null,_t:null,
+
+  cfg(){return App.data&&App.data.settings&&App.data.settings.gist},
+  connected(){const c=this.cfg();return !!c&&!!c.gistId},
+  unlocked(){return !!this.key},
+
+  saveCfg(){Store.set("doc",App.data)},
+
+  pat(){
+    const c=this.cfg();
+    return C.dec(this.key,c.patCipher.iv,c.patCipher.ct).then(p=>p.trim());
+  },
+  api(method,path,body){
+    return this.pat().then(pat=>{
+      const h={"Accept":"application/vnd.github+json","Authorization":"token "+pat};
+      return fetch("https://api.github.com"+path,{method,headers:h,body:body?JSON.stringify(body):undefined})
+        .then(r=>{
+          if(!r.ok)return r.json().then(j=>{throw new Error(j.message||"HTTP "+r.status)});
+          return r.status===204?null:r.json();
+        });
+    });
+  },
+
+  envelope(salt){
+    return C.enc(this.key,JSON.stringify(App.data)).then(e=>({v:1,kdf:{alg:"PBKDF2-SHA256",iterations:210000,salt},cipher:"AES-256-GCM",iv:e.iv,ct:e.ct}));
+  },
+
+  /* runs on every data mutation */
+  onChange(){
+    if(!this.connected())return;
+    const c=this.cfg();
+    c.dirty=true;this.saveCfg();
+    if(!this.key)return;                        /* locked: queued, push runs after unlock */
+    clearTimeout(this._t);
+    this._t=setTimeout(()=>this.push().catch(e=>App.toast("Backup failed")),2000);
+  },
+
+  async push(force){
+    const c=this.cfg();
+    if(!this.connected()||!this.key)return;
+    if(!force&&!c.dirty)return;
+    const gistId=c.gistId;
+    const env=await this.envelope(c.salt);
+    await this.api("PATCH","/gists/"+gistId,{files:{"xpend-backup.json":{content:JSON.stringify(env)}}});
+    if(gistId===this.cfg().gistId){this.cfg().dirty=false;this.cfg().lastPushedAt=new Date().toISOString();this.saveCfg()}
+  },
+
+  async setup(pass,pat){
+    if(!C.sup||!window.fetch)throw new Error("WebCrypto or fetch unavailable");
+    pat=pat.trim();
+    const salt=C.b64(C.rand(16));
+    this.key=await C.der(pass,salt);
+    const pc=await C.enc(this.key,pat);
+    App.data.settings.gist={gistId:null,salt,patCipher:pc,dirty:true};
+    const env=await this.envelope(salt);
+    const g=await this.api("POST","/gists",{description:"Xpend encrypted backup",public:false,files:{"xpend-backup.json":{content:JSON.stringify(env)}}});
+    App.data.settings.gist.gistId=g.id;
+    App.data.settings.gist.dirty=false;
+    App.data.settings.gist.lastPushedAt=new Date().toISOString();
+    this.saveCfg();
+  },
+
+  async unlock(pass){
+    const c=this.cfg();
+    if(!c||!c.salt)throw new Error("No backup configured");
+    this.key=await C.der(pass,c.salt);
+    await this.pat();                            /* verifies passphrase via GCM auth */
+    if(c.dirty)setTimeout(()=>this.push().catch(()=>{}),500);
+  },
+
+  async restore(pass,gid){
+    const c=this.cfg();
+    if(!c||!c.salt)throw new Error("No backup configured");
+    const key=await C.der(pass,c.salt);
+    this.key=key;
+    const g=await this.api("GET","/gists/"+((gid&&gid.trim())||c.gistId));
+    const file=g.files&&g.files["xpend-backup.json"];
+    if(!file)throw new Error("xpend-backup.json not found in gist");
+    const env=JSON.parse(file.content);
+    if(!env||env.v!==1)throw new Error("Unsupported backup format");
+    const doc=JSON.parse(await C.dec(key,env.iv,env.ct));
+    if(!doc||doc.schemaVersion!==1||!Array.isArray(doc.transactions))throw new Error("Not a Xpend backup");
+    if(!doc.settings||!doc.settings.gist){
+      doc.settings=doc.settings||{};
+      doc.settings.gist=c;   /* keep current connection (gistId/salt/pat) */
+    }
+    App.data=doc;
+    this.saveCfg();
+  },
+
+  disconnect(){
+    this.key=null;
+    App.data.settings.gist=null;
+    App.save();
+  }
 };
 
 /* ============================ DEFAULT DATA ============================ */
@@ -578,6 +731,7 @@ const App={
   save(){
     this.data.meta.updatedAt=new Date().toISOString();
     Store.set("doc",this.data);
+    Gist.onChange();
   },
   toast(msg){
     const t=$("#toast");t.textContent=msg;t.classList.add("on");
@@ -848,6 +1002,7 @@ const App={
         <button class="set" data-act="cat-manage"><span class="s-label">Categories<div class="s-sub">${d.categories.length} categories</div></span>${IC.right}</button>
         <button class="set" data-act="shortcuts"><span class="s-label">Shortcuts<div class="s-sub">Quick-fill common transactions</div></span>${IC.right}</button>
         <button class="set" data-act="acc-add"><span class="s-label">Accounts<div class="s-sub">${d.accounts.length} accounts</div></span>${IC.right}</button>
+        <button class="set" data-act="pwa-help"><span class="s-label">Install as app<div class="s-sub">Add to Home Screen — runs offline</div></span>${IC.right}</button>
       </div>
 
       <div class="sec-label">Data</div>
@@ -858,13 +1013,24 @@ const App={
 
       <div class="sec-label">Backup</div>
       <div class="card">
-        <div class="set" style="cursor:default;pointer-events:none">
-          <span class="s-label">Encrypted gist backup<div class="s-sub">Encryption + GitHub gist push — milestone M5</div></span>
-          <span style="color:var(--muted)">${IC.shield}</span>
-        </div>
+        ${!Gist.connected()?`
+          <button class="set" data-act="gb-setup"><span class="s-label">Encrypted gist backup<div class="s-sub">Passphrase + GitHub token · AES-256-GCM</div></span>${IC.shield}</button>`
+        :Gist.unlocked()?`
+          <button class="set" style="cursor:default"><span class="s-label">Backup on<div class="s-sub">Auto-syncs to a private gist</div></span><span class="switch on"></span></button>`
+        :`
+          <button class="set" data-act="gb-unlock"><span class="s-label">Unlock backup<div class="s-sub">Enter passphrase to resume sync</div></span>${IC.shield}</button>`}
+        ${Gist.connected()?`
+          <button class="set" data-act="gb-push"><span class="s-label">Push now<div class="s-sub">${this.shortT(Gist.cfg().lastPushedAt,Gist.cfg().dirty)}</div></span>${IC.refresh}</button>
+          <button class="set" data-act="gb-restore"><span class="s-label">Restore<div class="s-sub">Pull encrypted snapshot</div></span>${IC.refresh}</button>
+          <button class="set" data-act="gb-disconnect"><span class="s-label">Disconnect<div class="s-sub">Stop using this gist</div></span></button>`:""}
       </div>
-      <div class="tsub" style="text-align:center;padding:8px 0 12px;color:var(--muted)">Quanto clone · v0.1 · local-first</div>
+      <div class="tsub" style="text-align:center;padding:8px 0 12px;color:var(--muted)">Xpend · v0.1 · local-first</div>
     </div>`;
+  },
+  shortT(iso,dirty){
+    if(dirty)return "Pending changes…";
+    if(!iso)return "Never synced";
+    try{return "Synced "+new Date(iso).toLocaleDateString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}catch(e){return "Synced"}
   },
 
   /* ============ ADD EXPENSE (spec screen) ============ */
@@ -1092,6 +1258,44 @@ const App={
         <button class="btn" style="flex:1" data-act="acc-rename-save">${IC.check} Save</button>
       </div>`;
   },
+  gbSetupSheet(){
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">Encrypted gist backup</div>
+      ${C.sup()?"":`<div class="tsub" style="margin:0 2px 12px;color:var(--neg)">Backup needs a secure connection. Open Xpend over its https:// link (or localhost) — this http:// address has WebCrypto disabled by iOS.</div>`}
+      <div class="tsub" style="margin:0 2px 6px">1 · Generate a token with <b>gist</b> scope (opens github.com)</div>
+      <a class="set gh" href="https://github.com/settings/tokens/new?scopes=gist&description=Xpend+backup&default_expires_at=none" target="_blank" rel="noopener">
+        ${IC.open}
+        <span class="s-label">Get a GitHub token<div class="s-sub">gist pre-checked · no expiry</div></span>
+        ${IC.right}
+      </a>
+      <div class="tsub" style="margin:8px 2px 4px">2 · Paste the token below</div>
+      <input type="password" id="gb-pat" placeholder="ghp_…" autocomplete="off">
+      <div class="tsub" style="margin:10px 2px 4px">3 · Set a passphrase (min 8 chars) — kept only in memory</div>
+      <input type="password" id="gb-pass" placeholder="Passphrase" autocomplete="off">
+      <div class="tsub" style="margin:6px 2px 10px;color:var(--muted)">Connect creates a private gist for you. Data is AES-256-GCM encrypted before upload.</div>
+      <button class="btn" data-act="gb-setup-save">${IC.shield} Connect</button>`;
+  },
+  gbUnlockSheet(){
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">Unlock backup</div>
+      <div class="tsub" style="margin:0 2px 6px">Enter the passphrase used to create this backup</div>
+      <input type="password" id="gb-pass" placeholder="Passphrase" autocomplete="off">
+      <button class="btn" style="margin-top:16px" data-act="gb-unlock-save">${IC.shield} Unlock</button>`;
+  },
+  gbRestoreSheet(){
+    const c=Gist.cfg();
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">Restore from backup</div>
+      <div class="tsub" style="margin:0 2px 6px">Gist ID or URL</div>
+      <input type="text" id="gb-gid" placeholder="e.g. abc123" value="${c&&c.gistId?esc(c.gistId):""}" autocomplete="off">
+      <div class="tsub" style="margin:4px 2px 6px">Passphrase</div>
+      <input type="password" id="gb-pass" placeholder="Passphrase" autocomplete="off">
+      <div class="tsub" style="margin:4px 2px 10px;color:var(--muted)">Replaces the data on this device.</div>
+      <button class="btn" data-act="gb-restore-save">${IC.refresh} Restore</button>`;
+  },
 
   /* ---------- sheet plumbing ---------- */
   openSheet(html){
@@ -1242,6 +1446,13 @@ const App={
     },
     "bud-open":(el)=>App.openSheet(App.budSheet(el.dataset.id)),
     "acc-add":()=>App.openSheet(App.accAddSheet()),
+    "pwa-help":()=>App.openSheet(`
+      <div class="sh-grab"></div>
+      <div class="sh-title">Run locally, no server</div>
+      <div class="tsub" style="margin:0 2px 8px">1 · In Safari, tap Share ${IC.share}</div>
+      <div class="tsub" style="margin:0 2px 8px">2 · Tap <b>Add to Home Screen</b> (Add to Dock on iPadOS)</div>
+      <div class="tsub" style="margin:0 2px 8px">3 · Open Xpend from your Home Screen — it runs offline with all data stored on the phone</div>
+      <div class="tsub" style="margin:0 2px 10px;color:var(--muted)">The installed app keeps its secure https origin, so gist backup keeps working with no server needed.</div>`),
     "aa-kind":(el)=>{
       App._accKind=el.dataset.k;
       ["cash","card","savings"].forEach(k=>{const b=$("#aakind-"+k);if(b)b.classList.toggle("on",k===el.dataset.k)})},
@@ -1258,6 +1469,55 @@ const App={
       if(!n){App.toast("Enter a name");return}
       const a=accById(App._accId);if(!a)return;
       a.name=n;App.save();App.closeSheet();App.render();App.toast("Account renamed");
+    },
+    "gb-setup":()=>App.openSheet(App.gbSetupSheet()),
+    "gb-setup-save":async()=>{
+      const pass=$("#gb-pass").value,pat=$("#gb-pat").value.trim();
+      if(pass.length<8){App.toast("Passphrase must be at least 8 characters");return}
+      if(!pat||pat.length<10){App.toast("Enter a GitHub token with gist scope");return}
+      if(pat.startsWith("github_pat_")){App.toast("Fine-grained tokens don't support gist scope — use a classic token (ghp_…)");return}
+      if(!C.sup()){App.toast("Backup needs a secure connection — open Xpend over https://");return}
+      App.closeSheet();
+      try{
+        await Gist.setup(pass,pat);
+        App.render();App.toast("Backup connected");
+      }catch(e){App.toast("Setup failed: "+(e&&e.name?e.name+": ":"")+(e&&e.message||e));App.render()}
+    },
+    "gb-unlock":()=>App.openSheet(App.gbUnlockSheet()),
+    "gb-unlock-save":async()=>{
+      const pass=$("#gb-pass").value;
+      if(!pass){App.toast("Enter your passphrase");return}
+      if(!C.sup()){App.toast("Backup needs a secure connection — open Xpend over https://");return}
+      App.closeSheet();
+      try{
+        await Gist.unlock(pass);
+        App.render();App.toast("Backup unlocked");
+      }catch(e){App.toast("Wrong passphrase");App.render()}
+    },
+    "gb-push":async()=>{
+      if(!Gist.unlocked()){App.openSheet(App.gbUnlockSheet());return}
+      try{
+        await Gist.push(true);
+        App.render();App.toast("Backed up to gist");
+      }catch(e){App.toast("Backup failed: "+(e&&e.message||e))}
+    },
+    "gb-restore":()=>App.openSheet(App.gbRestoreSheet()),
+    "gb-restore-save":async()=>{
+      const pass=$("#gb-pass").value,gid=($("#gb-gid").value||"").trim();
+      if(!pass){App.toast("Enter your passphrase");return}
+      if(!C.sup()){App.toast("Backup needs a secure connection — open Xpend over https://");return}
+      App.closeSheet();
+      try{
+        await Gist.restore(pass,gid);
+        App.add=App.freshAdd();App.render();App.toast("Restored from backup");
+      }catch(e){
+        if(e&&e.name==="OperationError")App.toast("Wrong passphrase or corrupt backup");
+        else App.toast("Restore failed: "+(e&&e.message||e));
+      }
+    },
+    "gb-disconnect":()=>{
+      if(!confirm("Stop using this gist for backup?"))return;
+      Gist.disconnect();App.render();App.toast("Backup disconnected");
     },
     "sample-load":()=>{
       if(App.data.transactions.length){if(!confirm("Replace existing data with sample?"))return}
@@ -1303,6 +1563,9 @@ document.addEventListener("click",e=>{
 });
 
 document.addEventListener("keydown",e=>{if(e.key==="Escape")App.closeSheet()});
+
+/* flush pending backup when leaving the page */
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")Gist.push().catch(()=>{})});
 
 /* renderDet: re-render sheet content pieces handled by App.actions */
 App.renderDet=function(){
