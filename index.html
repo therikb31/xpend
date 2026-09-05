@@ -1483,8 +1483,15 @@ const App={
       if(!C.sup()){App.toast("Backup needs a secure connection — open Xpend over https://");return}
       App.closeSheet();
       try{
-        await Gist.setup(pass,pat);
-        App.render();App.toast("Backup connected");
+        if(Gist.connected()){
+          /* already have a gist — reconnect in place instead of spawning a new one */
+          await Gist.unlock(pass);
+          await Gist.push(true);
+          App.render();App.toast("Backed up to existing gist");
+        }else{
+          await Gist.setup(pass,pat);
+          App.render();App.toast("Backup connected");
+        }
       }catch(e){App.toast("Setup failed: "+(e&&e.name?e.name+": ":"")+(e&&e.message||e));App.render()}
     },
     "gb-unlock":()=>App.openSheet(App.gbUnlockSheet()),
