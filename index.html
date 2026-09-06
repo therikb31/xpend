@@ -103,6 +103,10 @@ svg{display:block}
 .nav-item:active{background:var(--nav-act)}
 .nav-item.on{background:var(--nav-act);color:var(--text);box-shadow:0 1px 0 rgba(255,255,255,.1) inset}
 
+/* the add-expense screen is an overlay modal — drop the floating nav so it never covers the keypad */
+#app.add #nav{display:none}
+#app.add{background:var(--bg)}
+
 /* overview upper background glow (static, sits behind scrolling content) */
 #app.ov{
   background:
@@ -986,7 +990,9 @@ this.render();
   render(){
     this.renderNav();
     const scr=$("#screen");
-    document.getElementById("app").classList.toggle("ov",this.view==="overview");
+    const appEl=document.getElementById("app");
+    appEl.classList.toggle("ov",this.view==="overview");
+    appEl.classList.toggle("add",this.view==="add");
     let html="";
     if(this.view==="add"){html=this.addScreen()}
     else if(this.view==="overview"){html=this.overview()}
