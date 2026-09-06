@@ -1368,8 +1368,8 @@ this.render();
     return `<button class="trow" data-act="open-txn" data-id="${t.id}">
       <span class="ccircle small" style="--c:${c.color}">${catEmoji(c)}</span>
       <span class="trow-body">
-        <span class="tname">${esc(t.name||c.name)}</span>
-        <span class="tsub">${esc(c.name)} · ${esc(a?a.name:"")}${t.note?' · '+esc(t.note):""}</span>
+        <span class="tname">${esc(t.note||t.name||c.name)}</span>
+        <span class="tsub">${esc(c.name)} · ${esc(a?a.name:"")}${t.note&&t.name?' · '+esc(t.note):""}</span>
       </span>
       <span class="tamt ${t.dir==="income"?"inc":""}">${t.dir==="income"?"+":"−"}${rupees(t.amount)}</span>
     </button>`;
