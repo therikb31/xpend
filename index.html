@@ -1215,8 +1215,8 @@ this.render();
     return `<button class="ov-card" data-act="open-txn" data-id="${t.id}">
       <span class="ov-ic">${catEmoji(c)}</span>
       <span class="ov-cc">
-        <span class="nm">${esc(t.name||c.name)}</span>
-        <span class="sb">${esc(c.name)}${a?` · ${esc(a.name)}`:""}${t.note?` · ${esc(t.note)}`:""}</span>
+        <span class="nm">${esc(t.note||c.name)}</span>
+        <span class="sb">${esc(c.name)}${a?` · ${esc(a.name)}`:""}</span>
       </span>
       <span class="amt ${t.dir==="income"?"inc":""}">${t.dir==="income"?"+":"−"}${rupees(t.amount)}</span>
     </button>`;
@@ -1374,8 +1374,8 @@ this.render();
     return `<button class="trow" data-act="open-txn" data-id="${t.id}">
       <span class="ccircle small" style="--c:${c.color}">${catEmoji(c)}</span>
       <span class="trow-body">
-        <span class="tname">${esc(t.note||t.name||c.name)}</span>
-        <span class="tsub">${esc(c.name)} · ${esc(a?a.name:"")}${t.note&&t.name?' · '+esc(t.note):""}</span>
+        <span class="tname">${esc(t.note||c.name)}</span>
+        <span class="tsub">${esc(c.name)} · ${esc(a?a.name:"")}</span>
       </span>
       <span class="tamt ${t.dir==="income"?"inc":""}">${t.dir==="income"?"+":"−"}${rupees(t.amount)}</span>
     </button>`;
@@ -1642,7 +1642,8 @@ this.render();
       <div style="display:flex;align-items:center;gap:13px;padding:6px 0 14px">
         <span class="ccircle lg" style="--c:${c.color}">${catEmoji(c)}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-size:17px;font-weight:700">${esc(t.name||c.name)}</div>
+          <div style="font-size:17px;font-weight:700">${esc(t.note||c.name)}</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:2px">${esc(c.name)} · ${esc(a?a.name:"")}</div>
           <div style="font-size:13px;color:var(--muted)">${pd.toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
         </div>
         <span class="tamt ${t.dir==="income"?"inc":""}">${t.dir==="income"?"+":"−"}${rupees(t.amount)}</span>
