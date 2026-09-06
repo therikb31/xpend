@@ -71,11 +71,14 @@ svg{display:block}
   height:100vh;height:100svh;height:100dvh;
   background:var(--bg);
 }
-/* Standalone (home-screen) iOS: force the app to span the visible + safe base area.
-   `100dvh` reflects the true dynamic viewport incl. bars; `env()` covers the notch/home bar. */
+/* Standalone (home-screen) iOS: pin the app shell to the real screen edges with
+   position:fixed + inset:0. This avoids the intermittent iOS bug where 100dvh is
+   reported too short right after launch, which left a black strip at the bottom
+   until the app was removed from RAM. env() safe-area insets keep the nav, FABs
+   and sheets clear of the home indicator. */
 @media (display-mode: standalone){
-  #app{height:calc(100dvh + env(safe-area-inset-bottom,0px))}
-  html,body{height:calc(100dvh + env(safe-area-inset-bottom,0px))}
+  #app{position:fixed;inset:0;height:auto}
+  html,body{height:100%}
 }
 #screen{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .scr{padding:calc(6px + env(safe-area-inset-top,0px)) 18px calc(180px + env(safe-area-inset-bottom,0px))}
