@@ -977,7 +977,7 @@ const DEF_ACCS=[
 ];
 function defaultDoc(){
   return {schemaVersion:1,meta:{createdAt:new Date().toISOString()},
-    settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false},
+    settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,lastDate:null,lastCategoryId:null},
     categories:JSON.parse(JSON.stringify(DEF_CATS)),
     accounts:JSON.parse(JSON.stringify(DEF_ACCS)),
     transactions:[],budgets:[],shortcuts:[]};
@@ -1024,8 +1024,9 @@ this.render();
     }
   },
   freshAdd(){
-    return {amount:"",dir:"expense",categoryId:"cat-o",accountId:this.data&&this.data.accounts[0]?this.data.accounts[0].id:"",
-      date:todayStr(),note:""};
+    const s=this.data&&this.data.settings;
+    return {amount:"",dir:"expense",categoryId:(s&&s.lastCategoryId)||"cat-o",accountId:this.data&&this.data.accounts[0]?this.data.accounts[0].id:"",
+      date:(s&&s.lastDate)||todayStr(),note:""};
   },
   save(){
     this.data.meta.updatedAt=new Date().toISOString();
@@ -1858,6 +1859,8 @@ this.render();
       const txn={id:uid(),date:a.date,dir:a.dir,amount:Math.round(v*100),
         categoryId:a.categoryId,accountId:a.accountId,name:"",note:a.note,createdAt:Date.now()};
       App.data.transactions.push(txn);
+      App.data.settings.lastDate=a.date;
+      App.data.settings.lastCategoryId=a.categoryId;
       App.save();App.add=App.freshAdd();App.view=App.prevView;App.render();
       App.toast("Added "+rupees(txn.amount));
     },
