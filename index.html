@@ -1228,7 +1228,6 @@ this.render();
       <span class="ov-ic">${catEmoji(c)}</span>
       <span class="ov-cc">
         <span class="nm">${esc(t.note||c.name)}</span>
-        <span class="sb">${esc(c.name)}${a?` · ${esc(a.name)}`:""}</span>
       </span>
       <span class="amt sm ${t.dir==="income"?"inc":""}">${rupees(t.amount)}</span>
     </button>`;
@@ -1387,7 +1386,6 @@ this.render();
       <span class="ccircle small" style="--c:${c.color}">${catEmoji(c)}</span>
       <span class="trow-body">
         <span class="tname">${esc(t.note||c.name)}</span>
-        <span class="tsub">${esc(c.name)} · ${esc(a?a.name:"")}</span>
       </span>
       <span class="tamt ${t.dir==="income"?"inc":""}">${rupees(t.amount)}</span>
     </button>`;
