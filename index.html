@@ -297,10 +297,10 @@ svg{display:block}
   width:34px;height:34px;border-radius:50%;flex:none;
   background:var(--c);color:#0B0B0C;
   display:grid;place-items:center;
-  font-size:14px;font-weight:700;
+  font-size:16px;font-weight:700;
 }
-.ccircle.lg{width:46px;height:46px;font-size:18px}
-.ccircle.small{width:30px;height:30px;font-size:12.5px}
+.ccircle.lg{width:46px;height:46px;font-size:20px}
+.ccircle.small{width:30px;height:30px;font-size:14.5px}
 .ccircle svg{width:17px;height:17px;color:#D6DADD}
 
 /* amount */
@@ -676,6 +676,10 @@ const IC={
 
 /* category → emoji for dashboard expense cards */
 const EMO={"cat-g":"🛒","cat-e":"🍜","cat-t":"🚕","cat-u":"💡","cat-s":"👕","cat-h":"💊","cat-en":"🎬","cat-tr":"✈️","cat-r":"🏠","cat-o":"🧾","cat-sal":"💼","cat-oi":"💰"};
+const EMO_FALLBACK=["🧾","🛍️","📦","⚽","💻","📚","🎁","👶","🐾","🧸","⚡","🎧","📷","🪴","🛠️","🧴","🍕","☕","🍫","🎮"];
+function hashStr(s){let h=0;for(let i=0;i<(s||"").length;i++){h=(h*31+s.charCodeAt(i))>>>0}return h}
+function fallbackEmoji(c){const src=(c?(c.id||"")+(c.name||""):"");return EMO_FALLBACK[hashStr(src)%EMO_FALLBACK.length]}
+function catEmoji(c){return (c&&c.emoji)||(c&&EMO[c.id])||fallbackEmoji(c)||"🧾"}
 
 /* ============================ STORAGE (IDB → localStorage → memory) ============================ */
 const Store={
@@ -1199,7 +1203,7 @@ this.render();
   ovCard(t){
     const c=catById(t.categoryId),a=accById(t.accountId);
     return `<button class="ov-card" data-act="open-txn" data-id="${t.id}">
-      <span class="ov-ic">${EMO[c.id]||init(c.name)}</span>
+      <span class="ov-ic">${catEmoji(c)}</span>
       <span class="ov-cc">
         <span class="nm">${esc(t.name||c.name)}</span>
         <span class="sb">${esc(c.name)}${a?` · ${esc(a.name)}`:""}${t.note?` · ${esc(t.note)}`:""}</span>
@@ -1252,7 +1256,7 @@ this.render();
       const n=txs.filter(t=>t.categoryId===cid).length;
       const p=total>0?(amt/total*100).toFixed(2):"0.00";
       return `<button class="sum-card" data-act="ov-cat" data-id="${cid}">
-        <span class="sum-ic" style="--c:${colors[cid]}">${EMO[c.id]||init(c.name)}</span>
+        <span class="sum-ic" style="--c:${colors[cid]}">${catEmoji(c)}</span>
         <span class="sum-cc">
           <span class="nm">${esc(c.name)}</span>
           <span class="sum-count">${n}</span>
@@ -1307,7 +1311,7 @@ this.render();
         ${rows.length?rows.map(([cid,amt])=>{
           const c=catById(cid);
           return `<button class="brow" data-act="ov-cat" data-id="${cid}">
-            <span class="ccircle" style="--c:${c.color}">${init(c.name)}</span>
+            <span class="ccircle" style="--c:${c.color}">${catEmoji(c)}</span>
             <span class="bname">${esc(c.name)}</span>
             <span class="bamt">${rupees(amt)}</span>
           </button>`;
@@ -1358,7 +1362,7 @@ this.render();
   txRow(t,mini){
     const c=catById(t.categoryId),a=accById(t.accountId);
     return `<button class="trow" data-act="open-txn" data-id="${t.id}">
-      <span class="ccircle small" style="--c:${c.color}">${init(c.name)}</span>
+      <span class="ccircle small" style="--c:${c.color}">${catEmoji(c)}</span>
       <span class="trow-body">
         <span class="tname">${esc(t.name||c.name)}</span>
         <span class="tsub">${esc(c.name)} · ${esc(a?a.name:"")}${t.note?' · '+esc(t.note):""}</span>
@@ -1507,7 +1511,7 @@ this.render();
 
       <div class="add-fields">
         <button class="field" data-act="cat-open">
-          <span class="ccircle" style="--c:${c.color}">${init(c.name)}</span>
+          <span class="ccircle" style="--c:${c.color}">${catEmoji(c)}</span>
           <span class="f-name">${esc(c.name)}</span><span class="f-val">Category</span>${IC.right}
         </button>
         <button class="field" data-act="acc-open-pick">
@@ -1567,7 +1571,7 @@ this.render();
       <div class="sh-title">Category</div>
       ${groups.map(g=>`<div class="cat-grid" style="margin-bottom:16px">`+
         g.map(c=>`<button class="cat-chip ${this.add.categoryId===c.id?"sel":""}" data-act="dp-pickcat" data-id="${c.id}">
-          <span class="ccircle" style="--c:${c.color}">${init(c.name)}</span><span class="cname">${esc(c.name)}</span>
+          <span class="ccircle" style="--c:${c.color}">${catEmoji(c)}</span><span class="cname">${esc(c.name)}</span>
         </button>`).join("")+`</div>`).join("")}`;
   },
   accSheet(){
@@ -1626,7 +1630,7 @@ this.render();
     return `
       <div class="sh-grab"></div>
       <div style="display:flex;align-items:center;gap:13px;padding:6px 0 14px">
-        <span class="ccircle lg" style="--c:${c.color}">${init(c.name)}</span>
+        <span class="ccircle lg" style="--c:${c.color}">${catEmoji(c)}</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:17px;font-weight:700">${esc(t.name||c.name)}</div>
           <div style="font-size:13px;color:var(--muted)">${pd.toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
@@ -1662,7 +1666,7 @@ this.render();
       ${s.length?s.map(sh=>`
         <div style="display:flex;align-items:center">
           <button class="sh-row" data-act="short-pick" data-id="${sh.id}" style="flex:1">
-            <span class="ccircle" style="--c:${catById(sh.categoryId).color}">${init(sh.name||catById(sh.categoryId).name)}</span>
+            <span class="ccircle" style="--c:${catById(sh.categoryId).color}">${catEmoji(catById(sh.categoryId))}</span>
             <span class="rname">${esc(sh.name||catById(sh.categoryId).name)}</span>
           </button>
           <button class="cbtn small" data-act="short-del" data-id="${sh.id}" style="background:transparent;color:var(--muted)">${IC.trash}</button>
@@ -1678,7 +1682,7 @@ this.render();
         const custom=c.id.startsWith("cat-u-");
         return `<div style="display:flex;align-items:center">
           <span class="sh-row" style="flex:1;pointer-events:none">
-            <span class="ccircle" style="--c:${c.color}">${init(c.name)}</span>
+            <span class="ccircle" style="--c:${c.color}">${catEmoji(c)}</span>
             <span class="rname">${esc(c.name)}</span>
             ${c.kind==="income"?`<span class="rbal">${esc(c.kind)}</span>`:""}
           </span>
@@ -1923,7 +1927,9 @@ this.render();
       const n=($("#cc-n").value||"").trim();
       if(!n){App.toast("Enter a name");return}
       if(App.data.categories.some(c=>c.name.toLowerCase()===n.toLowerCase())){App.toast("Already exists");return}
-      App.data.categories.push({id:"cat-u-"+uid(),name:n,kind:App._ccKind||"expense",color:App._ccCol||"#777B7E"});
+      const id="cat-u-"+uid();
+      App.data.categories.push({id,name:n,kind:App._ccKind||"expense",color:App._ccCol||"#777B7E",
+        emoji:fallbackEmoji({id,name:n})});
       App.save();App.swapSheet(App.catManageSheet());
     },
     "bud-add":()=>App.openSheet(App.budSheet()),
