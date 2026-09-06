@@ -683,20 +683,22 @@ const Gist={
   async restore(pass,gid){
     const c=this.cfg();
     if(!c)throw new Error("No backup configured");
+    this.key=await C.der(pass,c.salt);              /* temp key: unlock the stored token */
+    const tok=await this.pat();                     /* throws if passphrase is wrong */
     const g=await this.api("GET","/gists/"+((gid&&gid.trim())||c.gistId));
     const file=g.files&&g.files["xpend-backup.json"];
     if(!file)throw new Error("xpend-backup.json not found in gist");
     const env=JSON.parse(file.content);
     if(!env||env.v!==1)throw new Error("Unsupported backup format");
     if(!env.kdf||!env.kdf.salt)throw new Error("Unsupported backup format");
-    const key=await C.der(pass,env.kdf.salt);       /* key is tied to the backup's own salt */
+    const key=await C.der(pass,env.kdf.salt);       /* real key of this backup */
     this.key=key;
     const doc=JSON.parse(await C.dec(key,env.iv,env.ct));
     if(!doc||doc.schemaVersion!==1||!Array.isArray(doc.transactions))throw new Error("Not a Xpend backup");
-    if(!doc.settings||!doc.settings.gist){
-      doc.settings=doc.settings||{};
-      doc.settings.gist=c;   /* keep current connection (gistId/salt/pat) */
-    }
+    const prev=doc.settings&&doc.settings.gist;
+    doc.settings=doc.settings||{};
+    doc.settings.gist={gistId:g.id,salt:env.kdf.salt,patCipher:await C.enc(key,tok),dirty:false,
+      lastPushedAt:(prev&&prev.lastPushedAt)||undefined};
     App.data=doc;
     this.saveCfg();
   },
