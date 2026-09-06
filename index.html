@@ -164,6 +164,48 @@ svg{display:block}
 .ov-chip.on{background:var(--text);color:#11171A}
 .ov-chip .dot{width:9px;height:9px;border-radius:50%;background:var(--c,var(--muted))}
 
+/* ============================ SUMMARY (donut-overview, reference UI) ============================ */
+.scr.sum{padding:0 0 calc(220px + env(safe-area-inset-bottom,0px))}
+.sum-chart{padding:24px 18px 2px}
+.donut-wrap.big{width:min(290px,80vw);margin:0 auto}
+.donut-wrap.big .donut-center{gap:1px}
+.dc-month{
+  display:flex;align-items:center;gap:5px;color:#9BA6AC;
+  font-size:17px;font-weight:600;padding:3px 12px;border-radius:99px;
+}
+.dc-month:active{background:rgba(255,255,255,.07)}
+.dc-month svg{width:15px;height:15px;color:#9BA6AC}
+.donut-wrap.big .dc-main{font-size:43px}
+.dc-trend{
+  display:inline-flex;align-items:center;gap:4px;margin-top:7px;
+  padding:5px 12px;border-radius:99px;
+  background:rgba(82,229,165,.13);color:#52E5A5;
+  font-size:12.5px;font-weight:600;white-space:nowrap;
+}
+.dc-trend svg{width:13px;height:13px}
+.dc-trend.up{background:rgba(255,159,67,.15);color:#FF9F43}
+.dc-trend.mute{background:rgba(255,255,255,.06);color:var(--muted)}
+.sum-list{padding:8px 18px}
+.sum-card{
+  display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+  background:var(--ov-card);border-radius:20px;padding:11.5px 13px;margin-bottom:10px;
+}
+.sum-card:active{background:#2D353B}
+.sum-ic{
+  position:relative;width:52px;height:52px;border-radius:18px;flex:none;
+  background:rgba(255,255,255,.07);display:grid;place-items:center;font-size:25px;
+}
+.sum-ic::after{
+  content:"";position:absolute;inset:-3.5px;border-radius:21.5px;
+  border:1.5px solid var(--c,#7B61FF);opacity:.42;pointer-events:none;
+}
+.sum-cc{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.sum-cc .nm{font-size:15.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.sum-count{background:var(--surface-2);color:var(--text-2);border-radius:99px;padding:2px 8px;font-size:11.5px;font-weight:600}
+.sums-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.sum-amt{font-size:15.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sum-pct{background:var(--surface-2);color:var(--muted);border-radius:99px;padding:2.5px 9px;font-size:11.5px;font-weight:600;white-space:nowrap}
+
 .ov-groups{padding:2px 18px}
 .ov-dg{display:flex;justify-content:space-between;align-items:baseline;padding:16px 4px 12px}
 .ov-dg-day{color:var(--muted);font-size:14px;font-weight:500}
@@ -529,6 +571,9 @@ textarea.tx{resize:none;font-family:none;min-height:64px}
   .nav-item{flex:none;padding:12px 6px;gap:5px}
   .nav-item .ni-ic{width:25px;height:25px}
   .scr{padding:calc(8px + env(safe-area-inset-top,0px)) 30px 40px;max-width:860px;margin:0 auto;width:100%}
+  .scr.sum{padding:0 30px calc(100px + env(safe-area-inset-bottom,0px));max-width:900px}
+  .scr.sum .sum-chart{padding-left:0;padding-right:0}
+  .scr.sum .sum-list{padding-left:0;padding-right:0}
   .split-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 18px}
   .split-2 .card{margin-bottom:14px}
   .fab-stack{right:44px}
@@ -1085,7 +1130,7 @@ this.render();
           :`<span class="ov-delta"${down?"":' style="color:var(--neg)"'}>${dIcon} ${Math.abs(pct)}% ${down?"from":"up from"} ${prevName}</span>`}
       </button>
       ${this.chart()}
-      ${this.chips()}
+      ${this.chips(true)}
       <div class="ov-groups">
         ${preview.map(g=>`
           <div class="ov-dg"><span class="ov-dg-day">${dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+(t.dir==="income"?t.amount:-t.amount),0))}</span></div>
@@ -1138,13 +1183,13 @@ this.render();
       </div>
     </div>`;
   },
-  chips(){
+  chips(dash){
     const flt=this.flt;
     const acc=flt.acc!=="all"?accById(flt.acc):null;
     const accTxt=acc?(acc.name.length>11?acc.name.slice(0,11)+"…":acc.name):"All accounts";
     return `
     <div class="ov-chips">
-      <button class="ov-chip circ" data-act="list-go" aria-label="Search">${IC.search}</button>
+      ${dash?`<button class="ov-chip circ" data-act="list-go" aria-label="Search">${IC.search}</button>`:""}
       <button class="ov-chip ${flt.dir==="expense"?"on":""}" data-act="fl-exp">Expenses</button>
       <button class="ov-chip" data-act="fl-period">Monthly</button>
       <button class="ov-chip ${acc?"on":""}" data-act="acc-fopen">${acc?`<span class="dot" style="--c:${acc.color}"></span>`:""}${esc(accTxt)}</button>
@@ -1170,61 +1215,71 @@ this.render();
     </div>`;
   },
 
-  /* ============ SUMMARY (monthly totals + categories) ============ */
+  /* ============ SUMMARY (donut-overview + category breakdown) ============ */
   summary(){
-    const d=this.data,st=this.monthStats(this.mkey),mk=parseMk(this.mkey);
-    const title=mk.toLocaleDateString("en-IN",{month:"long",year:"numeric"});
-    const catMap=this.catSpend(this.mkey);
-    const phone=isPhone();
-    const rows=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,phone?4:7);
-    const recent=phone?[]:this.sortedTxs().slice(0,7);
-    const donut=st.pct>0?`<circle cx="60" cy="60" r="50" fill="none" stroke="var(--control)" stroke-width="15"/>
-      <circle cx="60" cy="60" r="50" fill="none" stroke="#F0F0F0" stroke-width="15" stroke-linecap="round"
-        stroke-dasharray="${Math.round(2*Math.PI*50)}" stroke-dashoffset="${Math.round(2*Math.PI*50*(1-st.pct))}" transform="rotate(-90 60 60)"/>`
-      :`<circle cx="60" cy="60" r="50" fill="none" stroke="var(--control)" stroke-width="15"/>`;
+    const mk=parseMk(this.mkey);
+    const prev=new Date(mk);prev.setMonth(prev.getMonth()-1);
+    const prevKey=monthKey(prev),prevSt=this.monthStats(prevKey);
+    const cur=new Date();
+    const monthLabel=mk.getFullYear()===cur.getFullYear()&&mk.getMonth()===cur.getMonth()
+      ?"This month":mk.toLocaleDateString("en-IN",{month:"long"});
+    const txs=this.data.transactions.filter(t=>
+      t.dir==="expense"&&t.date.slice(0,7)===this.mkey&&(this.flt.acc==="all"||t.accountId===this.flt.acc));
+    const catMap={};
+    for(const t of txs)catMap[t.categoryId]=(catMap[t.categoryId]||0)+t.amount;
+    const entries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+    const total=entries.reduce((s,e)=>s+e[1],0);
+    const pct=prevSt.spent>0?Math.round((prevSt.spent-total)/prevSt.spent*100):null;
+    const down=pct!=null&&pct>=0;
+    const prevName=parseMk(prevKey).toLocaleDateString("en-IN",{month:"short"});
+    const PAL=["#7B61FF","#FF5678","#31C4F3","#FF9F43","#52E5A5","#FFD166","#9B8CFA","#4EC49B"];
+    const colors={};entries.forEach((e,i)=>{colors[e[0]]=PAL[i%PAL.length]});
+    const R=66,C=2*Math.PI*R;
+    let acc=0;
+    const arcs=entries.map(([cid,amt])=>{
+      const len=total>0?amt/total*C:0;
+      const a=`<circle cx="80" cy="80" r="${R}" fill="none" stroke="${colors[cid]}" stroke-width="24"
+        stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}"
+        transform="rotate(-90 80 80)"/>`;
+      acc+=len;return a;
+    }).join("");
+    const donut=`<circle cx="80" cy="80" r="${R}" fill="none" stroke="var(--control)" stroke-width="24"/>${arcs}`;
+    const tIcn=down?IC.downcir:`<span style="transform:scaleY(-1);display:inline-flex">${IC.downcir}</span>`;
+    const trend=pct==null?`<span class="dc-trend mute">${IC.downcir} No earlier data</span>`
+      :`<span class="dc-trend${down?"":" up"}">${tIcn} ${Math.abs(pct)}% ${down?"from":"up from"} ${prevName}</span>`;
+    const cards=entries.map(([cid,amt])=>{
+      const c=catById(cid);
+      const n=txs.filter(t=>t.categoryId===cid).length;
+      const p=total>0?(amt/total*100).toFixed(2):"0.00";
+      return `<button class="sum-card" data-act="ov-cat" data-id="${cid}">
+        <span class="sum-ic" style="--c:${colors[cid]}">${EMO[c.id]||init(c.name)}</span>
+        <span class="sum-cc">
+          <span class="nm">${esc(c.name)}</span>
+          <span class="sum-count">${n}</span>
+        </span>
+        <span class="sums-right">
+          <span class="sum-amt">${rupees(amt)}</span>
+          <span class="sum-pct">${p}%</span>
+        </span>
+      </button>`;
+    }).join("");
     return `
-    <div class="scr">
-      <header class="scrhdr">
-        <div class="hdr-left">
-          <button class="cbtn small" data-act="month-prev" aria-label="Previous month">${IC.left}</button>
-          <button class="cbtn small" data-act="month-next" aria-label="Next month">${IC.right}</button>
-          <div class="hdr-title">${esc(title)}</div>
-        </div>
-      </header>
-
-      <div class="card">
-        <div class="donut-wrap">
-          <svg viewBox="0 0 120 120">${donut}</svg>
+    <div class="scr sum">
+      <div class="ov-top"><button class="ov-gear" data-act="go-settings" aria-label="Settings">${IC.gear}</button></div>
+      <div class="sum-chart">
+        <div class="donut-wrap big">
+          <svg viewBox="0 0 160 160">${donut}</svg>
           <div class="donut-center">
-            <div class="dc-main">${rupees(st.remaining)}</div>
-            <div class="dc-sub">Remaining this month</div>
+            <button class="dc-month" data-act="mk-open" aria-label="Select month">${esc(monthLabel)} ${IC.chev}</button>
+            <div class="dc-main">${rupees(total)}</div>
+            ${trend}
           </div>
         </div>
-        <div class="donut-foot">
-          <span>Spent <b>${rupees(st.spent)}</b></span>
-          <span>Income <b>${rupees(st.inc)}</b></span>
-        </div>
       </div>
-
-      <div class="card">
-        <div class="card-title">Spending${rows.length?`<button class="link" data-act="go-activity">See all</button>`:""}</div>
-        ${rows.length?rows.map(([cid,amt])=>{
-          const c=catById(cid);
-          return `<button class="brow" data-act="ov-cat" data-id="${cid}">
-            <span class="ccircle" style="--c:${c.color}">${init(c.name)}</span>
-            <span class="bname">${esc(c.name)}</span>
-            <span class="bpct">${Math.round(amt/st.spent*100)}%</span>
-            <span class="bamt">${rupees(amt)}</span>
-          </button>`;
-        }).join(""):`<div class="empty"><div>${IC.empty}</div><div class="t">No spending yet</div><div class="s">Tap + to add your first expense</div></div>`}
+      ${this.chips(false)}
+      <div class="sum-list">
+        ${cards||`<div class="card"><div class="empty"><div>${IC.empty}</div><div class="t">No spending yet</div><div class="s">Tap + to add your first expense</div></div></div>`}
       </div>
-
-      ${phone?"":`
-      <div class="card">
-        <div class="card-title">Recent${recent.length?`<button class="link" data-act="go-activity">View all</button>`:""}</div>
-        ${recent.length?recent.map(t=>this.txRow(t,true)).join(""):
-          `<div class="empty"><div class="t">Nothing here</div><div class="s">Your latest transactions will show up here</div></div>`}
-      </div>`}
     </div>`;
   },
 
