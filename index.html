@@ -659,8 +659,8 @@ const Gist={
     this.saveCfg();
   },
 
-  /* Connect = find the newest existing backup and restore it.
-     Creates a new gist ONLY when no backup with xpend-backup.json exists. */
+  /* Connect = find an existing backup and restore it, trying each gist until
+     the passphrase matches. Creates a new gist ONLY when no backup exists. */
   async connect(pass,pat){
     if(!C.sup()||!window.fetch)throw new Error("WebCrypto or fetch unavailable");
     pat=pat.trim();
@@ -668,29 +668,32 @@ const Gist={
     const raw=await fetch("https://api.github.com/gists?per_page=100",{headers:h});
     if(!raw.ok){const j=await raw.json().catch(()=>({}));throw new Error(j.message||"HTTP "+raw.status)}
     const list=await raw.json();
-    const cand=(list||[])
+    const cands=(list||[])
       .filter(g=>g.files&&g.files["xpend-backup.json"])
-      .sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at))[0];
-    if(cand){
-      const gid=cand.id;
-      const g=await fetch("https://api.github.com/gists/"+gid,{headers:h})
-        .then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)));
-      const file=g.files&&g.files["xpend-backup.json"];
-      if(!file)throw new Error("xpend-backup.json not found in gist");
-      const env=JSON.parse(file.content);
-      if(!env||env.v!==1||!env.kdf||!env.kdf.salt)throw new Error("Unsupported backup format");
-      const key=await C.der(pass,env.kdf.salt);
-      const doc=JSON.parse(await C.dec(key,env.iv,env.ct));
-      if(!doc||doc.schemaVersion!==1||!Array.isArray(doc.transactions))throw new Error("Not a Xpend backup");
-      this.key=key;
-      await this.kStore();
-      const prev=doc.settings&&doc.settings.gist;
-      doc.settings=doc.settings||{};
-      doc.settings.gist={gistId:gid,salt:env.kdf.salt,patCipher:await C.enc(key,pat),dirty:false,
-        lastPushedAt:(prev&&prev.lastPushedAt)||undefined};
-      App.data=doc;
-      this.saveCfg();
-      return {restored:true,gistId:gid};
+      .sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
+    if(cands.length){
+      for(const cand of cands){
+        try{
+          const gid=cand.id;
+          const g=await fetch("https://api.github.com/gists/"+gid,{headers:h})
+            .then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)));
+          const file=g.files&&g.files["xpend-backup.json"];
+          if(!file)continue;
+          const env=JSON.parse(file.content);
+          if(!env||env.v!==1||!env.kdf||!env.kdf.salt)continue;
+          const key=await C.der(pass,env.kdf.salt);
+          const doc=JSON.parse(await C.dec(key,env.iv,env.ct));
+          if(!doc||doc.schemaVersion!==1||!Array.isArray(doc.transactions))continue;
+          this.key=key;await this.kStore();
+          const prev=doc.settings&&doc.settings.gist;
+          doc.settings=doc.settings||{};
+          doc.settings.gist={gistId:gid,salt:env.kdf.salt,patCipher:await C.enc(key,pat),dirty:false,
+            lastPushedAt:(prev&&prev.lastPushedAt)||undefined};
+          App.data=doc;this.saveCfg();
+          return {restored:true,gistId:gid};
+        }catch(e){/* wrong passphrase for this backup — try the next one */}
+      }
+      const err=new Error("Wrong passphrase or corrupt backup");err.name="OperationError";throw err;
     }
     await this.setup(pass,pat);
     return {restored:false,gistId:this.cfg().gistId};
@@ -699,9 +702,9 @@ const Gist={
   async unlock(pass){
     const c=this.cfg();
     if(!c||!c.salt)throw new Error("No backup configured");
-    this.key=await C.der(pass,c.salt);
-    await this.pat();                            /* verifies passphrase via GCM auth */
-    await this.kStore();
+    const k=await C.der(pass,c.salt);
+    await C.dec(k,c.patCipher.iv,c.patCipher.ct);   /* verify without leaving a bad key installed */
+    this.key=k;await this.kStore();
     if(c.dirty){setTimeout(()=>this.push().catch(()=>{}),500);return false}
     const ok=await this.pull();
     if(ok)App.render();
