@@ -223,6 +223,8 @@ svg{display:block}
 .ov-cc .nm{color:var(--text);font-size:16.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ov-cc .sb{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ov-card .amt{font-size:16.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.ov-card .amt.sm{font-size:13px;font-weight:500;color:var(--muted)}
+.ov-card .amt.sm.inc{color:var(--inc);font-weight:600}
 .ov-card .amt.inc{color:var(--inc)}
 .see-all{display:block;text-align:center;padding:12px 0 4px;color:var(--muted);font-size:14.5px;font-weight:600}
 .see-all:active{color:var(--text)}
@@ -350,6 +352,16 @@ svg{display:block}
 .tsub{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tamt{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
 .tamt.inc{color:var(--inc)}
+.trow .tamt{font-size:13px;font-weight:500;color:var(--muted)}
+.trow .tamt.inc{color:var(--inc);font-weight:600}
+
+/* txn detail sheet */
+.txn-row{display:flex;align-items:center;gap:12px;padding:2px 0 14px}
+.txn-row .txn-meta{flex:1;min-width:0}
+.txn-row .txn-name{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.txn-row .txn-sub{font-size:12px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.txn-row .txn-amt{font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted)}
+.txn-row .txn-amt.inc{color:var(--inc)}
 
 /* day group headers */
 .dg-head{
@@ -1218,7 +1230,7 @@ this.render();
         <span class="nm">${esc(t.note||c.name)}</span>
         <span class="sb">${esc(c.name)}${a?` · ${esc(a.name)}`:""}</span>
       </span>
-      <span class="amt ${t.dir==="income"?"inc":""}">${t.dir==="income"?"+":"−"}${rupees(t.amount)}</span>
+      <span class="amt sm ${t.dir==="income"?"inc":""}">${rupees(t.amount)}</span>
     </button>`;
   },
   floaters(){
@@ -1377,7 +1389,7 @@ this.render();
         <span class="tname">${esc(t.note||c.name)}</span>
         <span class="tsub">${esc(c.name)} · ${esc(a?a.name:"")}</span>
       </span>
-      <span class="tamt ${t.dir==="income"?"inc":""}">${t.dir==="income"?"+":"−"}${rupees(t.amount)}</span>
+      <span class="tamt ${t.dir==="income"?"inc":""}">${rupees(t.amount)}</span>
     </button>`;
   },
 
@@ -1634,19 +1646,18 @@ this.render();
       </div>
       <button class="btn ghost" style="margin-top:14px" data-act="mk-today">This month</button>`;
   },
-  txnSheet(id){
+txnSheet(id){
     const t=this.data.transactions.find(x=>x.id===id);if(!t)return "";
     const c=catById(t.categoryId),a=accById(t.accountId),pd=parseD(t.date);
     return `
       <div class="sh-grab"></div>
-      <div style="display:flex;align-items:center;gap:13px;padding:6px 0 14px">
+      <div class="txn-row">
         <span class="ccircle lg" style="--c:${c.color}">${catEmoji(c)}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:17px;font-weight:700">${esc(t.note||c.name)}</div>
-          <div style="font-size:13px;color:var(--muted);margin-top:2px">${esc(c.name)} · ${esc(a?a.name:"")}</div>
-          <div style="font-size:13px;color:var(--muted)">${pd.toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
-        </div>
-        <span class="tamt ${t.dir==="income"?"inc":""}">${t.dir==="income"?"+":"−"}${rupees(t.amount)}</span>
+        <span class="txn-meta">
+          <span class="txn-name">${esc(t.note||c.name)}</span>
+          <span class="txn-sub">${esc(c.name)} · ${esc(a?a.name:"")} · ${pd.toLocaleDateString("en-IN",{day:"numeric",month:"short"})}</span>
+        </span>
+        <span class="txn-amt ${t.dir==="income"?"inc":""}">${rupees(t.amount)}</span>
       </div>
       <button class="sh-row" data-act="txn-edit" data-id="${t.id}"><span class="ccircle" style="--c:#2B3339">${IC.pen}</span><span class="rname">Edit</span>${IC.right}</button>
       <button class="sh-row" data-act="txn-del" data-id="${t.id}" style="color:var(--neg)"><span class="ccircle" style="--c:rgba(192,91,77,.16)">${IC.trash}</span><span class="rname">${this.pendingDel===t.id?"Tap again to delete":"Delete"}</span>${IC.right}</button>`;
