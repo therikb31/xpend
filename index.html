@@ -506,6 +506,12 @@ select.sel{
 .field+.field{border-top:.5px solid rgba(255,255,255,.06)}
 .field .f-name{flex:1;font-size:16px}
 .field .f-val{color:var(--muted-2);font-size:15px;font-variant-numeric:tabular-nums}
+.note-field{flex:1;min-width:0}
+.note-inline{
+  flex:1;min-width:0;background:transparent;border:0;outline:0;
+  font-size:16px;color:var(--text);padding:2px 0;
+}
+.note-inline::placeholder{color:var(--muted-2)}
 .field > svg{width:18px;height:18px;color:var(--muted)}
 .keypad{
   display:grid;grid-template-columns:repeat(3,1fr);gap:9px;
@@ -1526,10 +1532,10 @@ this.render();
           <span class="ccircle" style="--c:#F5F5F5">${IC.note.substring(0,0)+init(pd.toLocaleDateString("en-IN",{weekday:"short"}))}</span>
           <span class="f-name">${pd.toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"})}</span><span class="f-val">Date</span>${IC.right}
         </button>
-        <button class="field" data-act="note-open">
+        <label class="field note-field">
           <span class="ccircle" style="--c:#2B3339">${IC.note}</span>
-          <span class="f-name">${esc(a.note||"Add a note")}</span><span class="f-val">${a.note?"":"Note"}</span>${a.note?IC.right:""}
-        </button>
+          <input id="note-inline" class="note-inline" maxlength="120" placeholder="Add a note" value="${esc(a.note)}">
+        </label>
       </div>
 
       <div style="flex:1"></div>
@@ -1846,7 +1852,7 @@ this.render();
     "dp-pickcat":(el)=>{App.add.categoryId=el.dataset.id;App.closeSheet();App.render()},
     "acc-open-pick":()=>App.openSheet(App.accSheet()),
     "pick-acc":(el)=>{App.add.accountId=el.dataset.id;App.closeSheet();App.render()},
-    "note-open":()=>App.openSheet(App.noteSheet()),
+    "note-open":()=>{App.closeSheet();const ni=$("#note-inline");if(ni){App.render();setTimeout(()=>$("#note-inline").focus(),40)}},
     "note-save":()=>{const v=$("#nt").value.trim();App.add.note=v;App.closeSheet();App.render()},
     "seg-dir":(el)=>{
       const d=el.dataset.d||(App.add.dir==="expense"?"income":"expense");
@@ -2086,6 +2092,10 @@ document.addEventListener("click",e=>{
   if(!el)return;
   const fn=App.actions[el.dataset.act];
   if(fn)fn(el,e);
+});
+
+document.addEventListener("input",e=>{
+  if(e.target&&e.target.id==="note-inline"){App.add.note=e.target.value}
 });
 
 document.addEventListener("keydown",e=>{if(e.key==="Escape")App.closeSheet()});
