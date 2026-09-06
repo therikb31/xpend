@@ -1835,7 +1835,7 @@ this.render();
       App.view=t;App.render();
       App.prevView=t;
     },
-    "close-add":()=>{App.closeSheet();App.view=App.prevView||"overview";App.render()},
+    "close-add":()=>{App.closeSheet();App.txOpen=null;App.view=App.prevView||"overview";App.render()},
     "close-sheet":()=>App.closeSheet(),
     "dp-open":()=>{const d=parseD(App.add.date);App.dp={y:d.getFullYear(),m:d.getMonth()};App.openSheet(App.dpSheet())},
     "dp-prev":()=>{App.dp.m--;if(App.dp.m<0){App.dp.m=11;App.dp.y--}App.swapSheet(App.dpSheet())},
@@ -1856,6 +1856,17 @@ this.render();
     "add-save":()=>{
       const a=App.add,v=parseFloat(a.amount);
       if(!isFinite(v)||v<=0){App.toast("Enter an amount");return}
+      const existing=App.txOpen&&App.data.transactions.find(x=>x.id===App.txOpen);
+      if(existing){
+        Object.assign(existing,{date:a.date,dir:a.dir,amount:Math.round(v*100),
+          categoryId:a.categoryId,accountId:a.accountId,note:a.note});
+        App.txOpen=null;
+        App.data.settings.lastDate=a.date;
+        App.data.settings.lastCategoryId=a.categoryId;
+        App.save();App.add=App.freshAdd();App.view=App.prevView;App.render();
+        App.toast("Updated "+rupees(existing.amount));
+        return;
+      }
       const txn={id:uid(),date:a.date,dir:a.dir,amount:Math.round(v*100),
         categoryId:a.categoryId,accountId:a.accountId,name:"",note:a.note,createdAt:Date.now()};
       App.data.transactions.push(txn);
@@ -1909,13 +1920,13 @@ this.render();
     "mk-next":()=>{const d=parseMk(App.mkey);d.setMonth(d.getMonth()+1);App.mkey=monthKey(d);App.swapSheet(App.mkeySheet())},
     "mk-pick":(el)=>{App.mkey=el.dataset.key;App.closeSheet();App.render()},
     "mk-today":()=>{App.mkey=monthKey(new Date());App.closeSheet();App.render()},
-    "fab-add":()=>{App.prevView=App.view;App.add=App.freshAdd();App.view="add";App.render()},
+    "fab-add":()=>{App.prevView=App.view;App.add=App.freshAdd();App.txOpen=null;App.view="add";App.render()},
     "mic-tap":()=>App.toast("Voice input — coming soon"),
     "fd":(el)=>{App.flt[el.dataset.f]=el.dataset.v;App.render()},
     "open-txn":(el)=>{App.txOpen=el.dataset.id;App.pendingDel=null;App.openSheet(App.txnSheet(el.dataset.id))},
     "txn-edit":()=>{const t=App.data.transactions.find(x=>x.id===App.txOpen);if(!t)return;
       App.add={amount:String(t.amount/100).replace(/\.0+$/,""),dir:t.dir,categoryId:t.categoryId,accountId:t.accountId,date:t.date,note:t.note};
-      App.closeSheet();App.view="add";App.prevView="activity";App.render();},
+      App.prevView=App.view;App.closeSheet();App.view="add";App.render();},
     "txn-del":(el)=>{
       const id=el.dataset.id;
       if(App.pendingDel!==id){App.pendingDel=id;App.swapSheet(App.txnSheet(id));return}
