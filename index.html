@@ -1167,7 +1167,7 @@ this.render();
       <div class="ov-groups">
         ${preview.map(g=>`
           <div class="ov-day">
-            <div class="ov-dg"><span class="ov-dg-day">${dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+(t.dir==="income"?t.amount:-t.amount),0))}</span></div>
+            <div class="ov-dg"><span class="ov-dg-day">${g.date===todayStr()?parseD(g.date).toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"}):dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+(t.dir==="income"?t.amount:-t.amount),0))}</span></div>
             ${g.items.slice(0,5).map(t=>this.ovCard(t)).join("")}
           </div>
         `).join("")}
