@@ -344,10 +344,11 @@ svg{display:block}
 /* transaction rows */
 .trow{
   display:flex;align-items:center;gap:10px;width:100%;
-  padding:5px 2px;text-align:left;border-radius:12px;
+  padding:2px;text-align:left;border-radius:12px;
 }
 .trow:active{background:var(--faint)}
 .trow-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:0px}
+.temoji{width:22px;height:22px;display:grid;place-items:center;font-size:15px;line-height:1;flex:none}
 .tname{font-size:14.5px;font-weight:500}
 .tsub{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tamt{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -1383,7 +1384,7 @@ this.render();
   txRow(t,mini){
     const c=catById(t.categoryId),a=accById(t.accountId);
     return `<button class="trow" data-act="open-txn" data-id="${t.id}">
-      <span class="ccircle small" style="--c:${c.color}">${catEmoji(c)}</span>
+      <span class="temoji">${catEmoji(c)}</span>
       <span class="trow-body">
         <span class="tname">${esc(t.note||c.name)}</span>
       </span>
