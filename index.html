@@ -210,17 +210,23 @@ svg{display:block}
 .sum-pct{background:var(--surface-2);color:var(--muted);border-radius:99px;padding:2.5px 9px;font-size:11.5px;font-weight:600;white-space:nowrap}
 
 .ov-groups{padding:2px 18px}
-.ov-dg{display:flex;justify-content:space-between;align-items:baseline;padding:16px 4px 12px}
-.ov-dg-day{color:var(--muted);font-size:14px;font-weight:500}
-.ov-dg-amt{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
-.ov-card{
-  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
-  background:transparent;border-radius:12px;padding:3px 4px;margin-bottom:4px;
+.ov-day{
+  background:var(--ov-card);border-radius:20px;
+  padding:5px 5px;overflow:hidden;margin-bottom:10px;
 }
-.ov-card:active{background:var(--faint)}
-.ov-ic{width:22px;height:22px;display:grid;place-items:center;font-size:15px;line-height:1;flex:none}
+.ov-day .see-all{margin-top:0}
+.ov-dg{display:flex;justify-content:space-between;align-items:baseline;padding:6px 9px 4px}
+.ov-dg-day{color:var(--muted);font-size:13px;font-weight:500}
+.ov-dg-amt{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.ov-card{
+  display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  background:transparent;border-radius:12px;padding:3px 8px;margin-bottom:0;
+}
+.ov-card:active{background:rgba(255,255,255,.06)}
+.ov-card + .ov-card{border-top:.5px solid rgba(255,255,255,.07)}
+.ov-ic{width:26px;height:20px;border-radius:7px;background:rgba(255,255,255,.1);display:grid;place-items:center;font-size:12.5px;line-height:1;flex:none}
 .ov-cc{display:flex;flex-direction:column;gap:0px;flex:1;min-width:0}
-.ov-cc .nm{color:var(--text);font-size:14.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-cc .nm{color:var(--text);font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ov-cc .sb{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ov-card .amt{font-size:16.5px;font-weight:700;font-variant-numeric:tabular-nums}
 .ov-card .amt.sm{font-size:13px;font-weight:500;color:var(--muted)}
@@ -1160,15 +1166,19 @@ this.render();
       ${this.chips(true)}
       <div class="ov-groups">
         ${preview.map(g=>`
-          <div class="ov-dg"><span class="ov-dg-day">${dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+(t.dir==="income"?t.amount:-t.amount),0))}</span></div>
-          ${g.items.slice(0,5).map(t=>this.ovCard(t)).join("")}
+          <div class="ov-day">
+            <div class="ov-dg"><span class="ov-dg-day">${dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+(t.dir==="income"?t.amount:-t.amount),0))}</span></div>
+            ${g.items.slice(0,5).map(t=>this.ovCard(t)).join("")}
+          </div>
         `).join("")}
         ${groups.length?`<button class="see-all" data-act="go-activity">See all</button>`
           :`<div class="card" style="border-radius:24px"><div class="empty"><div>${IC.empty}</div><div class="t">No transactions this month</div><div class="s">Tap + below to add your first expense</div></div></div>`}
       </div>
       <div class="ov-groups">
-        <div class="ov-dg"><span class="ov-dg-day">Earlier months</span></div>
-        <button class="see-all" data-act="go-summary">View summary</button>
+        <div class="ov-day">
+          <div class="ov-dg"><span class="ov-dg-day">Earlier months</span></div>
+          <button class="see-all" data-act="go-summary">View summary</button>
+        </div>
       </div>
     </div>`;
   },
