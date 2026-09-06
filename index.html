@@ -677,7 +677,30 @@ const Gist={
     if(!c||!c.salt)throw new Error("No backup configured");
     this.key=await C.der(pass,c.salt);
     await this.pat();                            /* verifies passphrase via GCM auth */
-    if(c.dirty)setTimeout(()=>this.push().catch(()=>{}),500);
+    if(c.dirty){setTimeout(()=>this.push().catch(()=>{}),500);return false}
+    const ok=await this.pull();
+    if(ok)App.render();
+    return ok;
+  },
+
+  /* Fetch the current gist backup and load it into the UI */
+  async pull(){
+    const c=this.cfg();
+    if(!c||!c.gistId||!this.key)return false;
+    try{
+      const g=await this.api("GET","/gists/"+c.gistId);
+      const file=g.files&&g.files["xpend-backup.json"];
+      if(!file)return false;
+      const env=JSON.parse(file.content);
+      if(!env||env.v!==1||!env.kdf||!env.kdf.salt||!env.iv||!env.ct)return false;
+      const doc=JSON.parse(await C.dec(this.key,env.iv,env.ct));
+      if(!doc||doc.schemaVersion!==1||!Array.isArray(doc.transactions))return false;
+      doc.settings=doc.settings||{};
+      if(!doc.settings.gist||!doc.settings.gist.gistId)doc.settings.gist=c;
+      App.data=doc;
+      this.saveCfg();
+      return true;
+    }catch(e){return false}
   },
 
   async restore(pass,gid){
@@ -765,6 +788,10 @@ const App={
     this.add=this.freshAdd();
     const now=new Date();this.dp={y:now.getFullYear(),m:now.getMonth()};
     this.render();
+    /* a connected app should live by its gist backup — ask for the passphrase on reload */
+    if(Gist.connected()&&!Gist.unlocked()){
+      setTimeout(()=>{if(Gist.connected()&&!Gist.unlocked())App.openSheet(App.gbUnlockSheet())},350);
+    }
   },
   freshAdd(){
     return {amount:"",dir:"expense",categoryId:"cat-o",accountId:this.data&&this.data.accounts[0]?this.data.accounts[0].id:"",
@@ -1537,8 +1564,8 @@ const App={
       if(!C.sup()){App.toast("Backup needs a secure connection — open Xpend over https://");return}
       App.closeSheet();
       try{
-        await Gist.unlock(pass);
-        App.render();App.toast("Backup unlocked");
+        const pulled=await Gist.unlock(pass);
+        App.render();App.toast(pulled?"Synced latest backup":"Backup unlocked");
       }catch(e){App.toast("Wrong passphrase");App.render()}
     },
     "gb-push":async()=>{
