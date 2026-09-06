@@ -1439,7 +1439,10 @@ this.render();
           <button class="${a.dir==="expense"?"on":""}" data-act="seg-dir" data-d="expense">Expense</button>
           <button class="${a.dir==="income"?"on":""}" data-act="seg-dir" data-d="income">Income</button>
         </div>
-        <button class="cbtn" data-act="add-more" aria-label="More">${IC.dots}</button>
+        <div class="add-top-col">
+          <button class="cbtn" data-act="add-more" aria-label="More">${IC.dots}</button>
+          <button class="cbtn" data-act="close-add" aria-label="Close">${IC.x}</button>
+        </div>
       </header>
 
       <div class="add-amount">
@@ -1594,7 +1597,7 @@ this.render();
       </button>
       <button class="sh-row" data-act="note-open"><span class="ccircle" style="--c:#2B3339">${IC.note}</span><span class="rname">Add note</span>${IC.right}</button>
       <button class="sh-row" data-act="short-save"><span class="ccircle" style="--c:#2B3339">${IC.star}</span><span class="rname">Save as shortcut</span>${IC.right}</button>
-      <button class="sh-row" data-act="close-sheet" style="color:var(--neg)"><span class="ccircle" style="--c:rgba(192,91,77,.16)">${IC.x}</span><span class="rname">Close</span>${IC.right}</button>`;
+      <button class="sh-row" data-act="close-add" style="color:var(--neg)"><span class="ccircle" style="--c:rgba(192,91,77,.16)">${IC.x}</span><span class="rname">Close</span>${IC.right}</button>`;
   },
   shortcutsSheet(){
     const s=this.data.shortcuts;
@@ -1769,7 +1772,7 @@ this.render();
       App.view=t;App.render();
       App.prevView=t;
     },
-    "close-add":()=>{App.view=App.prevView;App.render()},
+    "close-add":()=>{App.closeSheet();App.view=App.prevView||"overview";App.render()},
     "close-sheet":()=>App.closeSheet(),
     "dp-open":()=>{const d=parseD(App.add.date);App.dp={y:d.getFullYear(),m:d.getMonth()};App.openSheet(App.dpSheet())},
     "dp-prev":()=>{App.dp.m--;if(App.dp.m<0){App.dp.m=11;App.dp.y--}App.swapSheet(App.dpSheet())},
