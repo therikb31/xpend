@@ -215,7 +215,7 @@ svg{display:block}
   padding:7px 7px;overflow:hidden;margin-bottom:15px;
 }
 .ov-day .see-all{margin-top:0}
-.ov-dg{display:flex;justify-content:space-between;align-items:baseline;padding:8px 11px 6px}
+.ov-dg{display:flex;justify-content:space-between;align-items:baseline;padding:10px 11px 6px}
 .ov-dg-day{color:var(--muted);font-size:13px;font-weight:500}
 .ov-dg-amt{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
 .ov-card{
@@ -1166,8 +1166,8 @@ this.render();
       ${this.chips(true)}
       <div class="ov-groups">
         ${preview.map(g=>`
+          <div class="ov-dg"><span class="ov-dg-day">${dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+(t.dir==="income"?t.amount:-t.amount),0))}</span></div>
           <div class="ov-day">
-            <div class="ov-dg"><span class="ov-dg-day">${g.date===todayStr()?parseD(g.date).toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"}):dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+(t.dir==="income"?t.amount:-t.amount),0))}</span></div>
             ${g.items.slice(0,5).map(t=>this.ovCard(t)).join("")}
           </div>
         `).join("")}
@@ -1175,8 +1175,8 @@ this.render();
           :`<div class="card" style="border-radius:24px"><div class="empty"><div>${IC.empty}</div><div class="t">No transactions this month</div><div class="s">Tap + below to add your first expense</div></div></div>`}
       </div>
       <div class="ov-groups">
+        <div class="ov-dg"><span class="ov-dg-day">Earlier months</span></div>
         <div class="ov-day">
-          <div class="ov-dg"><span class="ov-dg-day">Earlier months</span></div>
           <button class="see-all" data-act="go-summary">View summary</button>
         </div>
       </div>
