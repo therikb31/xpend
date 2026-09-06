@@ -579,8 +579,30 @@ const Gist={
   cfg(){return App.data&&App.data.settings&&App.data.settings.gist},
   connected(){const c=this.cfg();return !!c&&!!c.gistId},
   unlocked(){return !!this.key},
+  dirty(){const c=this.cfg();return !!(c&&c.dirty)},
 
   saveCfg(){Store.set("doc",App.data)},
+
+  /* persist the derived key so reloads can auto-unlock and pull */
+  kStore(){
+    if(!this.key)return Promise.resolve();
+    return crypto.subtle.exportKey("raw",this.key).then(b=>{
+      let s="";const u=new Uint8Array(b);
+      for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));
+      try{localStorage.setItem("xpend:k",btoa(s))}catch(e){}
+    });
+  },
+  kLoad(){
+    const s=localStorage.getItem("xpend:k");
+    if(!s)return Promise.resolve(false);
+    try{
+      const b=atob(s),u=new Uint8Array(b.length);
+      for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
+      return crypto.subtle.importKey("raw",u,"AES-GCM",false,["encrypt","decrypt"])
+        .then(k=>{this.key=k;return true}).catch(()=>false);
+    }catch(e){return Promise.resolve(false)}
+  },
+  kClear(){try{localStorage.removeItem("xpend:k")}catch(e){}},
 
   pat(){
     const c=this.cfg();
@@ -626,6 +648,7 @@ const Gist={
     pat=pat.trim();
     const salt=C.b64(C.rand(16));
     this.key=await C.der(pass,salt);
+    await this.kStore();
     const pc=await C.enc(this.key,pat);
     App.data.settings.gist={gistId:null,salt,patCipher:pc,dirty:true};
     const env=await this.envelope(salt);
@@ -660,6 +683,7 @@ const Gist={
       const doc=JSON.parse(await C.dec(key,env.iv,env.ct));
       if(!doc||doc.schemaVersion!==1||!Array.isArray(doc.transactions))throw new Error("Not a Xpend backup");
       this.key=key;
+      await this.kStore();
       const prev=doc.settings&&doc.settings.gist;
       doc.settings=doc.settings||{};
       doc.settings.gist={gistId:gid,salt:env.kdf.salt,patCipher:await C.enc(key,pat),dirty:false,
@@ -677,6 +701,7 @@ const Gist={
     if(!c||!c.salt)throw new Error("No backup configured");
     this.key=await C.der(pass,c.salt);
     await this.pat();                            /* verifies passphrase via GCM auth */
+    await this.kStore();
     if(c.dirty){setTimeout(()=>this.push().catch(()=>{}),500);return false}
     const ok=await this.pull();
     if(ok)App.render();
@@ -716,6 +741,7 @@ const Gist={
     if(!env.kdf||!env.kdf.salt)throw new Error("Unsupported backup format");
     const key=await C.der(pass,env.kdf.salt);       /* real key of this backup */
     this.key=key;
+    await this.kStore();
     const doc=JSON.parse(await C.dec(key,env.iv,env.ct));
     if(!doc||doc.schemaVersion!==1||!Array.isArray(doc.transactions))throw new Error("Not a Xpend backup");
     const prev=doc.settings&&doc.settings.gist;
@@ -728,6 +754,7 @@ const Gist={
 
   disconnect(){
     this.key=null;
+    this.kClear();
     App.data.settings.gist=null;
     App.save();
   }
@@ -787,10 +814,17 @@ const App={
     this.data=d;
     this.add=this.freshAdd();
     const now=new Date();this.dp={y:now.getFullYear(),m:now.getMonth()};
-    this.render();
-    /* a connected app should live by its gist backup — ask for the passphrase on reload */
-    if(Gist.connected()&&!Gist.unlocked()){
-      setTimeout(()=>{if(Gist.connected()&&!Gist.unlocked())App.openSheet(App.gbUnlockSheet())},350);
+this.render();
+    /* a connected app should live by its gist backup — auto-unlock (persisted key) or ask */
+    if(Gist.connected()){
+      Gist.kLoad().then(ok=>{
+        if(ok){
+          if(Gist.dirty())Gist.push().catch(()=>{});
+          else Gist.pull().then(p=>{if(p)App.render()});
+        }else{
+          setTimeout(()=>{if(Gist.connected()&&!Gist.unlocked())App.openSheet(App.gbUnlockSheet())},350);
+        }
+      });
     }
   },
   freshAdd(){
@@ -1600,7 +1634,7 @@ const App={
     },
     "reset-all":()=>{
       if(!confirm("Erase all data and restore defaults?"))return;
-      App.data=defaultDoc();App.save();App.add=App.freshAdd();App.mkey=monthKey(new Date());
+      Gist.disconnect();App.data=defaultDoc();App.save();App.add=App.freshAdd();App.mkey=monthKey(new Date());
       App.flt={q:"",dir:"all",cat:"all",acc:"all"};App.render();App.toast("Reset complete");
     }
   }
