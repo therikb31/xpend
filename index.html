@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#060809">
 <meta name="apple-mobile-web-app-title" content="Xpend">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23060809'/%3E%3Cpath d='M20 20l24 24M44 20 20 44' stroke='%23F8F8F8' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E">
 <title>Xpend</title>
 <style>
@@ -676,6 +678,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
+const APP_VER="b6";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1555,7 +1558,7 @@ this.render();
           <button class="set" data-act="gb-restore"><span class="s-label">Restore<div class="s-sub">Pull encrypted snapshot</div></span>${IC.refresh}</button>
           <button class="set" data-act="gb-disconnect"><span class="s-label">Disconnect<div class="s-sub">Stop using this gist</div></span></button>`:""}
       </div>
-      <div class="tsub" style="text-align:center;padding:8px 0 12px;color:var(--muted)">Xpend · v0.1 · local-first</div>
+      <div class="tsub" style="text-align:center;padding:8px 0 12px;color:var(--muted)">Xpend · build ${APP_VER} · local-first</div>
     </div>`;
   },
   shortT(iso,dirty){
@@ -2200,6 +2203,11 @@ document.addEventListener("focusout",()=>setTimeout(()=>{kbFix()},140));
 
 /* flush pending backup when leaving the page */
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")Gist.push().catch(()=>{})});
+
+/* service worker: network-first, so a home-screen install always shows the latest deploy */
+if("serviceWorker" in navigator){
+  addEventListener("load",()=>navigator.serviceWorker.register("sw.js").then(()=>navigator.serviceWorker.controller||navigator.serviceWorker.ready).catch(()=>{}));
+}
 
 /* renderDet: re-render sheet content pieces handled by App.actions */
 App.renderDet=function(){
