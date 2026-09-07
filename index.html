@@ -695,7 +695,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b13";
+const APP_VER="b14";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1051,19 +1051,30 @@ function migrateCats(d){
     if(repl&&repl.id!==c.id){remap[c.id]=repl.id}
     else if(repl&&!c.emoji){c.emoji=repl.emoji}
   }
-  if(!Object.keys(remap).length)return false;
-  const used=new Set();
-  const out=DEF_CATS.map(def=>{
-    const src=d.categories.find(c=>remap[c.id]===def.id);
-    if(!src)return null;
-    used.add(src.id);
-    return {id:def.id,name:def.name,kind:def.kind,color:def.color,emoji:def.emoji};
-  }).filter(Boolean);
-  for(const c of d.categories){if(!remap[c.id]&&!used.has(c.id))out.push(c)}
-  d.categories=out;
-  for(const b of d.budgets||[]){if(Array.isArray(b.categoryIds))b.categoryIds=b.categoryIds.map(id=>remap[id]||id)}
-  for(const t of d.transactions||[]){if(remap[t.categoryId])t.categoryId=remap[t.categoryId]}
-  return true;
+  let changed=Object.keys(remap).length>0;
+  if(changed){
+    const used=new Set();
+    const out=DEF_CATS.map(def=>{
+      const src=d.categories.find(c=>remap[c.id]===def.id);
+      if(!src)return null;
+      used.add(src.id);
+      return {id:def.id,name:def.name,kind:def.kind,color:def.color,emoji:def.emoji};
+    }).filter(Boolean);
+    for(const c of d.categories){if(!remap[c.id]&&!used.has(c.id))out.push(c)}
+    d.categories=out;
+    for(const b of d.budgets||[]){if(Array.isArray(b.categoryIds))b.categoryIds=b.categoryIds.map(id=>remap[id]||id)}
+    for(const t of d.transactions||[]){if(remap[t.categoryId])t.categoryId=remap[t.categoryId]}
+  }
+  const s=d.settings=d.settings||{};
+  if(s.catV===undefined){
+    const have=new Set(d.categories.map(c=>c.id));
+    for(const def of DEF_CATS){
+      if(!have.has(def.id))d.categories.push({id:def.id,name:def.name,kind:def.kind,color:def.color,emoji:def.emoji});
+    }
+    s.catV=2;
+    changed=true;
+  }
+  return changed;
 }
 const DEF_ACCS=[
   {id:"acc-cash",name:"Cash",kind:"cash",opening:0,color:"#7C9AA6"},
@@ -1071,7 +1082,7 @@ const DEF_ACCS=[
 ];
 function defaultDoc(){
   return {schemaVersion:1,meta:{createdAt:new Date().toISOString()},
-    settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,lastDate:null,lastCategoryId:null},
+    settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,lastDate:null,lastCategoryId:null,catV:2},
     categories:JSON.parse(JSON.stringify(DEF_CATS)),
     accounts:JSON.parse(JSON.stringify(DEF_ACCS)),
     transactions:[],budgets:[],shortcuts:[]};
@@ -1099,7 +1110,7 @@ const App={
     if(!d)d=defaultDoc();
     if(!d.settings)d.settings=defaultDoc().settings;
     if(!Array.isArray(d.categories)||!d.categories.length)d.categories=JSON.parse(JSON.stringify(DEF_CATS));
-    migrateCats(d);
+    if(migrateCats(d))Store.set("doc",d).catch(()=>{});
     if(!Array.isArray(d.accounts)||!d.accounts.length)d.accounts=JSON.parse(JSON.stringify(DEF_ACCS));
     d.budgets=d.budgets||[];d.shortcuts=d.shortcuts||[];d.transactions=d.transactions||[];
     this.data=d;
