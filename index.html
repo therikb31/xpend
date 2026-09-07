@@ -538,6 +538,17 @@ select.sel{
   font-size:16px;color:var(--text);padding:2px 0;
 }
 .note-inline::placeholder{color:var(--muted-2)}
+.ficon{
+  width:44px;height:44px;border-radius:14px;flex:none;
+  display:grid;place-items:center;
+  background:rgba(255,255,255,.06);
+  border:.5px solid rgba(255,255,255,.09);
+  -webkit-backdrop-filter:blur(14px) saturate(160%);
+  backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:0 4px 14px rgba(0,0,0,.12);
+  font-size:20px;line-height:1;color:var(--text);
+}
+.ficon svg{width:20px;height:20px;color:var(--text-2)}
 .field > svg{width:18px;height:18px;color:var(--muted)}
 .keypad{
   display:grid;grid-template-columns:repeat(3,1fr);gap:9px;
@@ -1579,19 +1590,19 @@ this.render();
 
       <div class="add-fields">
         <button class="field" data-act="cat-open">
-          <span class="ccircle" style="--c:${c.color}">${catEmoji(c)}</span>
+          <span class="ficon">${catEmoji(c)}</span>
           <span class="f-name">${esc(c.name)}</span><span class="f-val">Category</span>${IC.right}
         </button>
         <button class="field" data-act="acc-open-pick">
-          <span class="ccircle" style="--c:${ac.color}">${init(ac.name)}</span>
+          <span class="ficon">💵</span>
           <span class="f-name">${esc(ac.name)}</span><span class="f-val">Account</span>${IC.right}
         </button>
         <button class="field" data-act="dp-open">
-          <span class="ccircle" style="--c:#F5F5F5">${IC.note.substring(0,0)+init(pd.toLocaleDateString("en-IN",{weekday:"short"}))}</span>
+          <span class="ficon">🗓️</span>
           <span class="f-name">${dayLabel(this.add.date)}</span><span class="f-val">Date</span>${IC.right}
         </button>
         <label class="field note-field">
-          <span class="ccircle" style="--c:#2B3339">${IC.note}</span>
+          <span class="ficon">${IC.note}</span>
           <input id="note-inline" class="note-inline" maxlength="120" placeholder="Add a note" value="${esc(a.note)}">
         </label>
       </div>
