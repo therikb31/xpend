@@ -364,6 +364,7 @@ svg{display:block}
 .tamt{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
 .tamt.inc{color:var(--inc)}
 .tamt.sav{color:var(--neg)}
+.mute{color:var(--muted)!important}
 .trow .tamt{font-size:13px;font-weight:500;color:var(--muted)}
 .trow .tamt.inc{color:var(--inc);font-weight:600}
 
@@ -700,7 +701,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b20";
+const APP_VER="b21";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1105,7 +1106,7 @@ const TABS=[
 const App={
   data:null,view:"overview",prevView:"overview",
   mkey:monthKey(new Date()),
-  add:null,dp:null,budSet:null,pendingDel:null,txOpen:null,
+  add:null,dp:null,budSet:null,pendingDel:null,txOpen:null,tr:null,
   flt:{q:"",dir:"all",cat:"all",acc:"all"},
 
   /* ---------- boot ---------- */
@@ -1139,7 +1140,7 @@ this.render();
     const d=this.data;
     const cid=(s&&s.lastCategoryId)||"cat-gro";
     return {amount:"",dir:"expense",categoryId:d&&d.categories.some(c=>c.id===cid)?cid:"cat-gro",accountId:d&&d.accounts[0]?d.accounts[0].id:"",
-      date:(s&&s.lastDate)||todayStr(),note:"",parkTxt:""};
+      date:(s&&s.lastDate)||todayStr(),note:""};
   },
   save(){
     this.data.meta.updatedAt=new Date().toISOString();
@@ -1189,7 +1190,7 @@ this.render();
   monthStats(key){
     let spent=0,inc=0;
     for(const t of this.data.transactions){
-      if(t.date.slice(0,7)!==key)continue;
+      if(t.date.slice(0,7)!==key||t.dir==="trans")continue;
       if(t.dir==="income")inc+=t.amount;else spent+=t.amount;
     }
     return {spent,inc,remaining:Math.max(0,inc-spent),pct:inc>0?Math.min(1,spent/inc):0};
@@ -1206,6 +1207,11 @@ this.render();
     if(a&&a.kind==="savings")return (a.cur!=null?a.cur:(a.opening||0));
     let b=a? (a.opening||0):0;
     for(const t of this.data.transactions){
+      if(t.dir==="trans"){
+        if(t.from===id)b-=t.amount;
+        if(t.to===id)b+=t.amount;
+        continue;
+      }
       if(t.accountId!==id)continue;
       b+=t.dir==="income"?t.amount:-t.amount;
     }
@@ -1213,13 +1219,23 @@ this.render();
   },
   savSync(oldT,newT){
     const aOf=id=>{const a=accById(id);return a&&a.kind==="savings"?a:null};
+    const bump=(a,p)=>{if(a)a.cur=(a.cur==null?(a.opening||0):a.cur)+p};
     const apply=(t,sf)=>{
       if(!t)return;
+      if(t.dir==="trans"){
+        bump(aOf(t.from),-t.amount*sf);
+        bump(aOf(t.to),t.amount*sf);
+        return;
+      }
       const a=aOf(t.accountId);if(!a)return;
       const d=(t.dir==="income"?t.amount:-t.amount);
-      a.cur=(a.cur==null?(a.opening||0):a.cur)+d*sf;
+      bump(a,d*sf);
     };
     apply(oldT,-1);apply(newT,1);
+  },
+  trNames(t){
+    const fa=accById(t.from),ta=accById(t.to);
+    return (fa?fa.name:"?")+" → "+(ta?ta.name:"?");
   },
   budgetSpent(b){
     const key=this.mkey;let s=0;
@@ -1244,7 +1260,7 @@ this.render();
     const flt=this.flt;
     let list=this.sortedTxs();
     if(flt.dir!=="all")list=list.filter(t=>t.dir===flt.dir);
-    if(flt.acc!=="all")list=list.filter(t=>t.accountId===flt.acc);
+    if(flt.acc!=="all")list=list.filter(t=>t.accountId===flt.acc||t.from===flt.acc||t.to===flt.acc);
     const groups=[];
     for(const t of list){
       let g=groups[groups.length-1];
@@ -1328,6 +1344,15 @@ this.render();
     </div>`;
   },
   ovCard(t){
+    if(t.dir==="trans"){
+      return `<button class="ov-card" data-act="open-txn" data-id="${t.id}">
+        <span class="ov-ic">⇄</span>
+        <span class="ov-cc">
+          <span class="nm">${esc(t.note||this.trNames(t))}</span>
+        </span>
+        <span class="amt sm mute">${rupees(t.amount)}</span>
+      </button>`;
+    }
     const c=catById(t.categoryId),a=accById(t.accountId);
     const sav=t.dir==="expense"&&a&&a.kind==="savings";
     return `<button class="ov-card" data-act="open-txn" data-id="${t.id}">
@@ -1452,9 +1477,9 @@ this.render();
     let list=this.sortedTxs();
     if(flt.dir!=="all")list=list.filter(t=>t.dir===flt.dir);
     if(flt.cat!=="all")list=list.filter(t=>t.categoryId===flt.cat);
-    if(flt.acc!=="all")list=list.filter(t=>t.accountId===flt.acc);
+    if(flt.acc!=="all")list=list.filter(t=>t.accountId===flt.acc||t.from===flt.acc||t.to===flt.acc);
     if(flt.q)list=list.filter(t=>{
-      const hay=(t.note||"")+" "+(this.catName(t.categoryId)||"")+" "+t.date;
+      const hay=(t.note||"")+" "+(t.dir==="trans"?this.trNames(t):(this.catName(t.categoryId)||""))+" "+t.date;
       return hay.toLowerCase().includes(flt.q.toLowerCase());
     });
     const groups=[];
@@ -1478,7 +1503,7 @@ this.render();
       </div>
 
       ${groups.length?groups.map(g=>{
-        const dayTotal=g.items.reduce((s,t)=>s+(t.dir==="income"?t.amount:-t.amount),0);
+        const dayTotal=g.items.reduce((s,t)=>s+(t.dir==="income"?t.amount:t.dir==="trans"?0:-t.amount),0);
         const pd=parseD(g.date);
         return `<div class="dg-head"><span class="dg-day">${pd.toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"})}</span><span class="dg-total">${rupees(dayTotal)}</span></div>`+
           g.items.map(t=>this.txRow(t)).join("");
@@ -1486,6 +1511,15 @@ this.render();
     </div>`;
   },
   txRow(t,mini){
+    if(t.dir==="trans"){
+      return `<button class="trow" data-act="open-txn" data-id="${t.id}">
+        <span class="temoji">⇄</span>
+        <span class="trow-body">
+          <span class="tname">${esc(t.note||this.trNames(t))}</span>
+        </span>
+        <span class="tamt mute">${rupees(t.amount)}</span>
+      </button>`;
+    }
     const c=catById(t.categoryId),a=accById(t.accountId);
     const sav=t.dir==="expense"&&a&&a.kind==="savings";
     return `<button class="trow" data-act="open-txn" data-id="${t.id}">
@@ -1528,7 +1562,7 @@ this.render();
     const net=accs.reduce((s,a)=>s+(a.kind==="savings"?0:this.accBalance(a.id)),0);
     return `
     <div class="scr">
-      <header class="scrhdr"><div class="hdr-title">Accounts</div><div class="hdr-left"><button class="btn mini" data-act="acc-add">${IC.plus} Add</button></div></header>
+      <header class="scrhdr"><div class="hdr-title">Accounts</div><div class="hdr-left"><button class="btn mini" data-act="tr-open">⇄ Move</button><button class="btn mini" data-act="acc-add">${IC.plus} Add</button></div></header>
       <div class="card">
         <div class="card-title">Net worth</div>
         <div class="dc-main" style="font-size:38px;margin:2px 0 4px">${rupees(net)}</div>
@@ -1655,15 +1689,6 @@ this.render();
           <span class="ficon">${IC.note}</span>
           <input id="note-inline" class="note-inline" maxlength="120" placeholder="Add a note" value="${esc(a.note)}">
         </label>
-        ${a.dir==="income"?`${(()=>{
-          const sav=this.data.accounts.find(x=>x.kind==="savings");
-          if(!sav)return "";
-          return `
-          <label class="field note-field" aria-label="Park into savings">
-            <span class="ficon">🎯</span>
-            <input id="park-inline" class="note-inline" inputmode="decimal" maxlength="12" placeholder="Park into ${esc(sav.name)} (₹)" value="${esc(a.parkTxt||"")}">
-          </label>`;
-        })()}`:""}
       </div>
       <div id="note-sug" class="note-sug"></div>
 
@@ -1727,6 +1752,40 @@ this.render();
       }).join("")}
       <button class="btn ghost" style="margin-top:14px" data-act="acc-add">${IC.plus} New account</button>`;
   },
+  trSheet(){
+    const a=this.data.accounts;
+    const from=accById(this.tr.from),to=accById(this.tr.to);
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">Move money</div>
+      <button class="field" data-act="tr-from">
+        <span class="ficon">💳</span>
+        <span class="f-name">${esc(from.name)}</span><span class="f-val">From</span>${IC.right}
+      </button>
+      <button class="field" data-act="tr-to">
+        <span class="ficon">💵</span>
+        <span class="f-name">${esc(to.name)}</span><span class="f-val">To</span>${IC.right}
+      </button>
+      <label class="field note-field">
+        <span class="ficon">₹</span>
+        <input id="tr-amt" class="note-inline" inputmode="decimal" placeholder="Amount" value="${esc(this.tr.amount||"")}">
+      </label>
+      <label class="field note-field">
+        <span class="ficon">${IC.note}</span>
+        <input id="tr-note" class="note-inline" maxlength="120" placeholder="Note (optional)" value="${esc(this.tr.note||"")}">
+      </label>
+      <button class="btn" data-act="tr-save">${IC.check} Move</button>`;
+  },
+  trAccSheet(which){
+    const d=this.data;
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">${which==="from"?"From":"To"} account</div>
+      ${d.accounts.map(a=>`<button class="sh-row ${this.tr[which]===a.id?"sel":""}" data-act="tr-pick" data-w="${which}" data-id="${a.id}">
+        <span class="ccircle" style="--c:${a.color}">${init(a.name)}</span>
+        <span class="rname">${esc(a.name)}</span><span class="rbal">${rupees(this.accBalance(a.id))}</span>${this.tr[which]===a.id?IC.check:IC.right}
+      </button>`).join("")}`;
+  },
   accFilterSheet(){
     const d=this.data;
     return `
@@ -1765,6 +1824,20 @@ this.render();
   },
 txnSheet(id){
     const t=this.data.transactions.find(x=>x.id===id);if(!t)return "";
+    if(t.dir==="trans"){
+      const pd=parseD(t.date);
+      return `
+      <div class="sh-grab"></div>
+      <div class="txn-row">
+        <span class="ccircle lg" style="--c:#31C4F3">⇄</span>
+        <span class="txn-meta">
+          <span class="txn-name">Transfer</span>
+          <span class="txn-sub">${esc(this.trNames(t))} · ${pd.toLocaleDateString("en-IN",{day:"numeric",month:"short"})}</span>
+        </span>
+        <span class="txn-amt">${rupees(t.amount)}</span>
+      </div>
+      <button class="sh-row" data-act="txn-del" data-id="${t.id}" style="color:var(--neg)"><span class="ccircle" style="--c:rgba(192,91,77,.16)">${IC.trash}</span><span class="rname">${this.pendingDel===t.id?"Tap again to delete":"Delete"}</span>${IC.right}</button>`;
+    }
     const c=catById(t.categoryId),a=accById(t.accountId),pd=parseD(t.date);
     return `
       <div class="sh-grab"></div>
@@ -2020,26 +2093,20 @@ txnSheet(id){
         App.toast("Updated "+rupees(existing.amount));
         return;
       }
-      const parkPaise=a.dir==="income"?Math.round((parseFloat(a.parkTxt)||0)*100):0;
-      const gross=Math.round(v*100);
-      const net=Math.max(0,gross-parkPaise);
-      const txn={id:uid(),date:a.date,dir:a.dir,amount:net,
+      const txn={id:uid(),date:a.date,dir:a.dir,amount:Math.round(v*100),
         categoryId:a.categoryId,accountId:a.accountId,name:"",note:a.note,createdAt:Date.now()};
       App.data.transactions.push(txn);
       App.savSync(null,txn);
-      if(parkPaise>0){
-        const sav=App.data.accounts.find(x=>x.kind==="savings");
-        if(sav)sav.cur=(sav.cur==null?(sav.opening||0):sav.cur)+parkPaise;
-      }
       App.data.settings.lastDate=a.date;
       App.data.settings.lastCategoryId=a.categoryId;
       App.save();App.add=App.freshAdd();App.view=App.prevView;App.render();
-      App.toast(parkPaise>0?("Added "+rupees(net)+" · parked "+rupees(parkPaise)):("Added "+rupees(net)));
+      App.toast("Added "+rupees(txn.amount));
     },
     "add-more":()=>App.openSheet(App.moreSheet()),
     "repeat-last":()=>{
       const t=App.sortedTxs()[0];
       if(!t){App.toast("No previous transaction");return}
+      if(t.dir==="trans"){App.toast("Last was a transfer");return}
       App.add.amount=String(t.amount/100).replace(/\.0+$/,"");
       App.add.dir=t.dir;App.add.categoryId=t.categoryId;App.add.accountId=t.accountId;
       App.render();App.toast("Repeated last "+(t.name||catById(t.categoryId).name));
@@ -2105,7 +2172,15 @@ txnSheet(id){
       const first=App.data.accounts.find(a=>a.id!==id);
       if(!first){App.toast("Cannot delete the only account");return}
       App.data.accounts=App.data.accounts.filter(a=>a.id!==id);
-      App.data.transactions.forEach(t=>{if(t.accountId===id){t.accountId=first.id;App.savSync(null,t)}});
+      App.data.transactions.forEach(t=>{
+        if(t.accountId===id){t.accountId=first.id;App.savSync(null,t)}
+        else if(t.dir==="trans"&&(t.from===id||t.to===id)){
+          App.savSync(t,null);
+          if(t.from===id)t.from=first.id;
+          if(t.to===id)t.to=first.id;
+          App.savSync(null,t);
+        }
+      });
       App.save();App.closeSheet();App.render();App.toast("Account deleted");
     },
     "t-hide":()=>{App.data.settings.hideBalances=!App.data.settings.hideBalances;App.save();App.render()},
@@ -2142,6 +2217,25 @@ txnSheet(id){
     },
     "bud-open":(el)=>App.openSheet(App.budSheet(el.dataset.id)),
     "acc-add":()=>App.openSheet(App.accAddSheet()),
+    "tr-open":()=>{
+      const accs=App.data.accounts;
+      App.tr={from:accs[0]?accs[0].id:"",to:accs[1]?accs[1].id:(accs[0]?accs[0].id:""),amount:"",note:""};
+      App.openSheet(App.trSheet());
+    },
+    "tr-from":()=>App.swapSheet(App.trAccSheet("from")),
+    "tr-to":()=>App.swapSheet(App.trAccSheet("to")),
+    "tr-pick":(el)=>{App.tr[el.dataset.w]=el.dataset.id;App.swapSheet(App.trSheet())},
+    "tr-save":()=>{
+      const tr=App.tr;
+      const v=Math.round(parseFloat(tr.amount||"0")||0)*100;
+      if(!isFinite(v)||v<=0){App.toast("Enter an amount");return}
+      if(!tr.from||!tr.to||tr.from===tr.to){App.toast("Choose two different accounts");return}
+      const t={id:uid(),date:todayStr(),dir:"trans",amount:v,from:tr.from,to:tr.to,note:(tr.note||"").trim(),createdAt:Date.now()};
+      App.data.transactions.push(t);
+      App.savSync(null,t);
+      App.save();App.closeSheet();App.render();
+      App.toast("Moved "+rupees(v));
+    },
     "pwa-help":()=>App.openSheet(`
       <div class="sh-grab"></div>
       <div class="sh-title">Run locally, no server</div>
@@ -2281,9 +2375,9 @@ document.addEventListener("click",e=>{
 });
 
 document.addEventListener("input",e=>{
-  if(e.target&&e.target.id==="note-inline")App.add.note=e.target.value;
-  if(e.target&&e.target.id==="park-inline")App.add.parkTxt=e.target.value;
-  if(e.target&&e.target.id==="note-inline")updateNoteSug();
+  if(e.target&&e.target.id==="note-inline"){App.add.note=e.target.value;updateNoteSug();}
+  if(e.target&&e.target.id==="tr-amt")App.tr.amount=e.target.value;
+  if(e.target&&e.target.id==="tr-note")App.tr.note=e.target.value;
 });
 
 /* note autocomplete: suggest the last-used note names matching what the user is typing */
