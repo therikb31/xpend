@@ -236,6 +236,7 @@ svg{display:block}
 .ov-card .amt.sm{font-size:13px;font-weight:500;color:var(--muted)}
 .ov-card .amt.sm.inc{color:var(--inc);font-weight:600}
 .ov-card .amt.inc{color:var(--inc)}
+.ov-card .amt.sav{color:var(--neg)}
 .see-all{display:block;text-align:center;padding:12px 0 4px;color:var(--muted);font-size:14.5px;font-weight:600}
 .see-all:active{color:var(--text)}
 
@@ -319,6 +320,7 @@ svg{display:block}
 /* amount */
 .amt{font-variant-numeric:tabular-nums;font-weight:600}
 .amt.inc{color:var(--inc)}
+.amt.sav{color:var(--neg)}
 .amt.neg{color:var(--neg)}
 .amt.dim{color:var(--muted)}
 
@@ -361,6 +363,7 @@ svg{display:block}
 .tsub{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tamt{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
 .tamt.inc{color:var(--inc)}
+.tamt.sav{color:var(--neg)}
 .trow .tamt{font-size:13px;font-weight:500;color:var(--muted)}
 .trow .tamt.inc{color:var(--inc);font-weight:600}
 
@@ -612,6 +615,8 @@ select.sel{
 .bud-top .bname-h{font-size:17px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bud-meta{display:flex;justify-content:space-between;margin-top:8px;font-size:13.5px;color:var(--muted)}
 .bud-meta b{color:var(--text);font-variant-numeric:tabular-nums}
+.sav-line{display:flex;justify-content:space-between;margin-top:8px;font-size:13.5px;color:var(--muted)}
+.sav-line b{color:var(--text);font-variant-numeric:tabular-nums}
 
 /* note text */
 .note-ico{font-size:15px;color:var(--muted-2)}
@@ -695,7 +700,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b15";
+const APP_VER="b16";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1197,12 +1202,24 @@ this.render();
     return map;
   },
   accBalance(id){
-    const a=accById(id);let b=a? (a.opening||0):0;
+    const a=accById(id);
+    if(a&&a.kind==="savings")return (a.cur!=null?a.cur:(a.opening||0));
+    let b=a? (a.opening||0):0;
     for(const t of this.data.transactions){
       if(t.accountId!==id)continue;
       b+=t.dir==="income"?t.amount:-t.amount;
     }
     return b;
+  },
+  savSync(oldT,newT){
+    const aOf=id=>{const a=accById(id);return a&&a.kind==="savings"?a:null};
+    const apply=(t,sf)=>{
+      if(!t)return;
+      const a=aOf(t.accountId);if(!a)return;
+      const d=(t.dir==="income"?t.amount:-t.amount);
+      a.cur=(a.cur==null?(a.opening||0):a.cur)+d*sf;
+    };
+    apply(oldT,-1);apply(newT,1);
   },
   budgetSpent(b){
     const key=this.mkey;let s=0;
@@ -1312,12 +1329,13 @@ this.render();
   },
   ovCard(t){
     const c=catById(t.categoryId),a=accById(t.accountId);
+    const sav=t.dir==="expense"&&a&&a.kind==="savings";
     return `<button class="ov-card" data-act="open-txn" data-id="${t.id}">
       <span class="ov-ic">${catEmoji(c)}</span>
       <span class="ov-cc">
         <span class="nm">${esc(t.note||c.name)}</span>
       </span>
-      <span class="amt sm ${t.dir==="income"?"inc":""}">${rupees(t.amount)}</span>
+      <span class="amt sm ${t.dir==="income"?"inc":sav?"sav":""}">${rupees(t.amount)}</span>
     </button>`;
   },
   floaters(){
@@ -1469,12 +1487,13 @@ this.render();
   },
   txRow(t,mini){
     const c=catById(t.categoryId),a=accById(t.accountId);
+    const sav=t.dir==="expense"&&a&&a.kind==="savings";
     return `<button class="trow" data-act="open-txn" data-id="${t.id}">
       <span class="temoji">${catEmoji(c)}</span>
       <span class="trow-body">
         <span class="tname">${esc(t.note||c.name)}</span>
       </span>
-      <span class="tamt ${t.dir==="income"?"inc":""}">${rupees(t.amount)}</span>
+      <span class="tamt ${t.dir==="income"?"inc":sav?"sav":""}">${rupees(t.amount)}</span>
     </button>`;
   },
 
@@ -1505,24 +1524,27 @@ this.render();
   /* ============ ACCOUNTS ============ */
   accounts(){
     const accs=this.data.accounts;
-    const net=accs.reduce((s,a)=>s+this.accBalance(a.id),0);
+    const hasSav=accs.some(a=>a.kind==="savings");
+    const net=accs.reduce((s,a)=>s+(a.kind==="savings"?0:this.accBalance(a.id)),0);
     return `
     <div class="scr">
       <header class="scrhdr"><div class="hdr-title">Accounts</div><div class="hdr-left"><button class="btn mini" data-act="acc-add">${IC.plus} Add</button></div></header>
       <div class="card">
         <div class="card-title">Net worth</div>
         <div class="dc-main" style="font-size:38px;margin:2px 0 4px">${rupees(net)}</div>
-        <div class="dc-sub2" style="color:var(--muted);font-size:13.5px">${accs.length} account${accs.length===1?"":"s"}</div>
+        <div class="dc-sub2" style="color:var(--muted);font-size:13.5px">${accs.length} account${accs.length===1?"":"s"}${hasSav?" · excluding savings":""}</div>
       </div>
       ${accs.map(a=>{
         const bal=this.accBalance(a.id);
         return `<div class="card" data-act="acc-open" data-id="${a.id}" role="button">
           <div class="bud-top">
             <span class="ccircle" style="--c:${a.color}">${init(a.name)}</span>
-            <span class="bname-h">${esc(a.name)}</span>
-            <span class="tamt">${rupees(bal)}</span>
+            <span class="bname-h">${esc(a.name)}${a.kind==="savings"?`<div class="tsub" style="text-transform:capitalize">Savings account</div>`:""}</span>
+            <span class="tamt">${rupees(bal)}${a.kind==="savings"?`<div class="tsub" style="text-align:right">Current savings</div>`:""}</span>
           </div>
-          <div class="tsub" style="text-transform:capitalize">${esc(a.kind)}</div>
+          ${a.kind==="savings"
+            ?`<div class="sav-line"><span>Previous savings</span><b>${rupees(a.prev!=null?a.prev:bal)}</b></div>`
+            :`<div class="tsub" style="text-transform:capitalize">${esc(a.kind)}</div>`}
         </div>`;
       }).join("")}
     </div>`;
@@ -1841,16 +1863,29 @@ txnSheet(id){
       <input type="text" id="aa-o" inputmode="decimal" placeholder="0" style="margin-top:0">
       <button class="btn" style="margin-top:16px" data-act="acc-add-save">${IC.plus} Create account</button>`;
   },
-  accRenameSheet(id){
+  accEditSheet(id){
     const a=accById(id);if(!a)return "";
-    App._accId=id;
+    App._accId=id;App._aeKind=a.kind||"cash";
     return `
       <div class="sh-grab"></div>
-      <div class="sh-title">Rename account</div>
+      <div class="sh-title">Edit account</div>
       <input type="text" id="aa-n" placeholder="Name" value="${esc(a.name)}">
+      <div class="tsub" style="margin:8px 2px 4px">Type</div>
+      <div class="chip-row" style="margin-top:0">
+        <button class="chip ${App._aeKind==="cash"?"on":""}" data-act="ae-kind" data-k="cash" id="aekind-cash">Cash</button>
+        <button class="chip ${App._aeKind==="card"?"on":""}" data-act="ae-kind" data-k="card" id="aekind-card">Card</button>
+        <button class="chip ${App._aeKind==="savings"?"on":""}" data-act="ae-kind" data-k="savings" id="aekind-savings">Savings</button>
+      </div>
+      <div id="ae-sav" ${App._aeKind==="savings"?"":"style='display:none'"}>
+        <div class="tsub" style="margin:8px 2px 4px">Current savings (₹)</div>
+        <input type="text" id="aa-cur" inputmode="decimal" placeholder="0" value="${a.cur!=null?(a.cur/100).toLocaleString("en-IN",{maximumFractionDigits:2}):""}" style="margin-top:0">
+        <div class="tsub" style="margin:8px 2px 4px">Previous savings (₹)</div>
+        <input type="text" id="aa-prev" inputmode="decimal" placeholder="0" value="${a.prev!=null?(a.prev/100).toLocaleString("en-IN",{maximumFractionDigits:2}):""}" style="margin-top:0">
+        <div class="tsub" style="margin:6px 2px 10px;color:var(--muted)">Previous savings is your baseline (e.g. end of last month). Move money in/out by adjusting Current savings — no transaction is created.</div>
+      </div>
       <div style="display:flex;gap:10px;margin-top:16px">
         <button class="btn ghost" style="flex:1" data-act="close-sheet">Cancel</button>
-        <button class="btn" style="flex:1" data-act="acc-rename-save">${IC.check} Save</button>
+        <button class="btn" style="flex:1" data-act="acc-edit-save">${IC.check} Save</button>
       </div>`;
   },
   gbSetupSheet(){
@@ -1962,8 +1997,10 @@ txnSheet(id){
       if(!isFinite(v)||v<=0){App.toast("Enter an amount");return}
       const existing=App.txOpen&&App.data.transactions.find(x=>x.id===App.txOpen);
       if(existing){
+        const before=Object.assign({},existing,{accountId:existing.accountId,dir:existing.dir,amount:existing.amount});
         Object.assign(existing,{date:a.date,dir:a.dir,amount:Math.round(v*100),
           categoryId:a.categoryId,accountId:a.accountId,note:a.note});
+        App.savSync(before,existing);
         App.txOpen=null;
         App.data.settings.lastDate=a.date;
         App.data.settings.lastCategoryId=a.categoryId;
@@ -1974,6 +2011,7 @@ txnSheet(id){
       const txn={id:uid(),date:a.date,dir:a.dir,amount:Math.round(v*100),
         categoryId:a.categoryId,accountId:a.accountId,name:"",note:a.note,createdAt:Date.now()};
       App.data.transactions.push(txn);
+      App.savSync(null,txn);
       App.data.settings.lastDate=a.date;
       App.data.settings.lastCategoryId=a.categoryId;
       App.save();App.add=App.freshAdd();App.view=App.prevView;App.render();
@@ -2037,7 +2075,9 @@ txnSheet(id){
     "txn-del":(el)=>{
       const id=el.dataset.id;
       if(App.pendingDel!==id){App.pendingDel=id;App.swapSheet(App.txnSheet(id));return}
+      const gone=App.data.transactions.find(x=>x.id===id);
       App.data.transactions=App.data.transactions.filter(x=>x.id!==id);
+      App.savSync(gone,null);
       App.save();App.closeSheet();App.render();App.toast("Deleted");
     },
     "t-hide":()=>{App.data.settings.hideBalances=!App.data.settings.hideBalances;App.save();App.render()},
@@ -2087,16 +2127,33 @@ txnSheet(id){
     "acc-add-save":()=>{
       const n=($("#aa-n").value||"").trim();
       if(!n){App.toast("Enter a name");return}
-      const o=parseFloat($("#aa-o").value||"0")||0;
-      App.data.accounts.push({id:"acc-u-"+uid(),name:n,kind:App._accKind||"cash",opening:Math.round(o*100),color:"#7C9AA6"});
+      const o=Math.round(parseFloat($("#aa-o").value||"0")||0)*100;
+      const k=App._accKind||"cash";
+      const acc={id:"acc-u-"+uid(),name:n,kind:k,opening:o,color:"#7C9AA6"};
+      if(k==="savings"){acc.cur=o;acc.prev=o}
+      App.data.accounts.push(acc);
       App.save();App.closeSheet();App.render();App.toast("Account created");
     },
-    "acc-open":(el)=>App.openSheet(App.accRenameSheet(el.dataset.id)),
-    "acc-rename-save":()=>{
+    "acc-open":(el)=>App.openSheet(App.accEditSheet(el.dataset.id)),
+    "ae-kind":(el)=>{
+      App._aeKind=el.dataset.k;
+      ["cash","card","savings"].forEach(k=>{const b=$("#aekind-"+k);if(b)b.classList.toggle("on",k===el.dataset.k)});
+      const sav=$("#ae-sav");if(sav)sav.style.display=el.dataset.k==="savings"?"":"none";
+    },
+    "acc-edit-save":()=>{
       const n=($("#aa-n").value||"").trim();
       if(!n){App.toast("Enter a name");return}
       const a=accById(App._accId);if(!a)return;
-      a.name=n;App.save();App.closeSheet();App.render();App.toast("Account renamed");
+      a.name=n;
+      a.kind=App._aeKind||a.kind||"cash";
+      if(a.kind==="savings"){
+        const cur=Math.round(parseFloat($("#aa-cur").value||"0")||0)*100;
+        const prev=Math.round(parseFloat($("#aa-prev").value||"0")||0)*100;
+        a.cur=cur;a.prev=prev;
+      }else{
+        a.cur=null;a.prev=null;
+      }
+      App.save();App.closeSheet();App.render();App.toast("Account saved");
     },
     "gb-setup":()=>App.openSheet(App.gbSetupSheet()),
     "gb-setup-save":async()=>{
