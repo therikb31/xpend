@@ -2121,6 +2121,31 @@ document.addEventListener("input",e=>{
 
 document.addEventListener("keydown",e=>{if(e.key==="Escape")App.closeSheet()});
 
+/* iOS standalone keyboard bug: when the keyboard opens and closes, window.innerHeight
+   sometimes stays stuck short, leaving a black strip at the bottom until the app is
+   killed. Re-assert the layout viewport whenever the keyboard finishes closing. */
+function kbFix(){
+  const app=document.getElementById("app");if(!app)return;
+  const meta=document.querySelector('meta[name="viewport"]');
+  if(meta){
+    const o=meta.getAttribute("content");
+    meta.setAttribute("content",o+", kbFix");
+    setTimeout(()=>meta.setAttribute("content",o),40);
+  }
+  window.scrollTo(0,0);
+  app.style.top="0";app.style.bottom="0";
+}
+if(window.visualViewport){
+  let kbWas=false;
+  window.visualViewport.addEventListener("resize",()=>{
+    const kbNow=Math.round(window.visualViewport.height)<Math.round(window.innerHeight*0.9);
+    if(kbWas&&!kbNow)setTimeout(kbFix,90);
+    kbWas=kbNow;
+  });
+}
+window.addEventListener("resize",()=>kbFix());
+document.addEventListener("focusout",()=>setTimeout(()=>{kbFix()},140));
+
 /* flush pending backup when leaving the page */
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")Gist.push().catch(()=>{})});
 
