@@ -158,17 +158,17 @@ svg{display:block}
 .yax .mid{color:#E9EBED}
 .xax{display:flex;justify-content:space-between;padding:9px 36px 0 2px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 
-.ov-chips{display:flex;gap:10px;overflow-x:auto;padding:12px 18px 4px;-webkit-overflow-scrolling:touch;-ms-overflow-style:none}
+.ov-chips{display:flex;gap:8px;overflow-x:auto;padding:8px 18px 4px;-webkit-overflow-scrolling:touch;-ms-overflow-style:none}
 .ov-chip{
-  flex:none;height:52px;padding:0 22px;border-radius:26px;
-  background:var(--ov-card);color:var(--text);font-size:15.5px;font-weight:600;white-space:nowrap;
-  display:flex;align-items:center;gap:8px;
+  flex:none;height:38px;padding:0 15px;border-radius:19px;
+  background:var(--ov-card);color:var(--text);font-size:13px;font-weight:600;white-space:nowrap;
+  display:flex;align-items:center;gap:6px;
 }
-.ov-chip.circ{width:52px;padding:0;justify-content:center}
-.ov-chip.circ svg{width:22px;height:22px}
+.ov-chip.circ{width:38px;padding:0;justify-content:center}
+.ov-chip.circ svg{width:17px;height:17px}
 .ov-chip:active{background:#2D353B}
 .ov-chip.on{background:var(--text);color:#11171A}
-.ov-chip .dot{width:9px;height:9px;border-radius:50%;background:var(--c,var(--muted))}
+.ov-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--muted))}
 
 /* ============================ SUMMARY (donut-overview, reference UI) ============================ */
 .scr.sum{padding:0 0 calc(220px + env(safe-area-inset-bottom,0px))}
@@ -680,7 +680,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b10";
+const APP_VER="b11";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
