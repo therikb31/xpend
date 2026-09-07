@@ -703,7 +703,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b23";
+const APP_VER="b24";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1979,14 +1979,15 @@ txnSheet(id){
       <button class="btn" style="margin-top:16px" data-act="bud-save" data-id="${id||""}">${IC.check} Save budget</button>`;
   },
   accAddSheet(){
+    App._accKind="cash";
     return `
       <div class="sh-grab"></div>
       <div class="sh-title">New account</div>
       <input type="text" id="aa-n" placeholder="Name">
       <div class="chip-row" style="margin-top:4px">
-        <button class="chip on" data-act="aa-kind" data-k="cash" id="aakind-c">Cash</button>
+        <button class="chip on" data-act="aa-kind" data-k="cash" id="aakind-cash">Cash</button>
         <button class="chip" data-act="aa-kind" data-k="card" id="aakind-card">Card</button>
-        <button class="chip" data-act="aa-kind" data-k="savings" id="aakind-s">Savings</button>
+        <button class="chip" data-act="aa-kind" data-k="savings" id="aakind-savings">Savings</button>
       </div>
       <div class="tsub" style="margin:8px 2px 4px">Opening balance (₹)</div>
       <input type="text" id="aa-o" inputmode="decimal" placeholder="0" style="margin-top:0">
