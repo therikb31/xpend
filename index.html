@@ -700,7 +700,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b16";
+const APP_VER="b17";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1886,7 +1886,9 @@ txnSheet(id){
       <div style="display:flex;gap:10px;margin-top:16px">
         <button class="btn ghost" style="flex:1" data-act="close-sheet">Cancel</button>
         <button class="btn" style="flex:1" data-act="acc-edit-save">${IC.check} Save</button>
-      </div>`;
+      </div>
+      <button class="btn ghost" style="width:100%;margin-top:12px;color:var(--neg);border-color:rgba(192,91,77,.35)" data-act="acc-del" data-id="${id}">${IC.trash} ${this.pendingDel===id?"Tap again to delete":"Delete account"}</button>
+      <div class="tsub" style="margin:6px 2px 2px;color:var(--muted)">Transactions paid from this account move to your first account.</div>`;
   },
   gbSetupSheet(){
     return `
@@ -2080,6 +2082,15 @@ txnSheet(id){
       App.savSync(gone,null);
       App.save();App.closeSheet();App.render();App.toast("Deleted");
     },
+    "acc-del":(el)=>{
+      const id=el.dataset.id;
+      if(App.pendingDel!==id){App.pendingDel=id;App.swapSheet(App.accEditSheet(id));return}
+      const first=App.data.accounts.find(a=>a.id!==id);
+      if(!first){App.toast("Cannot delete the only account");return}
+      App.data.accounts=App.data.accounts.filter(a=>a.id!==id);
+      App.data.transactions.forEach(t=>{if(t.accountId===id){t.accountId=first.id;App.savSync(null,t)}});
+      App.save();App.closeSheet();App.render();App.toast("Account deleted");
+    },
     "t-hide":()=>{App.data.settings.hideBalances=!App.data.settings.hideBalances;App.save();App.render()},
     "cat-manage":()=>App.openSheet(App.catManageSheet()),
     "cat-del":(el)=>{App.data.categories=App.data.categories.filter(c=>c.id!==el.dataset.id);
@@ -2134,7 +2145,7 @@ txnSheet(id){
       App.data.accounts.push(acc);
       App.save();App.closeSheet();App.render();App.toast("Account created");
     },
-    "acc-open":(el)=>App.openSheet(App.accEditSheet(el.dataset.id)),
+    "acc-open":(el)=>{App.pendingDel=null;App.openSheet(App.accEditSheet(el.dataset.id))},
     "ae-kind":(el)=>{
       App._aeKind=el.dataset.k;
       ["cash","card","savings"].forEach(k=>{const b=$("#aekind-"+k);if(b)b.classList.toggle("on",k===el.dataset.k)});
