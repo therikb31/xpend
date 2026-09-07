@@ -700,7 +700,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b19";
+const APP_VER="b20";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -2020,18 +2020,21 @@ txnSheet(id){
         App.toast("Updated "+rupees(existing.amount));
         return;
       }
-      const txn={id:uid(),date:a.date,dir:a.dir,amount:Math.round(v*100),
+      const parkPaise=a.dir==="income"?Math.round((parseFloat(a.parkTxt)||0)*100):0;
+      const gross=Math.round(v*100);
+      const net=Math.max(0,gross-parkPaise);
+      const txn={id:uid(),date:a.date,dir:a.dir,amount:net,
         categoryId:a.categoryId,accountId:a.accountId,name:"",note:a.note,createdAt:Date.now()};
       App.data.transactions.push(txn);
       App.savSync(null,txn);
-      if(a.dir==="income"){
-        const amt=Math.round((parseFloat(a.parkTxt)||0)*100);
-        if(amt>0){const sav=App.data.accounts.find(x=>x.kind==="savings");if(sav)sav.cur=(sav.cur==null?(sav.opening||0):sav.cur)+amt;}
+      if(parkPaise>0){
+        const sav=App.data.accounts.find(x=>x.kind==="savings");
+        if(sav)sav.cur=(sav.cur==null?(sav.opening||0):sav.cur)+parkPaise;
       }
       App.data.settings.lastDate=a.date;
       App.data.settings.lastCategoryId=a.categoryId;
       App.save();App.add=App.freshAdd();App.view=App.prevView;App.render();
-      App.toast("Added "+rupees(txn.amount));
+      App.toast(parkPaise>0?("Added "+rupees(net)+" · parked "+rupees(parkPaise)):("Added "+rupees(net)));
     },
     "add-more":()=>App.openSheet(App.moreSheet()),
     "repeat-last":()=>{
