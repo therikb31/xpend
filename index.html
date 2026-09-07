@@ -87,19 +87,17 @@ svg{display:block}
 .scr.ov{padding:0 0 calc(200px + env(safe-area-inset-bottom,0px))}
 .scr.pad-nav{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
 
-/* ============================ NAV (docked bar / desktop rail) ============================ */
+/* ============================ NAV (floating pill / desktop rail) ============================ */
 #nav{
   z-index:40;
-  position:fixed;left:16px;right:16px;
-  bottom:0;
-  height:calc(62px + env(safe-area-inset-bottom,0px));
-  padding:5px 5px calc(4px + env(safe-area-inset-bottom,0px));
-  border-radius:30px 30px 0 0;
-  display:flex;align-items:stretch;gap:2px;
+  position:fixed;left:18px;right:18px;
+  bottom:8px;
+  bottom:max(8px, calc(env(safe-area-inset-bottom,0px) - 22px));
+  height:70px;border-radius:35px;
+  display:flex;align-items:stretch;padding:5px;gap:2px;
   background:rgba(18,20,22,.94);
   border:.5px solid rgba(255,255,255,.12);
-  border-bottom:none;
-  box-shadow:0 -8px 36px rgba(0,0,0,.5),0 1px 0 rgba(255,255,255,.08) inset;
+  box-shadow:0 12px 36px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.08) inset;
   -webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
 }
 .nav-item{
@@ -682,7 +680,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b8";
+const APP_VER="b9";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
