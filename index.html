@@ -246,8 +246,6 @@ svg{display:block}
 }
 .fab{pointer-events:auto;display:grid;place-items:center;border-radius:50%;box-shadow:0 10px 26px rgba(0,0,0,.5)}
 .fab:active{transform:scale(.96)}
-.fab.mic{width:54px;height:54px;background:var(--fab-drk);border:.5px solid rgba(255,255,255,.35);color:#F5F5F5}
-.fab.mic svg{width:24px;height:24px}
 .fab.add{width:64px;height:64px;background:var(--text);color:#11171A;border:.5px solid rgba(0,0,0,.5)}
 .fab.add svg{width:30px;height:30px;stroke-width:3}
 
@@ -554,6 +552,23 @@ select.sel{
 }
 .ficon svg{width:20px;height:20px;color:var(--text-2)}
 .field > svg{width:18px;height:18px;color:var(--muted)}
+.note-sug{
+  display:none;position:fixed;left:18px;right:18px;z-index:70;
+  bottom:calc(278px + env(safe-area-inset-bottom,0px));
+  background:rgba(20,23,25,.92);
+  border:.5px solid rgba(255,255,255,.12);
+  border-radius:14px;overflow:hidden;
+  -webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);
+  box-shadow:0 10px 30px rgba(0,0,0,.5);
+}
+.note-sug.show{display:block}
+.note-sug-item{
+  display:block;width:100%;text-align:left;padding:11px 14px;
+  font-size:14.5px;color:var(--text);background:transparent;border:0;border-top:.5px solid rgba(255,255,255,.07);
+}
+.note-sug-item:first-child{border-top:0}
+.note-sug-item b{color:var(--teal,#4AA8A0);font-weight:700}
+.note-sug-item:active{background:rgba(255,255,255,.07)}
 .keypad{
   display:grid;grid-template-columns:repeat(3,1fr);gap:9px;
   padding:2px 0 8px;
@@ -680,7 +695,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b11";
+const APP_VER="b12";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1297,7 +1312,6 @@ this.render();
   floaters(){
     if(this.view==="add")return "";
     return `<div class="fab-stack">
-      ${this.view==="overview"?`<button class="fab mic" data-act="mic-tap" aria-label="Voice input">${IC.mic}</button>`:""}
       <button class="fab add" data-act="fab-add" aria-label="Add transaction">${IC.plusB}</button>
     </div>`;
   },
@@ -1609,6 +1623,7 @@ this.render();
           <input id="note-inline" class="note-inline" maxlength="120" placeholder="Add a note" value="${esc(a.note)}">
         </label>
       </div>
+      <div id="note-sug" class="note-sug"></div>
 
       <div style="flex:1"></div>
       <div class="keypad">
@@ -1999,6 +2014,9 @@ txnSheet(id){
     "mk-pick":(el)=>{App.mkey=el.dataset.key;App.closeSheet();App.render()},
     "mk-today":()=>{App.mkey=monthKey(new Date());App.closeSheet();App.render()},
     "fab-add":()=>{App.prevView=App.view;App.add=App.freshAdd();App.txOpen=null;App.view="add";App.render()},
+    "note-pick":(el)=>{App.add.note=el.dataset.n;
+      const inp=document.getElementById("note-inline");if(inp)inp.value=el.dataset.n;
+      document.getElementById("note-sug")?.classList.remove("show")},
     "mic-tap":()=>App.toast("Voice input — coming soon"),
     "fd":(el)=>{App.flt[el.dataset.f]=el.dataset.v;App.render()},
     "open-txn":(el)=>{App.txOpen=el.dataset.id;App.pendingDel=null;App.openSheet(App.txnSheet(el.dataset.id))},
@@ -2167,8 +2185,44 @@ document.addEventListener("click",e=>{
 });
 
 document.addEventListener("input",e=>{
-  if(e.target&&e.target.id==="note-inline"){App.add.note=e.target.value}
+  if(e.target&&e.target.id==="note-inline")App.add.note=e.target.value;
+  if(e.target&&e.target.id==="note-inline")updateNoteSug();
 });
+
+/* note autocomplete: suggest the last-used note names matching what the user is typing */
+function updateNoteSug(){
+  const box=document.getElementById("note-sug");
+  if(!box)return;
+  const v=(App.add&&App.add.note||"").trim();
+  if(!v){
+    box.classList.remove("show");box.innerHTML="";
+    return;
+  }
+  const used=[];
+  const seen=new Set();
+  for(let i=App.data.transactions.length-1;i>=0;i--){
+    const t=App.data.transactions[i];
+    const n=(t.note||t.name||"").trim();
+    if(!n||seen.has(n.toLowerCase()))continue;
+    seen.add(n.toLowerCase());used.push(n);
+  }
+  const q=v.toLowerCase();
+  const ranked=used
+    .filter(n=>{
+      const nl=n.toLowerCase();
+      return nl.startsWith(q)||nl.includes(q);
+    })
+    .sort((a,b)=>a.toLowerCase().indexOf(q)-b.toLowerCase().indexOf(q));
+  const picks=ranked.slice(0,4);
+  if(!picks.length){box.classList.remove("show");box.innerHTML="";return}
+  const hi=s=>{
+    const i=s.toLowerCase().indexOf(q);
+    if(i<0)return esc(s);
+    return esc(s.slice(0,i))+"<b>"+esc(s.slice(i,i+q.length))+"</b>"+esc(s.slice(i+q.length));
+  };
+  box.innerHTML=picks.map(n=>`<button class="note-sug-item" data-act="note-pick" data-n="${esc(n)}">${hi(n)}</button>`).join("");
+  box.classList.add("show");
+}
 
 document.addEventListener("keydown",e=>{if(e.key==="Escape")App.closeSheet()});
 
