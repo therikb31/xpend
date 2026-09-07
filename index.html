@@ -572,6 +572,8 @@ select.sel{
 .note-sug-item:first-child{border-top:0}
 .note-sug-item b{color:var(--teal,#4AA8A0);font-weight:700}
 .note-sug-item:active{background:rgba(255,255,255,.07)}
+.park-box{display:flex;flex-direction:column;gap:4px;padding:8px 12px;margin:4px 18px 0;border-radius:14px;background:rgba(255,255,255,.04);border:.5px solid rgba(255,255,255,.09)}
+.park-box input{width:100%;background:transparent;border:0;outline:0;font-size:16px;color:var(--text);padding:2px 0}
 .keypad{
   display:grid;grid-template-columns:repeat(3,1fr);gap:9px;
   padding:2px 0 8px;
@@ -700,7 +702,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b17";
+const APP_VER="b18";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1139,7 +1141,7 @@ this.render();
     const d=this.data;
     const cid=(s&&s.lastCategoryId)||"cat-gro";
     return {amount:"",dir:"expense",categoryId:d&&d.categories.some(c=>c.id===cid)?cid:"cat-gro",accountId:d&&d.accounts[0]?d.accounts[0].id:"",
-      date:(s&&s.lastDate)||todayStr(),note:""};
+      date:(s&&s.lastDate)||todayStr(),note:"",park:false,parkTxt:""};
   },
   save(){
     this.data.meta.updatedAt=new Date().toISOString();
@@ -1655,6 +1657,21 @@ this.render();
           <span class="ficon">${IC.note}</span>
           <input id="note-inline" class="note-inline" maxlength="120" placeholder="Add a note" value="${esc(a.note)}">
         </label>
+        ${a.dir==="income"?`${(()=>{
+          const sav=this.data.accounts.find(x=>x.kind==="savings");
+          if(!sav)return "";
+          return `
+          <button class="field" data-act="sav-toggle" aria-label="Park into savings">
+            <span class="ficon">🎯</span>
+            <span class="f-name">${a.park?`Parking into ${esc(sav.name)}`:"Park into savings"}</span>
+            <span class="f-val">${a.park?`${a.parkTxt?rupees(Math.round(parseFloat(a.parkTxt)||0)*100):"Full amount"}`:sav.name}</span>
+          </button>
+          ${a.park?`
+          <div class="park-box">
+            <span class="tsub">Amount to park (₹) — from this income</span>
+            <input type="text" id="park-inline" inputmode="decimal" placeholder="0" value="${esc(a.parkTxt||"")}" style="margin-top:4px">
+          </div>`:""}`;
+        })()}`:""}
       </div>
       <div id="note-sug" class="note-sug"></div>
 
@@ -1991,7 +2008,16 @@ txnSheet(id){
     "note-save":()=>{const v=$("#nt").value.trim();App.add.note=v;App.closeSheet();App.render()},
     "seg-dir":(el)=>{
       const d=el.dataset.d||(App.add.dir==="expense"?"income":"expense");
-      App.add.dir=d;App.closeSheet();App.render();
+      App.add.dir=d;
+      if(d==="expense")App.add.park=false;
+      App.closeSheet();App.render();
+    },
+    "sav-toggle":()=>{App.add.park=!App.add.park;
+      if(App.add.park&&!App.add.parkTxt){
+        const v=parseFloat(App.add.amount);
+        if(isFinite(v)&&v>0)App.add.parkTxt=String(v);
+      }
+      App.render();
     },
     "key":(el)=>App.key(el.dataset.k),
     "add-save":()=>{
@@ -2014,6 +2040,10 @@ txnSheet(id){
         categoryId:a.categoryId,accountId:a.accountId,name:"",note:a.note,createdAt:Date.now()};
       App.data.transactions.push(txn);
       App.savSync(null,txn);
+      if(a.park&&a.dir==="income"){
+        const amt=Math.round((parseFloat(a.parkTxt)||0)*100);
+        if(amt>0){const sav=App.data.accounts.find(x=>x.kind==="savings");if(sav)sav.cur=(sav.cur==null?(sav.opening||0):sav.cur)+amt;}
+      }
       App.data.settings.lastDate=a.date;
       App.data.settings.lastCategoryId=a.categoryId;
       App.save();App.add=App.freshAdd();App.view=App.prevView;App.render();
@@ -2265,6 +2295,7 @@ document.addEventListener("click",e=>{
 
 document.addEventListener("input",e=>{
   if(e.target&&e.target.id==="note-inline")App.add.note=e.target.value;
+  if(e.target&&e.target.id==="park-inline")App.add.parkTxt=e.target.value;
   if(e.target&&e.target.id==="note-inline")updateNoteSug();
 });
 
