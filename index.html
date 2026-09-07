@@ -485,12 +485,19 @@ select.sel{
 .cal-grid i{aspect-ratio:1}
 
 /* ---- category picker ---- */
-.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 8px}
-.cat-chip{display:flex;flex-direction:column;align-items:center;gap:7px;padding:6px 0}
-.cat-chip .ccircle{width:52px;height:52px;font-size:17px;transition:box-shadow .15s}
-.cat-chip.sel .ccircle{box-shadow:0 0 0 2.5px var(--text)}
-.cat-chip .cname{font-size:11.5px;color:var(--muted-2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cat-chip.sel .cname{color:var(--text)}
+.cat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.cat-chip{display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:16px;
+  border:1.5px solid var(--c);
+  border-color:color-mix(in srgb,var(--c) 55%,transparent);
+  background:rgba(255,255,255,.04);transition:transform .12s,box-shadow .15s}
+.cat-chip:active{transform:scale(.97)}
+.cat-chip .cemoji{width:36px;height:36px;flex:none;border-radius:10px;
+  display:grid;place-items:center;font-size:18px;line-height:1;
+  background:rgba(255,255,255,.07)}
+.cat-chip .cname{font-size:13.5px;color:var(--text);font-weight:500;text-align:left;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat-chip.sel{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,rgba(255,255,255,.04));
+  box-shadow:0 0 0 2.5px color-mix(in srgb,var(--c) 30%,transparent)}
 
 /* ============================ ADD-EXPENSE SCREEN (spec §26-30) ============================ */
 .add-top{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
@@ -665,7 +672,7 @@ function dayLabel(dateStr){
   return parseD(dateStr).toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"short"});
 }
 function isPhone(){return typeof window!=="undefined"&&window.matchMedia?window.matchMedia("(max-width:600px)").matches:false}
-function catById(id){return App.data.categories.find(c=>c.id===id)||App.data.categories.find(c=>c.id==="cat-o")}
+function catById(id){return App.data.categories.find(c=>c.id===id)||App.data.categories.find(c=>c.id==="cat-ext")||App.data.categories.find(c=>c.kind==="expense")}
 function accById(id){return App.data.accounts.find(a=>a.id===id)||App.data.accounts[0]}
 
 /* ============================ ICONS (thin line, monochrome) ============================ */
@@ -983,19 +990,46 @@ const Gist={
 
 /* ============================ DEFAULT DATA ============================ */
 const DEF_CATS=[
-  {id:"cat-g",name:"Groceries",kind:"expense",color:"#7C9AA6"},
-  {id:"cat-e",name:"Food & Drink",kind:"expense",color:"#8CA683"},
-  {id:"cat-t",name:"Transport",kind:"expense",color:"#A68A7C"},
-  {id:"cat-u",name:"Utilities",kind:"expense",color:"#7C8FA6"},
-  {id:"cat-s",name:"Shopping",kind:"expense",color:"#A6A07C"},
-  {id:"cat-h",name:"Health",kind:"expense",color:"#A68393"},
-  {id:"cat-en",name:"Entertainment",kind:"expense",color:"#9B8CA6"},
-  {id:"cat-tr",name:"Travel",kind:"expense",color:"#83A68C"},
-  {id:"cat-r",name:"Rent",kind:"expense",color:"#6E8F87"},
-  {id:"cat-o",name:"Other",kind:"expense",color:"#777B7E"},
-  {id:"cat-sal",name:"Salary",kind:"income",color:"#5BB98C"},
-  {id:"cat-oi",name:"Other income",kind:"income",color:"#777B7E"}
+  {id:"cat-hom",name:"Housing",kind:"expense",color:"#B98DA8",emoji:"🏠"},
+  {id:"cat-fd",name:"Food",kind:"expense",color:"#C98A5E",emoji:"🍽️"},
+  {id:"cat-gro",name:"Groceries",kind:"expense",color:"#7C9AA6",emoji:"🛒"},
+  {id:"cat-utl",name:"Utilities",kind:"expense",color:"#8FA6C9",emoji:"💡"},
+  {id:"cat-tra",name:"Transportation",kind:"expense",color:"#A68A7C",emoji:"🚗"},
+  {id:"cat-shp",name:"Shopping",kind:"expense",color:"#C99A7C",emoji:"🛍️"},
+  {id:"cat-cth",name:"Clothes",kind:"expense",color:"#A68393",emoji:"👕"},
+  {id:"cat-gout",name:"Going out",kind:"expense",color:"#C98B8B",emoji:"🍻"},
+  {id:"cat-ent",name:"Entertainment",kind:"expense",color:"#9B8CA6",emoji:"🍿"},
+  {id:"cat-sub",name:"Subscription",kind:"expense",color:"#8CA6A3",emoji:"📅"},
+  {id:"cat-ext",name:"Extras",kind:"expense",color:"#777B7E",emoji:"🤷🏻‍♂️"},
+  {id:"cat-sav",name:"Savings",kind:"expense",color:"#5BB98C",emoji:"🎯"},
+  {id:"cat-sal",name:"Salary",kind:"income",color:"#5BB98C",emoji:"💼"},
+  {id:"cat-oi",name:"Other income",kind:"income",color:"#777B7E",emoji:"💰"}
 ];
+const OLD_CAT_ID={"cat-g":"cat-gro","cat-e":"cat-fd","cat-t":"cat-tra","cat-u":"cat-utl","cat-s":"cat-shp","cat-h":"cat-ext","cat-en":"cat-ent","cat-tr":"cat-tra","cat-r":"cat-hom","cat-o":"cat-ext","cat-sal":"cat-sal","cat-oi":"cat-oi"};
+function migrateCats(d){
+  const defs=Object.fromEntries(DEF_CATS.map(c=>[c.id,c]));
+  const byName=new Map(DEF_CATS.map(c=>[c.name.toLowerCase(),c]));
+  const remap={};
+  for(const c of d.categories){
+    const newId=OLD_CAT_ID[c.id]||(defs[c.id]?c.id:null);
+    const repl=newId?defs[newId]:byName.get((c.name||"").toLowerCase());
+    if(repl&&repl.id!==c.id){remap[c.id]=repl.id}
+    else if(repl&&!c.emoji){c.emoji=repl.emoji}
+  }
+  if(!Object.keys(remap).length)return false;
+  const used=new Set();
+  const out=DEF_CATS.map(def=>{
+    const src=d.categories.find(c=>remap[c.id]===def.id);
+    if(!src)return null;
+    used.add(src.id);
+    return {id:def.id,name:def.name,kind:def.kind,color:def.color,emoji:def.emoji};
+  }).filter(Boolean);
+  for(const c of d.categories){if(!remap[c.id]&&!used.has(c.id))out.push(c)}
+  d.categories=out;
+  for(const b of d.budgets||[]){if(Array.isArray(b.categoryIds))b.categoryIds=b.categoryIds.map(id=>remap[id]||id)}
+  for(const t of d.transactions||[]){if(remap[t.categoryId])t.categoryId=remap[t.categoryId]}
+  return true;
+}
 const DEF_ACCS=[
   {id:"acc-cash",name:"Cash",kind:"cash",opening:0,color:"#7C9AA6"},
   {id:"acc-card",name:"Card",kind:"card",opening:0,color:"#8CA683"}
@@ -1030,6 +1064,7 @@ const App={
     if(!d)d=defaultDoc();
     if(!d.settings)d.settings=defaultDoc().settings;
     if(!Array.isArray(d.categories)||!d.categories.length)d.categories=JSON.parse(JSON.stringify(DEF_CATS));
+    migrateCats(d);
     if(!Array.isArray(d.accounts)||!d.accounts.length)d.accounts=JSON.parse(JSON.stringify(DEF_ACCS));
     d.budgets=d.budgets||[];d.shortcuts=d.shortcuts||[];d.transactions=d.transactions||[];
     this.data=d;
@@ -1050,7 +1085,9 @@ this.render();
   },
   freshAdd(){
     const s=this.data&&this.data.settings;
-    return {amount:"",dir:"expense",categoryId:(s&&s.lastCategoryId)||"cat-o",accountId:this.data&&this.data.accounts[0]?this.data.accounts[0].id:"",
+    const d=this.data;
+    const cid=(s&&s.lastCategoryId)||"cat-gro";
+    return {amount:"",dir:"expense",categoryId:d&&d.categories.some(c=>c.id===cid)?cid:"cat-gro",accountId:d&&d.accounts[0]?d.accounts[0].id:"",
       date:(s&&s.lastDate)||todayStr(),note:""};
   },
   save(){
@@ -1601,8 +1638,8 @@ this.render();
       <div class="sh-grab"></div>
       <div class="sh-title">Category</div>
       ${groups.map(g=>`<div class="cat-grid" style="margin-bottom:16px">`+
-        g.map(c=>`<button class="cat-chip ${this.add.categoryId===c.id?"sel":""}" data-act="dp-pickcat" data-id="${c.id}">
-          <span class="ccircle" style="--c:${c.color}">${catEmoji(c)}</span><span class="cname">${esc(c.name)}</span>
+        g.map(c=>`<button class="cat-chip ${this.add.categoryId===c.id?"sel":""}" style="--c:${c.color}" data-act="dp-pickcat" data-id="${c.id}">
+          <span class="cemoji">${catEmoji(c)}</span><span class="cname">${esc(c.name)}</span>
         </button>`).join("")+`</div>`).join("")}`;
   },
   accSheet(){
@@ -1963,7 +2000,7 @@ txnSheet(id){
     "t-hide":()=>{App.data.settings.hideBalances=!App.data.settings.hideBalances;App.save();App.render()},
     "cat-manage":()=>App.openSheet(App.catManageSheet()),
     "cat-del":(el)=>{App.data.categories=App.data.categories.filter(c=>c.id!==el.dataset.id);
-      App.data.transactions.forEach(t=>{if(t.categoryId===el.dataset.id)t.categoryId="cat-o"});App.save();App.swapSheet(App.catManageSheet())},
+      App.data.transactions.forEach(t=>{if(t.categoryId===el.dataset.id)t.categoryId="cat-ext"});App.save();App.swapSheet(App.catManageSheet())},
     "cc-kind":(el)=>{App._ccKind=App._ccKind==="expense"?"income":"expense";el.textContent=App._ccKind==="expense"?"Expense":"Income"},
     "cc-col":(el)=>{App._ccCol=el.dataset.col;
       document.querySelectorAll("[data-act=cc-col]").forEach((b,i)=>b.classList.toggle("on",i===parseInt(el.dataset.i,10)))},
@@ -2090,21 +2127,21 @@ function sampleData(){
   const today=new Date();
   const D=n=>{const d=new Date(today);d.setDate(d.getDate()-n);return dstr(d)};
   const txs=[
-    {date:D(0),dir:"expense",amount:1200,categoryId:"cat-g",accountId:"acc-card",name:"Groceries"},
-    {date:D(0),dir:"expense",amount:450,categoryId:"cat-e",accountId:"acc-cash",name:"Coffee & croissant"},
-    {date:D(1),dir:"expense",amount:2100,categoryId:"cat-t",accountId:"acc-card",name:"Cab home"},
+    {date:D(0),dir:"expense",amount:1200,categoryId:"cat-gro",accountId:"acc-card",name:"Groceries"},
+    {date:D(0),dir:"expense",amount:450,categoryId:"cat-fd",accountId:"acc-cash",name:"Coffee & croissant"},
+    {date:D(1),dir:"expense",amount:2100,categoryId:"cat-tra",accountId:"acc-card",name:"Cab home"},
     {date:D(2),dir:"income",amount:85000,categoryId:"cat-sal",accountId:"acc-card",name:"Salary"},
-    {date:D(3),dir:"expense",amount:3450,categoryId:"cat-s",accountId:"acc-card",name:"Sneakers"},
-    {date:D(4),dir:"expense",amount:950,categoryId:"cat-h",accountId:"acc-card",name:"Pharmacy"},
-    {date:D(5),dir:"expense",amount:1800,categoryId:"cat-en",accountId:"acc-card",name:"Movie night"},
-    {date:D(8),dir:"expense",amount:9800,categoryId:"cat-r",accountId:"acc-card",name:"Rent"},
-    {date:D(10),dir:"expense",amount:2600,categoryId:"cat-u",accountId:"acc-card",name:"Electricity"},
-    {date:D(12),dir:"expense",amount:1400,categoryId:"cat-g",accountId:"acc-cash",name:"Market run"},
-    {date:D(15),dir:"expense",amount:4200,categoryId:"cat-tr",accountId:"acc-card",name:"Train tickets"}
+    {date:D(3),dir:"expense",amount:3450,categoryId:"cat-shp",accountId:"acc-card",name:"Sneakers"},
+    {date:D(4),dir:"expense",amount:950,categoryId:"cat-ext",accountId:"acc-card",name:"Pharmacy"},
+    {date:D(5),dir:"expense",amount:1800,categoryId:"cat-ent",accountId:"acc-card",name:"Movie night"},
+    {date:D(8),dir:"expense",amount:9800,categoryId:"cat-hom",accountId:"acc-card",name:"Rent"},
+    {date:D(10),dir:"expense",amount:2600,categoryId:"cat-utl",accountId:"acc-card",name:"Electricity"},
+    {date:D(12),dir:"expense",amount:1400,categoryId:"cat-gro",accountId:"acc-cash",name:"Market run"},
+    {date:D(15),dir:"expense",amount:4200,categoryId:"cat-tra",accountId:"acc-card",name:"Train tickets"}
   ];
   App.data.transactions=txs.map((t,i)=>Object.assign({id:uid(),note:"",createdAt:Date.now()-i*1e6},t));
   App.data.accounts[0].opening=20000;App.data.accounts[1].opening=45000;
-  App.data.budgets=[{id:"bud-1",name:"Groceries",limit:15600,categoryIds:["cat-g"],color:"#7C9AA6"}];
+  App.data.budgets=[{id:"bud-1",name:"Groceries",limit:15600,categoryIds:["cat-gro"],color:"#7C9AA6"}];
 }
 
 /* ============================ GLOBAL CLICK DELEGATION ============================ */
