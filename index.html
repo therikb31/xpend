@@ -212,11 +212,12 @@ svg{display:block}
 .sum-pct{background:var(--surface-2);color:var(--muted);border-radius:99px;padding:2.5px 9px;font-size:11.5px;font-weight:600;white-space:nowrap}
 
 .ov-groups{padding:2px 18px}
+.ov-mh{font-size:14px;font-weight:600;color:var(--text-2);padding:12px 4px 2px}
+.ov-mh:not(:first-child){margin-top:8px}
 .ov-day{
   background:var(--ov-card);border-radius:20px;
   padding:7px 7px;overflow:hidden;margin-bottom:15px;
 }
-.ov-day .see-all{margin-top:0}
 .ov-dg{display:flex;justify-content:space-between;align-items:baseline;padding:10px 11px 6px}
 .ov-dg-day{color:var(--muted);font-size:13px;font-weight:500}
 .ov-dg-amt{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
@@ -678,7 +679,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b6";
+const APP_VER="b7";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1197,7 +1198,7 @@ this.render();
     const monthName=mk.toLocaleDateString("en-IN",{month:"long"});
     const prevName=parseMk(prevKey).toLocaleDateString("en-IN",{month:"short"});
     const flt=this.flt;
-    let list=this.sortedTxs().filter(t=>t.date.slice(0,7)===this.mkey);
+    let list=this.sortedTxs();
     if(flt.dir!=="all")list=list.filter(t=>t.dir===flt.dir);
     if(flt.acc!=="all")list=list.filter(t=>t.accountId===flt.acc);
     const groups=[];
@@ -1206,7 +1207,6 @@ this.render();
       if(!g||g.date!==t.date){g={date:t.date,items:[]};groups.push(g)}
       g.items.push(t);
     }
-    const preview=groups.slice(0,3);
     const dIcon=down?IC.downcir:`<span style="transform:scaleY(-1);display:inline-flex">${IC.downcir}</span>`;
     return `
     <div class="scr ov">
@@ -1220,20 +1220,15 @@ this.render();
       ${this.chart()}
       ${this.chips(true)}
       <div class="ov-groups">
-        ${preview.map(g=>`
-          <div class="ov-dg"><span class="ov-dg-day">${dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+(t.dir==="income"?t.amount:-t.amount),0))}</span></div>
+        ${groups.length?groups.map((g,i)=>
+          ((i===0||groups[i-1].date.slice(0,7)!==g.date.slice(0,7))
+            ?`<div class="ov-mh">${parseMk(g.date.slice(0,7)).toLocaleDateString("en-IN",{month:"long",year:"numeric"})}</div>`:"")+
+          `<div class="ov-dg"><span class="ov-dg-day">${dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+(t.dir==="income"?t.amount:-t.amount),0))}</span></div>
           <div class="ov-day">
-            ${g.items.slice(0,5).map(t=>this.ovCard(t)).join("")}
-          </div>
-        `).join("")}
-        ${groups.length?`<button class="see-all" data-act="go-activity">See all</button>`
-          :`<div class="card" style="border-radius:24px"><div class="empty"><div>${IC.empty}</div><div class="t">No transactions this month</div><div class="s">Tap + below to add your first expense</div></div></div>`}
-      </div>
-      <div class="ov-groups">
-        <div class="ov-dg"><span class="ov-dg-day">Earlier months</span></div>
-        <div class="ov-day">
-          <button class="see-all" data-act="go-summary">View summary</button>
-        </div>
+            ${g.items.map(t=>this.ovCard(t)).join("")}
+          </div>`
+        ).join("")
+          :`<div class="card" style="border-radius:24px"><div class="empty"><div>${IC.empty}</div><div class="t">No transactions yet</div><div class="s">Tap + below to add your first expense</div></div></div>`}
       </div>
     </div>`;
   },
