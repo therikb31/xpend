@@ -701,7 +701,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b21";
+const APP_VER="b22";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1204,22 +1204,27 @@ this.render();
   },
   accBalance(id){
     const a=accById(id);
-    if(a&&a.kind==="savings")return (a.cur!=null?a.cur:(a.opening||0));
-    let b=a? (a.opening||0):0;
+    if(a&&a.kind==="savings")return (a.cur!=null?a.cur:((a.opening||0)+this.netOf(id)));
+    return (a?(a.opening||0):0)+this.netOf(id);
+  },
+  netOf(id,excl){
+    let n=0;
     for(const t of this.data.transactions){
+      if(excl&&excl.has(t))continue;
       if(t.dir==="trans"){
-        if(t.from===id)b-=t.amount;
-        if(t.to===id)b+=t.amount;
+        if(t.from===id)n-=t.amount;
+        if(t.to===id)n+=t.amount;
         continue;
       }
       if(t.accountId!==id)continue;
-      b+=t.dir==="income"?t.amount:-t.amount;
+      n+=t.dir==="income"?t.amount:-t.amount;
     }
-    return b;
+    return n;
   },
   savSync(oldT,newT){
     const aOf=id=>{const a=accById(id);return a&&a.kind==="savings"?a:null};
-    const bump=(a,p)=>{if(a)a.cur=(a.cur==null?(a.opening||0):a.cur)+p};
+    const excl=new Set();if(oldT)excl.add(oldT);if(newT)excl.add(newT);
+    const bump=(a,p)=>{if(a)a.cur=(a.cur!=null?a.cur:((a.opening||0)+App.netOf(a.id,excl)))+p};
     const apply=(t,sf)=>{
       if(!t)return;
       if(t.dir==="trans"){
@@ -1960,10 +1965,10 @@ txnSheet(id){
       </div>
       <div id="ae-sav" ${App._aeKind==="savings"?"":"style='display:none'"}>
         <div class="tsub" style="margin:8px 2px 4px">Current savings (₹)</div>
-        <input type="text" id="aa-cur" inputmode="decimal" placeholder="0" value="${a.cur!=null?(a.cur/100).toLocaleString("en-IN",{maximumFractionDigits:2}):""}" style="margin-top:0">
+        <input type="text" id="aa-cur" inputmode="decimal" placeholder="0" value="${a.cur!=null?(a.cur/100):""}" style="margin-top:0">
         <div class="tsub" style="margin:8px 2px 4px">Previous savings (₹)</div>
-        <input type="text" id="aa-prev" inputmode="decimal" placeholder="0" value="${a.prev!=null?(a.prev/100).toLocaleString("en-IN",{maximumFractionDigits:2}):""}" style="margin-top:0">
-        <div class="tsub" style="margin:6px 2px 10px;color:var(--muted)">Previous savings is your baseline (e.g. end of last month). Move money in/out by adjusting Current savings — no transaction is created.</div>
+        <input type="text" id="aa-prev" inputmode="decimal" placeholder="0" value="${a.prev!=null?(a.prev/100):""}" style="margin-top:0">
+        <div class="tsub" style="margin:6px 2px 10px;color:var(--muted)">Previous savings is your baseline (e.g. end of last month). Move money in/out by adjusting Current savings — no transaction is created. Transactions paid from this account are auto-deducted.</div>
       </div>
       <div style="display:flex;gap:10px;margin-top:16px">
         <button class="btn ghost" style="flex:1" data-act="close-sheet">Cancel</button>
@@ -2269,9 +2274,11 @@ txnSheet(id){
       a.name=n;
       a.kind=App._aeKind||a.kind||"cash";
       if(a.kind==="savings"){
-        const cur=Math.round(parseFloat($("#aa-cur").value||"0")||0)*100;
-        const prev=Math.round(parseFloat($("#aa-prev").value||"0")||0)*100;
-        a.cur=cur;a.prev=prev;
+        const curS=($("#aa-cur").value||"").replace(/,/g,"").trim();
+        const prevS=($("#aa-prev").value||"").replace(/,/g,"").trim();
+        const def=(a.cur!=null?a.cur:((a.opening||0)+App.netOf(a.id)));
+        a.cur=curS?Math.round(parseFloat(curS)||0)*100:(a.cur!=null?a.cur:def);
+        a.prev=prevS?Math.round(parseFloat(prevS)||0)*100:(a.prev!=null?a.prev:a.cur);
       }else{
         a.cur=null;a.prev=null;
       }
