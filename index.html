@@ -618,6 +618,8 @@ select.sel{
 .bud-meta b{color:var(--text);font-variant-numeric:tabular-nums}
 .sav-line{display:flex;justify-content:space-between;margin-top:8px;font-size:13.5px;color:var(--muted)}
 .sav-line b{color:var(--text);font-variant-numeric:tabular-nums}
+.sav-mv{width:100%;margin-top:10px;padding:8px;border:.5px solid rgba(255,255,255,.12);border-radius:12px;text-align:center;color:var(--inc);font-size:13.5px;background:transparent;cursor:pointer;touch-action:manipulation}
+.sav-mv:active{background:rgba(255,255,255,.06)}
 
 /* note text */
 .note-ico{font-size:15px;color:var(--muted-2)}
@@ -701,7 +703,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b22";
+const APP_VER="b23";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -989,6 +991,7 @@ const Gist={
       if(!doc.settings.gist||!doc.settings.gist.gistId)doc.settings.gist=c;
       App.data=doc;
       migrateCats(App.data);
+      migrateSav(App.data);
       Store.set("doc",App.data).catch(()=>{});
       this.saveCfg();
       return true;
@@ -1017,6 +1020,7 @@ const Gist={
       lastPushedAt:(prev&&prev.lastPushedAt)||undefined};
     App.data=doc;
     migrateCats(App.data);
+    migrateSav(App.data);
     Store.set("doc",App.data).catch(()=>{});
     this.saveCfg();
   },
@@ -1082,6 +1086,31 @@ function migrateCats(d){
   }
   return changed;
 }
+function migrateSav(d){
+  const s=d.settings=d.settings||{};
+  if(s.savV===2)return false;
+  let changed=false;
+  for(const a of d.accounts||[]){
+    if(a.kind!=="savings")continue;
+    if(a.cur!=null){
+      let net=0;
+      for(const t of d.transactions||[]){
+        if(t.dir==="trans"){
+          if(t.from===a.id)net-=t.amount;
+          if(t.to===a.id)net+=t.amount;
+        }else if(t.accountId===a.id){
+          net+=t.dir==="income"?t.amount:-t.amount;
+        }
+      }
+      a.opening=(a.opening||0)+(a.cur||0)-net;
+      delete a.cur;
+      changed=true;
+    }
+    if(a.prev==null){a.prev=a.opening||0;changed=true}
+  }
+  s.savV=2;
+  return changed;
+}
 const DEF_ACCS=[
   {id:"acc-cash",name:"Cash",kind:"cash",opening:0,color:"#7C9AA6"},
   {id:"acc-card",name:"Card",kind:"card",opening:0,color:"#8CA683"}
@@ -1117,6 +1146,7 @@ const App={
     if(!d.settings)d.settings=defaultDoc().settings;
     if(!Array.isArray(d.categories)||!d.categories.length)d.categories=JSON.parse(JSON.stringify(DEF_CATS));
     if(migrateCats(d))Store.set("doc",d).catch(()=>{});
+    if(migrateSav(d))Store.set("doc",d).catch(()=>{});
     if(!Array.isArray(d.accounts)||!d.accounts.length)d.accounts=JSON.parse(JSON.stringify(DEF_ACCS));
     d.budgets=d.budgets||[];d.shortcuts=d.shortcuts||[];d.transactions=d.transactions||[];
     this.data=d;
@@ -1204,7 +1234,6 @@ this.render();
   },
   accBalance(id){
     const a=accById(id);
-    if(a&&a.kind==="savings")return (a.cur!=null?a.cur:((a.opening||0)+this.netOf(id)));
     return (a?(a.opening||0):0)+this.netOf(id);
   },
   netOf(id,excl){
@@ -1222,25 +1251,17 @@ this.render();
     return n;
   },
   savSync(oldT,newT){
-    const aOf=id=>{const a=accById(id);return a&&a.kind==="savings"?a:null};
-    const excl=new Set();if(oldT)excl.add(oldT);if(newT)excl.add(newT);
-    const bump=(a,p)=>{if(a)a.cur=(a.cur!=null?a.cur:((a.opening||0)+App.netOf(a.id,excl)))+p};
+    const bump=(a,p)=>{if(a)a.prev=(a.prev==null?0:a.prev)+p};
     const apply=(t,sf)=>{
-      if(!t)return;
-      if(t.dir==="trans"){
-        bump(aOf(t.from),-t.amount*sf);
-        bump(aOf(t.to),t.amount*sf);
-        return;
-      }
-      const a=aOf(t.accountId);if(!a)return;
-      const d=(t.dir==="income"?t.amount:-t.amount);
-      bump(a,d*sf);
+      if(!t||t.dir!=="trans")return;
+      if(t.to==="__prev")bump(accById(t.from),t.amount*sf);
+      else if(t.from==="__prev")bump(accById(t.to),-t.amount*sf);
     };
     apply(oldT,-1);apply(newT,1);
   },
   trNames(t){
-    const fa=accById(t.from),ta=accById(t.to);
-    return (fa?fa.name:"?")+" → "+(ta?ta.name:"?");
+    const nm=id=>id==="__prev"?"Previous savings":(accById(id)?accById(id).name:"?");
+    return nm(t.from)+" → "+nm(t.to);
   },
   budgetSpent(b){
     const key=this.mkey;let s=0;
@@ -1582,7 +1603,8 @@ this.render();
             <span class="tamt">${rupees(bal)}${a.kind==="savings"?`<div class="tsub" style="text-align:right">Current savings</div>`:""}</span>
           </div>
           ${a.kind==="savings"
-            ?`<div class="sav-line"><span>Previous savings</span><b>${rupees(a.prev!=null?a.prev:bal)}</b></div>`
+            ?`<div class="sav-line"><span>Previous savings</span><b>${rupees(a.prev!=null?a.prev:bal)}</b></div>
+              <button class="sav-mv" data-act="sav-move-open" data-id="${a.id}">⇄ Move between current &amp; previous</button>`
             :`<div class="tsub" style="text-transform:capitalize">${esc(a.kind)}</div>`}
         </div>`;
       }).join("")}
@@ -1791,6 +1813,26 @@ this.render();
         <span class="rname">${esc(a.name)}</span><span class="rbal">${rupees(this.accBalance(a.id))}</span>${this.tr[which]===a.id?IC.check:IC.right}
       </button>`).join("")}`;
   },
+  savMoveSheet(id){
+    const a=accById(id);
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">Move savings · ${esc(a.name)}</div>
+      <div class="txn-row">
+        <span class="ccircle lg" style="--c:#5BB98C">⇄</span>
+        <span class="txn-meta">
+          <span class="txn-name">Current</span>
+          <span class="txn-sub">${rupees(this.accBalance(id))}</span>
+        </span>
+        <span class="txn-amt">${rupees(a.prev!=null?a.prev:0)}</span>
+      </div>
+      <label class="field note-field">
+        <span class="ficon">₹</span>
+        <input id="sm-amt" class="note-inline" inputmode="decimal" placeholder="Amount">
+      </label>
+      <button class="btn" data-act="sav-move" data-d="prev">→ Move to Previous savings</button>
+      <button class="btn ghost" style="margin-top:10px" data-act="sav-move" data-d="cur">← Release to Current savings</button>`;
+  },
   accFilterSheet(){
     const d=this.data;
     return `
@@ -1963,13 +2005,7 @@ txnSheet(id){
         <button class="chip ${App._aeKind==="card"?"on":""}" data-act="ae-kind" data-k="card" id="aekind-card">Card</button>
         <button class="chip ${App._aeKind==="savings"?"on":""}" data-act="ae-kind" data-k="savings" id="aekind-savings">Savings</button>
       </div>
-      <div id="ae-sav" ${App._aeKind==="savings"?"":"style='display:none'"}>
-        <div class="tsub" style="margin:8px 2px 4px">Current savings (₹)</div>
-        <input type="text" id="aa-cur" inputmode="decimal" placeholder="0" value="${a.cur!=null?(a.cur/100):""}" style="margin-top:0">
-        <div class="tsub" style="margin:8px 2px 4px">Previous savings (₹)</div>
-        <input type="text" id="aa-prev" inputmode="decimal" placeholder="0" value="${a.prev!=null?(a.prev/100):""}" style="margin-top:0">
-        <div class="tsub" style="margin:6px 2px 10px;color:var(--muted)">Previous savings is your baseline (e.g. end of last month). Move money in/out by adjusting Current savings — no transaction is created. Transactions paid from this account are auto-deducted.</div>
-      </div>
+      <div class="tsub" style="margin:6px 2px 10px;color:var(--muted)">Balances come from transactions only. For savings, use "Move between current &amp; previous" on the Accounts page.</div>
       <div style="display:flex;gap:10px;margin-top:16px">
         <button class="btn ghost" style="flex:1" data-act="close-sheet">Cancel</button>
         <button class="btn" style="flex:1" data-act="acc-edit-save">${IC.check} Save</button>
@@ -2174,16 +2210,18 @@ txnSheet(id){
     "acc-del":(el)=>{
       const id=el.dataset.id;
       if(App.pendingDel!==id){App.pendingDel=id;App.swapSheet(App.accEditSheet(id));return}
+      const delSav=accById(id)&&accById(id).kind==="savings";
       const first=App.data.accounts.find(a=>a.id!==id);
       if(!first){App.toast("Cannot delete the only account");return}
+      if(delSav){
+        App.data.transactions=App.data.transactions.filter(t=>!(t.dir==="trans"&&((t.from===id&&t.to==="__prev")||(t.from==="__prev"&&t.to===id))));
+      }
       App.data.accounts=App.data.accounts.filter(a=>a.id!==id);
       App.data.transactions.forEach(t=>{
-        if(t.accountId===id){t.accountId=first.id;App.savSync(null,t)}
+        if(t.accountId===id){t.accountId=first.id}
         else if(t.dir==="trans"&&(t.from===id||t.to===id)){
-          App.savSync(t,null);
           if(t.from===id)t.from=first.id;
           if(t.to===id)t.to=first.id;
-          App.savSync(null,t);
         }
       });
       App.save();App.closeSheet();App.render();App.toast("Account deleted");
@@ -2241,6 +2279,18 @@ txnSheet(id){
       App.save();App.closeSheet();App.render();
       App.toast("Moved "+rupees(v));
     },
+    "sav-move-open":(el)=>{App._smId=el.dataset.id;App.openSheet(App.savMoveSheet(el.dataset.id))},
+    "sav-move":(el)=>{
+      const id=App._smId,v=Math.round(parseFloat(($("#sm-amt").value||"").replace(/,/g,""))||0)*100;
+      if(!isFinite(v)||v<=0){App.toast("Enter an amount");return}
+      const toPrev=el.dataset.d==="prev";
+      const t={id:uid(),date:todayStr(),dir:"trans",amount:v,
+        from:toPrev?id:"__prev",to:toPrev?"__prev":id,note:"",createdAt:Date.now()};
+      App.data.transactions.push(t);
+      App.savSync(null,t);
+      App.save();App.closeSheet();App.render();
+      App.toast(toPrev?("Moved "+rupees(v)+" to Previous"):("Released "+rupees(v)+" to Current"));
+    },
     "pwa-help":()=>App.openSheet(`
       <div class="sh-grab"></div>
       <div class="sh-title">Run locally, no server</div>
@@ -2257,7 +2307,7 @@ txnSheet(id){
       const o=Math.round(parseFloat($("#aa-o").value||"0")||0)*100;
       const k=App._accKind||"cash";
       const acc={id:"acc-u-"+uid(),name:n,kind:k,opening:o,color:"#7C9AA6"};
-      if(k==="savings"){acc.cur=o;acc.prev=o}
+      if(k==="savings")acc.prev=o;
       App.data.accounts.push(acc);
       App.save();App.closeSheet();App.render();App.toast("Account created");
     },
@@ -2265,7 +2315,6 @@ txnSheet(id){
     "ae-kind":(el)=>{
       App._aeKind=el.dataset.k;
       ["cash","card","savings"].forEach(k=>{const b=$("#aekind-"+k);if(b)b.classList.toggle("on",k===el.dataset.k)});
-      const sav=$("#ae-sav");if(sav)sav.style.display=el.dataset.k==="savings"?"":"none";
     },
     "acc-edit-save":()=>{
       const n=($("#aa-n").value||"").trim();
@@ -2273,15 +2322,7 @@ txnSheet(id){
       const a=accById(App._accId);if(!a)return;
       a.name=n;
       a.kind=App._aeKind||a.kind||"cash";
-      if(a.kind==="savings"){
-        const curS=($("#aa-cur").value||"").replace(/,/g,"").trim();
-        const prevS=($("#aa-prev").value||"").replace(/,/g,"").trim();
-        const def=(a.cur!=null?a.cur:((a.opening||0)+App.netOf(a.id)));
-        a.cur=curS?Math.round(parseFloat(curS)||0)*100:(a.cur!=null?a.cur:def);
-        a.prev=prevS?Math.round(parseFloat(prevS)||0)*100:(a.prev!=null?a.prev:a.cur);
-      }else{
-        a.cur=null;a.prev=null;
-      }
+      if(a.kind==="savings"&&a.prev==null)a.prev=(a.opening||0);
       App.save();App.closeSheet();App.render();App.toast("Account saved");
     },
     "gb-setup":()=>App.openSheet(App.gbSetupSheet()),
