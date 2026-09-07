@@ -130,14 +130,14 @@ svg{display:block}
 }
 .ov-gear svg{width:22px;height:22px}
 .ov-gear:active{background:rgba(18,20,22,.6)}
-.ov-sum{display:block;width:100%;text-align:center;padding:24px 20px 6px}
-.ov-mon{display:flex;align-items:center;justify-content:center;gap:6px;font-size:21px;font-weight:500;color:#9BA6AC}
-.ov-mon svg{width:16px;height:16px;color:#9BA6AC}
-.ov-total{font-size:46px;font-weight:800;letter-spacing:-.02em;color:var(--text);margin-top:10px;font-variant-numeric:tabular-nums}
-.ov-delta{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:13px;color:var(--green);font-size:16.5px;font-weight:600}
-.ov-delta svg{width:22px;height:22px}
+.ov-sum{display:block;width:100%;text-align:center;padding:10px 20px 2px}
+.ov-mon{display:flex;align-items:center;justify-content:center;gap:5px;font-size:17px;font-weight:500;color:#9BA6AC}
+.ov-mon svg{width:13px;height:13px;color:#9BA6AC}
+.ov-total{font-size:32px;font-weight:800;letter-spacing:-.02em;color:var(--text);margin-top:4px;font-variant-numeric:tabular-nums}
+.ov-delta{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;color:var(--green);font-size:13.5px;font-weight:600}
+.ov-delta svg{width:16px;height:16px}
 
-.ov-chart{margin:16px 18px 4px}
+.ov-chart{margin:8px 18px 4px}
 .chart-plot{position:relative;height:212px}
 .chart-plot .bars{position:absolute;left:0;right:40px;top:2px;bottom:0;display:flex;align-items:flex-end;gap:3px;padding:0 2px}
 .bar{flex:1;background:rgba(124,146,158,.26);border-radius:4px 4px 2px 2px;height:3%}
@@ -680,7 +680,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b9";
+const APP_VER="b10";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
