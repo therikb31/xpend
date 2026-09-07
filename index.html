@@ -695,7 +695,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b14";
+const APP_VER="b15";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1225,7 +1225,8 @@ this.render();
     const monthName=mk.toLocaleDateString("en-IN",{month:"long"});
     const prevName=parseMk(prevKey).toLocaleDateString("en-IN",{month:"short"});
     const flt=this.flt;
-    let list=this.sortedTxs().filter(t=>t.dir==="expense");
+    let list=this.sortedTxs();
+    if(flt.dir!=="all")list=list.filter(t=>t.dir===flt.dir);
     if(flt.acc!=="all")list=list.filter(t=>t.accountId===flt.acc);
     const groups=[];
     for(const t of list){
@@ -1249,7 +1250,7 @@ this.render();
         ${groups.length?groups.map((g,i)=>
           ((i===0||groups[i-1].date.slice(0,7)!==g.date.slice(0,7))
             ?`<div class="ov-mh">${parseMk(g.date.slice(0,7)).toLocaleDateString("en-IN",{month:"long",year:"numeric"})}</div>`:"")+
-          `<div class="ov-dg"><span class="ov-dg-day">${dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+t.amount,0))}</span></div>
+          `<div class="ov-dg"><span class="ov-dg-day">${dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+(t.dir==="expense"?t.amount:0),0))}</span></div>
           <div class="ov-day">
             ${g.items.map(t=>this.ovCard(t)).join("")}
           </div>`
