@@ -703,7 +703,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b24";
+const APP_VER="b25";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1234,7 +1234,9 @@ this.render();
   },
   accBalance(id){
     const a=accById(id);
-    return (a?(a.opening||0):0)+this.netOf(id);
+    if(!a)return 0;
+    if(a.kind==="savings")return this.netOf(id);
+    return (a.opening||0)+this.netOf(id);
   },
   netOf(id,excl){
     let n=0;
