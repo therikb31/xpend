@@ -316,6 +316,16 @@ svg{display:block}
 .ccircle.lg{width:46px;height:46px;font-size:20px}
 .ccircle.small{width:24px;height:24px;font-size:12.5px}
 .ccircle svg{width:17px;height:17px;color:#D6DADD}
+.ccircle.pic{background:#fff}
+.ccircle .acc-ico{width:66%;height:66%;object-fit:contain;display:block;pointer-events:none;-webkit-user-drag:none}
+.ai-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.ai-cell{background:var(--card);border:2px solid transparent;border-radius:14px;padding:12px 6px 10px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.ai-cell .ccircle{width:42px;height:42px}
+.ai-cell .acc-ico{width:70%;height:70%}
+.ai-cell.on{background:var(--text);border-color:var(--text)}
+.ai-cell.on .ai-name{color:var(--bg)}
+.ai-name{font-size:11.5px;color:var(--muted-2);text-align:center;line-height:1.25}
+.csel{display:inline-flex;align-items:center}
 
 /* amount */
 .amt{font-variant-numeric:tabular-nums;font-weight:600}
@@ -703,7 +713,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b26";
+const APP_VER="b27";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -754,6 +764,27 @@ const EMO_FALLBACK=["🧾","🛍️","📦","⚽","💻","📚","🎁","👶","�
 function hashStr(s){let h=0;for(let i=0;i<(s||"").length;i++){h=(h*31+s.charCodeAt(i))>>>0}return h}
 function fallbackEmoji(c){const src=(c?(c.id||"")+(c.name||""):"");return EMO_FALLBACK[hashStr(src)%EMO_FALLBACK.length]}
 function catEmoji(c){return (c&&c.emoji)||(c&&EMO[c.id])||fallbackEmoji(c)||"🧾"}
+
+/* bank / card logos for accounts (CDN-hosted SVGs) */
+const ACC_ICONS={
+  axis:{name:"Axis Bank",g:"Banks",src:"https://cdn.jsdelivr.net/gh/praveenpuglia/indian-banks@main/assets/logos/utib/symbol.svg"},
+  sbi:{name:"State Bank of India",g:"Banks",alt:"SBI",src:"https://cdn.jsdelivr.net/gh/praveenpuglia/indian-banks@main/assets/logos/sbin/symbol.svg"},
+  hdfc:{name:"HDFC Bank",g:"Banks",alt:"HDFC",src:"https://cdn.jsdelivr.net/gh/praveenpuglia/indian-banks@main/assets/logos/hdfc/symbol.svg"},
+  icici:{name:"ICICI Bank",g:"Banks",alt:"ICICI",src:"https://cdn.jsdelivr.net/gh/praveenpuglia/indian-banks@main/assets/logos/icic/symbol.svg"},
+  kotak:{name:"Kotak Mahindra",g:"Banks",alt:"Kotak",src:"https://cdn.jsdelivr.net/gh/praveenpuglia/indian-banks@main/assets/logos/kkbk/symbol.svg"},
+  pnb:{name:"Punjab National Bank",g:"Banks",alt:"PNB",src:"https://cdn.jsdelivr.net/gh/praveenpuglia/indian-banks@main/assets/logos/punb/symbol.svg"},
+  idfc:{name:"IDFC First Bank",g:"Banks",alt:"IDFC",src:"https://cdn.jsdelivr.net/gh/praveenpuglia/indian-banks@main/assets/logos/idfb/symbol.svg"},
+  hsbc:{name:"HSBC",g:"Banks",alt:"HSBC",src:"https://cdn.simpleicons.org/hsbc"},
+  visa:{name:"Visa",g:"Cards",src:"https://commons.wikimedia.org/wiki/Special:FilePath/Visa_Inc._logo.svg"},
+  mastercard:{name:"Mastercard",g:"Cards",src:"https://commons.wikimedia.org/wiki/Special:FilePath/Mastercard_logo.svg"},
+  rupay:{name:"RuPay",g:"Cards",alt:"RuPay",src:"https://commons.wikimedia.org/wiki/Special:FilePath/RuPay.svg"},
+  pluxee:{name:"Pluxee",g:"Cards",alt:"Pluxee",src:"https://upload.wikimedia.org/wikipedia/commons/6/65/Pluxee_Logo_2023.svg"}
+};
+function accIconCell(a){
+  const ic=a&&a.icon&&ACC_ICONS[a.icon];
+  if(!ic)return `<span class="ccircle" style="--c:${a.color}">${init(a.name)}</span>`;
+  return `<span class="ccircle pic" style="--c:${a.color}"><img class="acc-ico" src="${ic.src}" alt="${esc(ic.name)}" loading="lazy"></span>`;
+}
 
 /* ============================ STORAGE (IDB → localStorage → memory) ============================ */
 const Store={
@@ -1601,7 +1632,7 @@ this.render();
         const bal=this.accBalance(a.id);
         return `<div class="card" data-act="acc-open" data-id="${a.id}" role="button">
           <div class="bud-top">
-            <span class="ccircle" style="--c:${a.color}">${init(a.name)}</span>
+            ${accIconCell(a)}
             <span class="bname-h">${esc(a.name)}${a.kind==="savings"?`<div class="tsub" style="text-transform:capitalize">Savings account</div>`:""}</span>
             <span class="tamt">${rupees(bal)}${a.kind==="savings"?`<div class="tsub" style="text-align:right">Current savings</div>`:""}</span>
           </div>
@@ -1776,7 +1807,7 @@ this.render();
       ${d.accounts.map(a=>{
         const bal=this.accBalance(a.id);
         return `<button class="sh-row ${this.add.accountId===a.id?"sel":""}" data-act="pick-acc" data-id="${a.id}">
-          <span class="ccircle" style="--c:${a.color}">${init(a.name)}</span>
+          ${accIconCell(a)}
           <span class="rname">${esc(a.name)}</span><span class="rbal">${rupees(bal)}</span>${IC.right}
         </button>`;
       }).join("")}
@@ -1812,7 +1843,7 @@ this.render();
       <div class="sh-grab"></div>
       <div class="sh-title">${which==="from"?"From":"To"} account</div>
       ${d.accounts.map(a=>`<button class="sh-row ${this.tr[which]===a.id?"sel":""}" data-act="tr-pick" data-w="${which}" data-id="${a.id}">
-        <span class="ccircle" style="--c:${a.color}">${init(a.name)}</span>
+        ${accIconCell(a)}
         <span class="rname">${esc(a.name)}</span><span class="rbal">${rupees(this.accBalance(a.id))}</span>${this.tr[which]===a.id?IC.check:IC.right}
       </button>`).join("")}`;
   },
@@ -1845,7 +1876,7 @@ this.render();
         <span class="ccircle" style="--c:#F5F5F5">${init("All")}</span><span class="rname">All accounts</span>${this.flt.acc==="all"?IC.check:IC.right}
       </button>
       ${d.accounts.map(a=>`<button class="sh-row ${this.flt.acc===a.id?"sel":""}" data-act="acc-fset" data-id="${a.id}">
-        <span class="ccircle" style="--c:${a.color}">${init(a.name)}</span>
+        ${accIconCell(a)}
         <span class="rname">${esc(a.name)}</span><span class="rbal">${rupees(this.accBalance(a.id))}</span>${this.flt.acc===a.id?IC.check:IC.right}
       </button>`).join("")}`;
   },
@@ -1982,20 +2013,37 @@ txnSheet(id){
       <button class="btn" style="margin-top:16px" data-act="bud-save" data-id="${id||""}">${IC.check} Save budget</button>`;
   },
   accAddSheet(){
-    App._accKind="cash";App._accSec=false;
     return `
       <div class="sh-grab"></div>
       <div class="sh-title">New account</div>
-      <input type="text" id="aa-n" placeholder="Name">
+      <input type="text" id="aa-n" placeholder="Name" value="${esc(App._accName||"")}">
       <div class="chip-row" style="margin-top:4px">
         <button class="chip on" data-act="aa-kind" data-k="cash" id="aakind-cash">Cash</button>
         <button class="chip" data-act="aa-kind" data-k="card" id="aakind-card">Card</button>
         <button class="chip" data-act="aa-kind" data-k="savings" id="aakind-savings">Savings</button>
       </div>
       <div class="tsub" style="margin:8px 2px 4px">Opening balance (₹)</div>
-      <input type="text" id="aa-o" inputmode="decimal" placeholder="0" style="margin-top:0">
+      <input type="text" id="aa-o" inputmode="decimal" placeholder="0" value="${esc(App._accOpening||"")}" style="margin-top:0">
       <button class="set" style="margin-top:14px" data-act="aa-sec"><span class="s-label">Secondary account<div class="s-sub">Excluded from net worth (e.g. meal card)</div></span><span class="switch"></span></button>
+      <button class="set" style="margin-top:14px" data-act="ai-open"><span class="s-label">Logo<div class="s-sub">Bank or card logo shown on the account</div></span><span class="csel" id="ai-prev">${accIconCell({icon:App._accIcon,color:"#7C9AA6",name:""})}</span></button>
       <button class="btn" style="margin-top:16px" data-act="acc-add-save">${IC.plus} Create account</button>`;
+  },
+  accIconSheet(){
+    const cur=App._accMode==="edit"&&App._accId&&accById(App._accId)?accById(App._accId).icon:App._accIcon;
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">Account logo</div>
+      <div class="search" style="margin-bottom:8px">${IC.search}<input type="text" id="ai-q" placeholder="Search bank or card"></div>
+      ${["Banks","Cards"].map(g=>`
+        <div class="sec-label" style="margin-top:${g==="Banks"?"0":"12px"}">${g}</div>
+        <div class="ai-grid">
+        ${Object.keys(ACC_ICONS).filter(k=>ACC_ICONS[k].g===g).map(k=>{const i=ACC_ICONS[k];
+          return `<button class="ai-cell ${cur===k?"on":""}" data-act="ai-pick" data-id="${k}">
+            <span class="ccircle pic" style="--c:#fff"><img class="acc-ico" src="${i.src}" alt="${esc(i.name)}" loading="lazy"></span>
+            <span class="ai-name">${esc(i.name)}</span>
+          </button>`}).join("")}
+        </div>`).join("")}
+      <button class="set" style="margin-top:16px" data-act="ai-clear"><span class="s-label">No logo<div class="s-sub">Show the account's initials instead</div></span>${IC.x}</button>`;
   },
   accEditSheet(id){
     const a=accById(id);if(!a)return "";
@@ -2004,7 +2052,7 @@ txnSheet(id){
     return `
       <div class="sh-grab"></div>
       <div class="sh-title">Edit account</div>
-      <input type="text" id="aa-n" placeholder="Name" value="${esc(a.name)}">
+      <input type="text" id="aa-n" placeholder="Name" value="${esc(App._accName)}">
       <div class="tsub" style="margin:8px 2px 4px">Type</div>
       <div class="chip-row" style="margin-top:0">
         <button class="chip ${App._aeKind==="cash"?"on":""}" data-act="ae-kind" data-k="cash" id="aekind-cash">Cash</button>
@@ -2013,6 +2061,7 @@ txnSheet(id){
       </div>
       <div class="tsub" style="margin:6px 2px 10px;color:var(--muted)">Balances come from transactions only. For savings, use "Move between current &amp; previous" on the Accounts page.</div>
       <button class="set" data-act="ae-sec"><span class="s-label">Secondary account<div class="s-sub">Excluded from net worth (e.g. meal card)</div></span><span class="switch ${a.secondary?"on":""}"></span></button>
+      <button class="set" style="margin-top:14px" data-act="ai-open"><span class="s-label">Logo<div class="s-sub">Bank or card logo shown on the account</div></span><span class="csel" id="ai-prev">${accIconCell(a)}</span></button>
       <div style="display:flex;gap:10px;margin-top:16px">
         <button class="btn ghost" style="flex:1" data-act="close-sheet">Cancel</button>
         <button class="btn" style="flex:1" data-act="acc-edit-save">${IC.check} Save</button>
@@ -2266,7 +2315,7 @@ txnSheet(id){
       App.save();App.closeSheet();App.render();App.toast(id?"Budget updated":"Budget created");
     },
     "bud-open":(el)=>App.openSheet(App.budSheet(el.dataset.id)),
-    "acc-add":()=>App.openSheet(App.accAddSheet()),
+    "acc-add":()=>{App._accMode="add";App._accKind="cash";App._accSec=false;App._accIcon=null;App._accName="";App._accOpening="";App.openSheet(App.accAddSheet())},
     "tr-open":()=>{
       const accs=App.data.accounts;
       App.tr={from:accs[0]?accs[0].id:"",to:accs[1]?accs[1].id:(accs[0]?accs[0].id:""),amount:"",note:""};
@@ -2318,11 +2367,12 @@ txnSheet(id){
       const o=Math.round(parseFloat($("#aa-o").value||"0")||0)*100;
       const k=App._accKind||"cash";
       const acc={id:"acc-u-"+uid(),name:n,kind:k,opening:o,color:"#7C9AA6",secondary:App._accSec===true};
+      if(App._accIcon)acc.icon=App._accIcon;
       if(k==="savings")acc.prev=o;
       App.data.accounts.push(acc);
       App.save();App.closeSheet();App.render();App.toast("Account created");
     },
-    "acc-open":(el)=>{App.pendingDel=null;App.openSheet(App.accEditSheet(el.dataset.id))},
+    "acc-open":(el)=>{App.pendingDel=null;App._accMode="edit";App._accName=accById(el.dataset.id).name;App.openSheet(App.accEditSheet(el.dataset.id))},
     "ae-kind":(el)=>{
       App._aeKind=el.dataset.k;
       ["cash","card","savings"].forEach(k=>{const b=$("#aekind-"+k);if(b)b.classList.toggle("on",k===el.dataset.k)});
@@ -2341,6 +2391,17 @@ txnSheet(id){
       a.kind=App._aeKind||a.kind||"cash";
       if(a.kind==="savings"&&a.prev==null)a.prev=(a.opening||0);
       App.save();App.closeSheet();App.render();App.toast("Account saved");
+    },
+    "ai-open":()=>App.openSheet(App.accIconSheet()),
+    "ai-pick":(el)=>{
+      const a=App._accMode==="edit"&&App._accId?accById(App._accId):null;
+      if(a){a.icon=el.dataset.id;App.save();App.swapSheet(App.accEditSheet(App._accId))}
+      else{App._accIcon=el.dataset.id;App.swapSheet(App.accAddSheet())}
+    },
+    "ai-clear":()=>{
+      const a=App._accMode==="edit"&&App._accId?accById(App._accId):null;
+      if(a){a.icon=null;App.save();App.swapSheet(App.accEditSheet(App._accId))}
+      else{App._accIcon=null;App.swapSheet(App.accAddSheet())}
     },
     "gb-setup":()=>App.openSheet(App.gbSetupSheet()),
     "gb-setup-save":async()=>{
@@ -2443,6 +2504,15 @@ document.addEventListener("input",e=>{
   if(e.target&&e.target.id==="note-inline"){App.add.note=e.target.value;updateNoteSug();}
   if(e.target&&e.target.id==="tr-amt")App.tr.amount=e.target.value;
   if(e.target&&e.target.id==="tr-note")App.tr.note=e.target.value;
+  if(e.target&&e.target.id==="aa-n")App._accName=e.target.value;
+  if(e.target&&e.target.id==="aa-o")App._accOpening=e.target.value;
+  if(e.target&&e.target.id==="ai-q"){
+    const q=e.target.value.trim().toLowerCase();
+    document.querySelectorAll(".ai-cell").forEach(b=>{
+      const i=ACC_ICONS[b.dataset.id];
+      b.style.display=(i&&(i.name+(i.alt?" "+i.alt:"")+" "+i.g).toLowerCase().includes(q))?"":"none";
+    });
+  }
 });
 
 /* note autocomplete: suggest the last-used note names matching what the user is typing */
