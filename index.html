@@ -713,7 +713,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b34";
+const APP_VER="b35";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1448,7 +1448,7 @@ this.render();
     const prevName=parseMk(prevKey).toLocaleDateString("en-IN",{month:"short"});
     const PAL=["#7B61FF","#FF5678","#31C4F3","#FF9F43","#52E5A5","#FFD166","#9B8CFA","#4EC49B"];
     const colors={};entries.forEach((e,i)=>{colors[e[0]]=PAL[i%PAL.length]});
-const R=72,W=12,GAP=14,CORNER=10;
+const R=72,W=12,GAP=14,CORNER=3;
     const innerR=R-W/2,outerR=R+W/2;
     let acc=0;
     const arcs=entries.map(([cid,amt])=>{
