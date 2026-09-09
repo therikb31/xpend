@@ -173,22 +173,30 @@ svg{display:block}
 /* ============================ SUMMARY (donut-overview, reference UI) ============================ */
 .scr.sum{padding:0 0 calc(220px + env(safe-area-inset-bottom,0px))}
 .sum-chart{padding:24px 18px 2px}
-.donut-wrap.big{width:min(290px,80vw);margin:0 auto}
-.donut-wrap.big .donut-center{gap:1px}
+.donut-wrap.big{width:min(280px,80vw);margin:0 auto;position:relative}
+.donut-wrap.big .donut-svg{width:100%;height:auto;display:block}
+.donut-wrap.big .donut-center{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:6px;text-align:center;
+  pointer-events:none;
+}
+.donut-wrap.big .donut-center>*{pointer-events:auto}
 .dc-month{
   display:flex;align-items:center;gap:4px;color:#9BA6AC;
   font-size:13px;font-weight:600;padding:2px 10px;border-radius:99px;
 }
 .dc-month:active{background:rgba(255,255,255,.07)}
 .dc-month svg{width:12px;height:12px;color:#9BA6AC}
-.donut-wrap.big .dc-main{font-size:26px}
-.dc-trend{
-  display:inline-flex;align-items:center;gap:4px;margin-top:8px;
-  padding:4px 10px;border-radius:99px;
-  background:rgba(82,229,165,.13);color:#52E5A5;
-  font-size:11px;font-weight:600;white-space:nowrap;
+.donut-wrap.big .dc-main{
+  font-size:36px;font-weight:700;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;color:#fff;
 }
-.dc-trend svg{width:11px;height:11px}
+.dc-trend{
+  display:inline-flex;align-items:center;gap:4px;margin-top:4px;
+  padding:3px 10px;border-radius:99px;
+  background:rgba(255,82,82,.15);color:#FF5252;
+  font-size:12px;font-weight:600;white-space:nowrap;
+}
 .dc-trend.up{background:rgba(255,159,67,.15);color:#FF9F43}
 .dc-trend.mute{background:rgba(255,255,255,.06);color:var(--muted)}
 .sum-list{padding:8px 18px}
@@ -713,7 +721,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b35";
+const APP_VER="b36";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1448,34 +1456,26 @@ this.render();
     const prevName=parseMk(prevKey).toLocaleDateString("en-IN",{month:"short"});
     const PAL=["#7B61FF","#FF5678","#31C4F3","#FF9F43","#52E5A5","#FFD166","#9B8CFA","#4EC49B"];
     const colors={};entries.forEach((e,i)=>{colors[e[0]]=PAL[i%PAL.length]});
-const R=72,W=12,GAP=14,CORNER=3;
-    const innerR=R-W/2,outerR=R+W/2;
+    const R=110,W=20,GAP=12;
+    const C=2*Math.PI*R;
     let acc=0;
-    const arcs=entries.map(([cid,amt])=>{
-      const seg=total>0?amt/total*2*Math.PI:0;
-      const theta=seg;
-      const gap=GAP/(innerR+outerR)/2*2;
-      const arcTheta=theta-gap;
-      if(arcTheta<=0){acc+=theta;return ""}
-      const aStart=acc+gap/2,aEnd=acc+gap/2+arcTheta;
-      const cos=Math.cos,sin=Math.sin;
-      const ox1=80+outerR*cos(aStart),oy1=80+outerR*sin(aStart);
-      const ox2=80+outerR*cos(aEnd),oy2=80+outerR*sin(aEnd);
-      const ix2=80+innerR*cos(aEnd),iy2=80+innerR*sin(aEnd);
-      const ix1=80+innerR*cos(aStart),iy1=80+innerR*sin(aStart);
-      const occ1=80+(outerR-CORNER)*cos(aStart),ocy1=80+(outerR-CORNER)*sin(aStart);
-      const occ2=80+(outerR-CORNER)*cos(aEnd),ocy2=80+(outerR-CORNER)*sin(aEnd);
-      const icc1=80+(innerR+CORNER)*cos(aStart),icy1=80+(innerR+CORNER)*sin(aStart);
-      const icc2=80+(innerR+CORNER)*cos(aEnd),icy2=80+(innerR+CORNER)*sin(aEnd);
-      const path=`M ${ox1.toFixed(2)} ${oy1.toFixed(2)}
-        A ${outerR} ${outerR} 0 0 1 ${ox2.toFixed(2)} ${oy2.toFixed(2)}
-        A ${CORNER} ${CORNER} 0 0 1 ${ix2.toFixed(2)} ${iy2.toFixed(2)}
-        A ${innerR} ${innerR} 0 0 0 ${ix1.toFixed(2)} ${iy1.toFixed(2)}
-        A ${CORNER} ${CORNER} 0 0 1 ${ox1.toFixed(2)} ${oy1.toFixed(2)} Z`;
-      const a=`<path d="${path}" fill="${colors[cid]}"/>`;
-      acc+=theta;return a;
+    const arcs=entries.map(([cid,amt],idx)=>{
+      const seg=total>0?amt/total*C:0;
+      const len=Math.max(seg-GAP,0);
+      const a=`<circle cx="150" cy="150" r="${R}" fill="none" stroke="${idx===0?'url(#housingGradient)':colors[cid]}" stroke-width="${W}" stroke-linecap="round"
+        stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}"
+        transform="rotate(-90 150 150)"/>`;
+      acc+=seg;return a;
     }).join("");
-    const donut=`<circle cx="80" cy="80" r="${innerR}" fill="var(--control)"/>${arcs}`;
+    const donut=`<svg viewBox="0 0 300 300" class="donut-svg">
+      <defs>
+        <linearGradient id="housingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#8C52FF"/>
+          <stop offset="100%" stop-color="#B666FF"/>
+        </linearGradient>
+      </defs>
+      <g transform="rotate(-90 150 150)">${arcs}</g>
+    </svg>`;
     const tIcn=down?IC.downcir:`<span style="transform:scaleY(-1);display:inline-flex">${IC.downcir}</span>`;
     const trend=pct==null?`<span class="dc-trend mute">${IC.downcir} No earlier data</span>`
       :`<span class="dc-trend${down?"":" up"}">${tIcn} ${Math.abs(pct)}% ${down?"from":"up from"} ${prevName}</span>`;
@@ -1499,8 +1499,7 @@ const R=72,W=12,GAP=14,CORNER=3;
     <div class="scr sum">
       <div class="ov-top"><button class="ov-gear" data-act="go-settings" aria-label="Settings">${IC.gear}</button></div>
       <div class="sum-chart">
-        <div class="donut-wrap big">
-          <svg viewBox="0 0 160 160">${donut}</svg>
+        <div class="donut-wrap big">${donut}
           <div class="donut-center">
             <button class="dc-month" data-act="mk-open" aria-label="Select month">${esc(monthLabel)} ${IC.chev}</button>
             <div class="dc-main">${rupees(total)}</div>
