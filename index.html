@@ -721,7 +721,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b36";
+const APP_VER="b37";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1456,24 +1456,17 @@ this.render();
     const prevName=parseMk(prevKey).toLocaleDateString("en-IN",{month:"short"});
     const PAL=["#7B61FF","#FF5678","#31C4F3","#FF9F43","#52E5A5","#FFD166","#9B8CFA","#4EC49B"];
     const colors={};entries.forEach((e,i)=>{colors[e[0]]=PAL[i%PAL.length]});
-    const R=110,W=20,GAP=12;
+    const R=110,W=20;
     const C=2*Math.PI*R;
     let acc=0;
-    const arcs=entries.map(([cid,amt],idx)=>{
+    const arcs=entries.map(([cid,amt])=>{
       const seg=total>0?amt/total*C:0;
-      const len=Math.max(seg-GAP,0);
-      const a=`<circle cx="150" cy="150" r="${R}" fill="none" stroke="${idx===0?'url(#housingGradient)':colors[cid]}" stroke-width="${W}" stroke-linecap="round"
-        stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}"
+      const a=`<circle cx="150" cy="150" r="${R}" fill="none" stroke="${colors[cid]}" stroke-width="${W}" stroke-linecap="round"
+        stroke-dasharray="${seg.toFixed(2)} ${(C-seg).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}"
         transform="rotate(-90 150 150)"/>`;
       acc+=seg;return a;
     }).join("");
     const donut=`<svg viewBox="0 0 300 300" class="donut-svg">
-      <defs>
-        <linearGradient id="housingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#8C52FF"/>
-          <stop offset="100%" stop-color="#B666FF"/>
-        </linearGradient>
-      </defs>
       <g transform="rotate(-90 150 150)">${arcs}</g>
     </svg>`;
     const tIcn=down?IC.downcir:`<span style="transform:scaleY(-1);display:inline-flex">${IC.downcir}</span>`;
