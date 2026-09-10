@@ -158,6 +158,21 @@ svg{display:block}
 .yax .mid{color:#E9EBED}
 .xax{display:flex;justify-content:space-between;padding:9px 36px 0 2px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 
+/* ============================ CATEGORY DASHBOARD ============================ */
+.scr.cat{padding:0 18px calc(200px + env(safe-area-inset-bottom,0px))}
+.cat-top{display:flex;align-items:center;gap:8px;padding:calc(12px + env(safe-area-inset-top,0px)) 2px 4px}
+.cat-metric{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.cat-title{display:inline-flex;align-items:center;gap:6px;font-size:14.5px;font-weight:600;color:#9BA6AC;white-space:nowrap}
+.cat-title svg{width:13px;height:13px;color:#9BA6AC}
+.cat-total{font-size:32px;font-weight:800;letter-spacing:-.02em;color:var(--text);margin-top:2px;font-variant-numeric:tabular-nums}
+.cat-delta{display:flex;align-items:center;gap:6px;color:var(--green);font-size:13px;font-weight:600}
+.cat-delta svg{width:15px;height:15px}
+.cat-delta.neg{color:var(--neg)}
+.cat-delta.mute{color:var(--muted);font-weight:500}
+.cat-spacer{visibility:hidden}
+.cat-chart .bar{background:rgba(255,255,255,.05)}
+.cat-chart .bar.on{background:var(--c,#8C52FF)}
+
 .ov-chips{display:flex;gap:8px;overflow-x:auto;padding:8px 18px 4px;-webkit-overflow-scrolling:touch;-ms-overflow-style:none}
 .ov-chip{
   flex:none;height:38px;padding:0 15px;border-radius:19px;
@@ -788,7 +803,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b42";
+const APP_VER="b43";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1310,13 +1325,14 @@ this.render();
     this.renderNav();
     const scr=$("#screen");
     const appEl=document.getElementById("app");
-    appEl.classList.toggle("ov",this.view==="overview");
+    appEl.classList.toggle("ov",this.view==="overview"||this.view==="category");
     appEl.classList.toggle("add",this.view==="add");
     let html="";
     if(this.view==="add"){html=this.addScreen()}
     else if(this.view==="overview"){html=this.overview()}
     else if(this.view==="activity"){html=this.activity()}
     else if(this.view==="summary"){html=this.summary()}
+    else if(this.view==="category"){html=this.category()}
     else if(this.view==="goals"){html=this.goals()}
     else if(this.view==="analytics"){html=this.analytics()}
     else if(this.view==="accounts"){html=this.accounts()}
@@ -1327,7 +1343,7 @@ this.render();
   renderNav(){
     const nav=$("#nav");
     nav.innerHTML=TABS.map(t=>{
-      const on=(t.id==="activity")?(this.view==="overview"||this.view==="activity"):this.view===t.id;
+      const on=(t.id==="activity")?(this.view==="overview"||this.view==="activity"||(this.view==="category"&&(this.prevView==="overview"||this.prevView==="activity"))):(this.view===t.id||(this.view==="category"&&this.prevView===t.id));
       return `<button type="button" class="nav-item ${on?"on":""}" data-act="tab" data-tab="${t.id}"><span class="ni-ic">${t.icon}</span><span>${t.label}</span></button>`;
     }).join("");
   },
@@ -1353,6 +1369,13 @@ this.render();
       if(t.dir==="expense"&&t.date.slice(0,7)===key)map[t.categoryId]=(map[t.categoryId]||0)+t.amount;
     }
     return map;
+  },
+  catAccent(cid){
+    const PAL=["#7B61FF","#FF5678","#31C4F3","#FF9F43","#52E5A5","#FFD166","#9B8CFA","#4EC49B"];
+    const entries=Object.entries(this.catSpend(this.mkey)).sort((a,b)=>b[1]-a[1]);
+    const idx=entries.findIndex(e=>e[0]===cid);
+    const c=catById(cid);
+    return idx>=0?PAL[idx%PAL.length]:(c&&c.color)||"#8C52FF";
   },
   accBalance(id){
     const a=accById(id);
@@ -1442,22 +1465,23 @@ this.render();
       </div>
     </div>`;
   },
-  daily(){
-    const mk=parseMk(this.mkey);
-    const dim=new Date(mk.getFullYear(),mk.getMonth()+1,0).getDate();
+  daily(cid){
+    const dim=new Date(parseMk(this.mkey).getFullYear(),parseMk(this.mkey).getMonth()+1,0).getDate();
     const arr=new Array(dim).fill(0);
     for(const t of this.data.transactions){
       if(t.dir!=="expense"||t.date.slice(0,7)!==this.mkey)continue;
+      if(cid&&t.categoryId!==cid)continue;
       const day=parseInt(t.date.slice(8,10),10)||1;
       arr[day-1]+=t.amount;
     }
     return arr;
   },
-  chart(){
-    const arr=this.daily();
+  chart(cid){
+    const arr=this.daily(cid);
     const mx=Math.max.apply(null,arr)||100;
     const yv=Math.max(100,Math.ceil((mx/0.88)/50)*50);
     const hi=new Set(arr.map((v,i)=>v>0?i:-1).filter(i=>i>=0).slice(-6));
+    if(cid&&mx>0){arr.forEach((v,i)=>{if(v===mx)hi.add(i)});const t=new Date();if(t.getFullYear()===parseMk(this.mkey).getFullYear()&&t.getMonth()===parseMk(this.mkey).getMonth()&&arr[t.getDate()-1]>0)hi.add(t.getDate()-1)}
     const bars=arr.map((v,i)=>{
       const h=v>0?Math.round(v/yv*100):3;
       return `<span class="bar${hi.has(i)?" on":""}" style="height:${Math.max(h,3)}%"></span>`;
@@ -1619,6 +1643,66 @@ this.render();
             <span class="bamt">${rupees(amt)}</span>
           </button>`;
         }).join(""):`<div class="empty"><div>${IC.empty}</div><div class="t">No spending yet</div><div class="s">Add transactions to see category splits</div></div>`}
+      </div>
+    </div>`;
+  },
+
+  /* ============ CATEGORY DASHBOARD (scoped to one category) ============ */
+  category(){
+    const c=catById(this.flt.cat);
+    const mk=parseMk(this.mkey);
+    const prev=new Date(mk);prev.setMonth(prev.getMonth()-1);
+    const prevKey=monthKey(prev);
+    const total=this.catSpend(this.mkey)[this.flt.cat]||0;
+    const prevTotal=this.catSpend(prevKey)[this.flt.cat]||0;
+    const prevName=parseMk(prevKey).toLocaleDateString("en-IN",{month:"short"});
+    const monthName=mk.toLocaleDateString("en-IN",{month:"short",year:"numeric"});
+    let delta;
+    if(total===0)delta=`<span class="cat-delta mute">No spending this month</span>`;
+    else if(prevTotal===0)delta=`<span class="cat-delta mute">${IC.downcir} New this month</span>`;
+    else{
+      const pct=Math.round((prevTotal-total)/prevTotal*100);
+      const down=pct>=0;
+      const dIcon=down?IC.downcir:`<span style="transform:scaleY(-1);display:inline-flex">${IC.downcir}</span>`;
+      delta=`<span class="cat-delta${down?"":" neg"}">${dIcon} ${Math.abs(pct)}% ${down?"from":"up from"} ${prevName}</span>`;
+    }
+    const flt=this.flt;
+    let list=this.sortedTxs().filter(t=>t.dir==="expense"&&t.date.slice(0,7)===this.mkey&&t.categoryId===this.flt.cat);
+    if(flt.acc!=="all")list=list.filter(t=>t.accountId===flt.acc);
+    const groups=[];
+    for(const t of list){
+      let g=groups[groups.length-1];
+      if(!g||g.date!==t.date){g={date:t.date,items:[]};groups.push(g)}
+      g.items.push(t);
+    }
+    const acc=flt.acc!=="all"?accById(flt.acc):null;
+    const accTxt=acc?(acc.name.length>11?acc.name.slice(0,11)+"…":acc.name):"All accounts";
+    return `
+    <div class="scr cat">
+      <div class="cat-top">
+        <button class="cbtn" data-act="back" aria-label="Back">${IC.left}</button>
+        <button class="cat-metric" data-act="mk-open" aria-label="Select month">
+          <span class="cat-title">${catEmoji(c)} ${esc(c.name)} ${IC.chev}</span>
+          <span class="cat-total">${rupees(total)}</span>
+          ${delta}
+        </button>
+        <span class="cbtn cat-spacer" aria-hidden="true"></span>
+      </div>
+      <div class="cat-chart" style="--c:${this.catAccent(this.flt.cat)}">${this.chart(this.flt.cat)}</div>
+      <div class="ov-chips">
+        <button class="ov-chip circ" data-act="list-go" aria-label="Search">${IC.search}</button>
+        <button class="ov-chip" data-act="fl-period">${esc(monthName)}</button>
+        <button class="ov-chip ${acc?"on":""}" data-act="acc-fopen">${acc?`<span class="dot" style="--c:${acc.color}"></span>`:""}${esc(accTxt)}</button>
+        <button class="ov-chip" data-act="fl-clear">All</button>
+      </div>
+      <div class="ov-groups">
+        ${groups.length?groups.map(g=>
+          `<div class="ov-dg"><span class="ov-dg-day">${dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+t.amount,0))}</span></div>
+          <div class="ov-day">
+            ${g.items.map(t=>this.ovCard(t)).join("")}
+          </div>`
+        ).join("")
+          :`<div class="card" style="border-radius:24px"><div class="empty"><div>${IC.empty}</div><div class="t">No transactions</div><div class="s">Nothing in ${esc(c.name)} for this month yet</div></div></div>`}
       </div>
     </div>`;
   },
@@ -2523,9 +2607,9 @@ txnSheet(id){
     "go-activity":()=>{App.flt.cat="all";App.view="activity";App.prevView="overview";App.render()},
     "go-summary":()=>{App.view="summary";App.prevView="summary";App.render()},
     "go-settings":()=>{App.view="settings";App.prevView="overview";App.render()},
-    "ov-cat":(el)=>{App.flt.cat=el.dataset.id;App.prevView=App.view;App.view="activity";App.render()},
+    "ov-cat":(el)=>{App.flt.cat=el.dataset.id;App.prevView=App.view;App.view="category";App.render()},
     "back":()=>{App.view=App.prevView||"overview";App.render()},
-    "list-go":()=>{App.view="activity";App.prevView="overview";App.render()},
+    "list-go":()=>{App.prevView=App.view;App.view="activity";App.render()},
     "fl-exp":()=>{App.flt.dir=App.flt.dir==="expense"?"all":"expense";App.render()},
     "fl-clear":()=>{App.flt.dir="all";App.flt.acc="all";App.render()},
     "fl-period":()=>App.openSheet(App.mkeySheet()),
