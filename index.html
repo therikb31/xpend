@@ -817,7 +817,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b44";
+const APP_VER="b45";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1393,7 +1393,9 @@ this.render();
   },
   shiftMonth(delta){
     const d=parseMk(this.mkey);d.setMonth(d.getMonth()+delta);
-    this.mkey=monthKey(d);this.render();
+    const k=monthKey(d);
+    if(k>monthKey(new Date()))return;
+    this.mkey=k;this.render();
   },
   accBalance(id){
     const a=accById(id);
@@ -2146,6 +2148,7 @@ this.render();
   },
   mkeySheet(){
     const mk=parseMk(this.mkey);
+    const atCur=this.mkey===monthKey(new Date());
     const months=[];
     const d=new Date(mk.getFullYear(),mk.getMonth()-5,1);
     for(let i=0;i<6;i++){months.push(monthKey(d));d.setMonth(d.getMonth()+1)}
@@ -2154,7 +2157,8 @@ this.render();
       <div class="dp-head">
         <button class="cbtn small" data-act="mk-prev" aria-label="Previous month">${IC.left}</button>
         <div class="dp-title">${mk.toLocaleDateString("en-IN",{year:"numeric"})}</div>
-        <button class="cbtn small" data-act="mk-next" aria-label="Next month">${IC.right}</button>
+        ${atCur?`<span class="cbtn small" style="opacity:.3" aria-hidden="true">${IC.right}</span>`
+          :`<button class="cbtn small" data-act="mk-next" aria-label="Next month">${IC.right}</button>`}
       </div>
       <div class="mk-grid">
         ${months.map(k=>{
@@ -2621,7 +2625,7 @@ txnSheet(id){
       App.save();App.swapSheet(App.shortcutsSheet());
     },
     "month-prev":()=>{const d=parseMk(App.mkey);d.setMonth(d.getMonth()-1);App.mkey=monthKey(d);App.render()},
-    "month-next":()=>{const d=parseMk(App.mkey);d.setMonth(d.getMonth()+1);App.mkey=monthKey(d);App.render()},
+    "month-next":()=>{const d=parseMk(App.mkey);d.setMonth(d.getMonth()+1);const k=monthKey(d);if(k>monthKey(new Date()))return;App.mkey=k;App.render()},
     "go-activity":()=>{App.flt.cat="all";App.view="activity";App.prevView="overview";App.render()},
     "go-summary":()=>{App.view="summary";App.prevView="summary";App.render()},
     "go-settings":()=>{App.view="settings";App.prevView="overview";App.render()},
@@ -2635,7 +2639,7 @@ txnSheet(id){
     "acc-fset":(el)=>{App.flt.acc=el.dataset.id;App.closeSheet();App.render()},
     "mk-open":()=>App.openSheet(App.mkeySheet()),
     "mk-prev":()=>{const d=parseMk(App.mkey);d.setMonth(d.getMonth()-1);App.mkey=monthKey(d);App.swapSheet(App.mkeySheet())},
-    "mk-next":()=>{const d=parseMk(App.mkey);d.setMonth(d.getMonth()+1);App.mkey=monthKey(d);App.swapSheet(App.mkeySheet())},
+    "mk-next":()=>{const d=parseMk(App.mkey);d.setMonth(d.getMonth()+1);const k=monthKey(d);if(k>monthKey(new Date()))return;App.mkey=k;App.swapSheet(App.mkeySheet())},
     "mk-pick":(el)=>{App.mkey=el.dataset.key;App.closeSheet();App.render()},
     "mk-today":()=>{App.mkey=monthKey(new Date());App.closeSheet();App.render()},
     "fab-add":()=>{App.prevView=App.view;App.add=App.freshAdd();App.txOpen=null;App.view="add";App.render()},
