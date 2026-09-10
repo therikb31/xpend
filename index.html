@@ -639,6 +639,53 @@ select.sel{
 .sav-mv{width:100%;margin-top:10px;padding:8px;border:.5px solid rgba(255,255,255,.12);border-radius:12px;text-align:center;color:var(--inc);font-size:13.5px;background:transparent;cursor:pointer;touch-action:manipulation}
 .sav-mv:active{background:rgba(255,255,255,.06)}
 
+/* ============================ GOALS ============================ */
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;letter-spacing:.2px;white-space:nowrap;background:var(--control);color:var(--muted)}
+.pill.on{background:rgba(82,229,165,.13);color:#52E5A5}
+.pill.warn{background:rgba(255,159,67,.14);color:#FF9F43}
+.pill.err{background:rgba(255,90,90,.14);color:#FF5A5A}
+.pill.ok{background:rgba(82,229,165,.13);color:#52E5A5}
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 10px;margin-top:12px}
+.metric{display:flex;flex-direction:column;gap:2px}
+.metric-val{font-size:17px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.metric-val small{font-size:11px;color:var(--muted);font-weight:600}
+.metric-val.inc{color:var(--inc)}
+.metric-val.neg{color:var(--neg)}
+.metric-lbl{font-size:12px;color:var(--muted)}
+.status-pills{display:flex;flex-wrap:wrap;gap:6px}
+.goal-row{display:flex;flex-direction:column;gap:10px;cursor:pointer;touch-action:manipulation}
+.goal-row:active{background:rgba(255,255,255,.05)}
+.goal-row .ccircle{align-self:flex-start}
+.goal-info{flex:1;min-width:0}
+.goal-name{font-size:16.5px;font-weight:700;color:var(--text);display:block}
+.goal-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.goal-meta .ok{color:#52E5A5}
+.goal-kv{display:flex;flex-direction:column;text-align:right}
+.goal-progress{height:8px;border-radius:99px;background:var(--control);overflow:hidden;width:100%}
+.goal-progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#8C52FF,#B666FF)}
+.goal-progress.err i{background:var(--neg)}
+.goal-calc{background:var(--control);border-radius:16px;padding:14px;margin-bottom:14px}
+.goal-calc-hdr{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700;margin-bottom:10px}
+.gc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gc-grid>div{display:flex;flex-direction:column;gap:1px}
+.gc-lbl{font-size:11.5px;color:var(--muted)}
+.gc-val{font-size:15px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.gc-val.inc{color:var(--inc)}
+.gc-val.neg{color:var(--neg)}
+.gc-note{margin-top:10px;font-size:13px;color:var(--muted)}
+.gc-note b{color:var(--text)}
+.gc-note.err{color:var(--neg)}
+.gc-note.err b{color:var(--neg)}
+.gc-note.ok{color:var(--inc)}
+.gd-status{display:flex;gap:8px;margin:2px 0 12px}
+.gd-progress{height:10px;border-radius:99px;background:var(--control);overflow:hidden;margin-bottom:14px}
+.gd-progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#8C52FF,#B666FF)}
+.gd-note{margin:12px 2px 0;font-size:13.5px;color:var(--muted)}
+.gd-note b{color:var(--text)}
+.gd-note.ok{color:var(--inc)}
+.row-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:8px;background:var(--control);color:var(--muted);cursor:pointer}
+.row-btn svg{width:15px;height:15px}
+
 /* note text */
 .note-ico{font-size:15px;color:var(--muted-2)}
 input[type=text],textarea.tx{
@@ -721,7 +768,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b37";
+const APP_VER="b38";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1150,23 +1197,35 @@ function migrateSav(d){
   s.savV=2;
   return changed;
 }
+function migrateGoals(d){
+  const s=d.settings=d.settings||{};
+  if(s.goalV===1)return false;
+  let changed=false;
+  for(const g of d.goals||[]){
+    if(g.sources==null){g.sources=[];changed=true}
+    if(g.completed==null){g.completed=false;changed=true}
+    if(g.completedAt==null&&g.completed){g.completedAt=new Date().toISOString().slice(0,7);changed=true}
+  }
+  s.goalV=1;
+  return changed;
+}
 const DEF_ACCS=[
   {id:"acc-cash",name:"Cash",kind:"cash",opening:0,color:"#7C9AA6"},
   {id:"acc-card",name:"Card",kind:"card",opening:0,color:"#8CA683"}
 ];
 function defaultDoc(){
   return {schemaVersion:1,meta:{createdAt:new Date().toISOString()},
-    settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,lastDate:null,lastCategoryId:null,catV:2},
+    settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,lastDate:null,lastCategoryId:null,catV:2,goalV:1},
     categories:JSON.parse(JSON.stringify(DEF_CATS)),
-    accounts:JSON.parse(JSON.stringify(DEF_ACCS)),
-    transactions:[],budgets:[],shortcuts:[]};
+    accounts:JSON.parse(JSON.parse(JSON.stringify(DEF_ACCS))),
+    transactions:[],goals:[],shortcuts:[]};
 }
 
 /* ============================ APP ============================ */
 const TABS=[
   {id:"activity",label:"Activity",icon:IC.list},
   {id:"summary",label:"Summary",icon:IC.pie},
-  {id:"budgets",label:"Budget",icon:IC.target},
+  {id:"goals",label:"Goals",icon:IC.target},
   {id:"analytics",label:"Analytics",icon:IC.bars},
   {id:"accounts",label:"Accounts",icon:IC.wallet}
 ];
@@ -1187,7 +1246,8 @@ const App={
     if(migrateCats(d))Store.set("doc",d).catch(()=>{});
     if(migrateSav(d))Store.set("doc",d).catch(()=>{});
     if(!Array.isArray(d.accounts)||!d.accounts.length)d.accounts=JSON.parse(JSON.stringify(DEF_ACCS));
-    d.budgets=d.budgets||[];d.shortcuts=d.shortcuts||[];d.transactions=d.transactions||[];
+    d.goals=d.goals||[];d.shortcuts=d.shortcuts||[];d.transactions=d.transactions||[];
+    if(migrateGoals(d))Store.set("doc",d).catch(()=>{});
     this.data=d;
     this.add=this.freshAdd();
     const now=new Date();this.dp={y:now.getFullYear(),m:now.getMonth()};
@@ -1234,7 +1294,7 @@ this.render();
     else if(this.view==="overview"){html=this.overview()}
     else if(this.view==="activity"){html=this.activity()}
     else if(this.view==="summary"){html=this.summary()}
-    else if(this.view==="budgets"){html=this.budgets()}
+    else if(this.view==="goals"){html=this.goals()}
     else if(this.view==="analytics"){html=this.analytics()}
     else if(this.view==="accounts"){html=this.accounts()}
     else if(this.view==="settings"){html=this.settings()}
@@ -1600,29 +1660,94 @@ this.render();
     </button>`;
   },
 
-  /* ============ BUDGETS ============ */
-  budgets(){
-    const bs=this.data.budgets,st=this.monthStats(this.mkey),mk=parseMk(this.mkey);
-    const title=mk.toLocaleDateString("en-IN",{month:"long"});
+  /* ============ GOALS ============ */
+  goals(){
+    const gs=this.data.goals||[];
+    const active=gs.filter(g=>!g.completed);
+    const totalTarget=gs.reduce((s,g)=>s+(g.target||0),0);
+    const totalSaved=gs.reduce((s,g)=>s+this.goalCurrent(g),0);
+    const totalRemaining=Math.max(0,totalTarget-totalSaved);
+    const onTrack=active.filter(g=>this.goalCalc(g).status==="on-track").length;
+    const needsAttention=active.filter(g=>this.goalCalc(g).status==="needs-attention").length;
+    const overdue=active.filter(g=>this.goalCalc(g).status==="overdue").length;
+    const completed=gs.filter(g=>g.completed).length;
+    const monthlyReq=active.reduce((s,g)=>s+(this.goalCalc(g).required||0),0);
+    const upcoming=active.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")).slice(0,5);
+    const done=gs.filter(g=>g.completed);
+    const PAL=["#7B61FF","#FF5678","#31C4F3","#FF9F43","#52E5A5","#FFD166","#9B8CFA","#4EC49B"];
+    const colors={};gs.forEach((g,i)=>{colors[g.id]=PAL[i%PAL.length]});
+    const row=g=>{
+      const c=this.goalCalc(g);
+      const st=c.status;
+      const stL={completed:"Completed","on-track":"On Track","needs-attention":"Needs Attention",overdue:"Overdue"}[st];
+      const stC=st==="on-track"?"on":st==="needs-attention"?"warn":st==="overdue"?"err":"ok";
+      return `<div class="card goal-row" data-act="goal-open" data-id="${g.id}" role="button">
+        <span class="ccircle" style="--c:${colors[g.id]}">${init(g.name)}</span>
+        <div class="goal-info">
+          <span class="goal-name">${esc(g.name)}</span>
+          <div class="goal-meta">
+            <span class="pill ${stC}">${stL}</span>
+            <span>${Math.round(c.pct)}% · ${rupees(c.current)} / ${rupees(c.target)}</span>
+            ${g.completed?`<span class="ok">Purchased · ${rupees(g.actualAmount)}</span>`:`<span>${parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"})} · ${rupees(c.required)}/mo</span>`}
+          </div>
+        </div>
+        <div class="goal-progress ${st==="overdue"?"err":""}"><i style="width:${Math.min(100,c.pct)}%"></i></div>
+      </div>`;
+    };
     return `
     <div class="scr">
-      <header class="scrhdr"><div class="hdr-title">Budgets</div><div class="hdr-left"><button class="btn mini" data-act="bud-add">${IC.plus} Add</button></div></header>
-      ${bs.length?`<div class="card"><div class="card-title">${esc(title)} spent</div><div class="brow"><span class="ccircle" style="--c:#F5F5F5">${init("All")}</span><span class="bname">Total spending</span><span class="bamt">${rupees(st.spent)}</span></div></div>`:""}
-      ${bs.length?bs.map(b=>{
-        const spent=this.budgetSpent(b),pct=spent/b.limit,over=spent>b.limit;
-        return `<div class="card" data-act="bud-open" data-id="${b.id}" role="button">
-          <div class="bud-top">
-            <span class="ccircle" style="--c:${b.color}">${init(b.name)}</span>
-            <span class="bname-h">${esc(b.name)}</span>
-            <span style="color:var(--muted);font-size:13px">${over?"Over":""} ${Math.round(pct*100)}%</span>
-          </div>
-          <div class="progress ${over?"over":""}"><i style="width:${Math.min(100,Math.round(pct*100))}%"></i></div>
-          <div class="bud-meta"><span><b>${rupees(spent)}</b> of ${rupees(b.limit)}</span><span class="${over?"neg":""}">${over?("Over by "+rupees(spent-b.limit)):("Left "+rupees(b.limit-spent))}</span></div>
-        </div>`;
-      }).join(""):
-      `<div class="card"><div class="empty"><div>${IC.target}</div><div class="t">No budgets yet</div><div class="s">Set a monthly budget to track spending per category</div></div></div>`}
+      <header class="scrhdr"><div class="hdr-title">Goals</div><div class="hdr-left"><button class="btn mini" data-act="goal-add">${IC.plus} Create Goal</button></div></header>
+      <div class="card"><div class="card-title">Overview</div>
+        <div class="metrics-grid">
+          <div class="metric"><span class="metric-val">${rupees(totalTarget)}</span><span class="metric-lbl">Total Needed</span></div>
+          <div class="metric"><span class="metric-val inc">${rupees(totalSaved)}</span><span class="metric-lbl">Saved</span></div>
+          <div class="metric"><span class="metric-val neg">${rupees(totalRemaining)}</span><span class="metric-lbl">Remaining</span></div>
+          <div class="metric"><span class="metric-val">${rupees(monthlyReq)}<small>/mo</small></span><span class="metric-lbl">Monthly Required</span></div>
+        </div>
+        <div class="status-pills" style="margin-top:14px">
+          <span class="pill on">${onTrack} On Track</span>
+          <span class="pill ${needsAttention?"warn":""}">${needsAttention} Need Attention</span>
+          <span class="pill ${overdue?"err":""}">${overdue} Overdue</span>
+          <span class="pill ${completed?"ok":""}">${completed} Completed</span>
+        </div>
+      </div>
+      <div class="sec-label">Upcoming Goals</div>
+      ${upcoming.length?upcoming.map(row).join(""):
+        `<div class="card"><div class="empty"><div>${IC.target}</div><div class="t">No goals yet</div><div class="s">Create a goal for something you are saving for</div></div></div>`}
+      ${done.length?`<div class="sec-label">Completed</div>
+        ${done.map(row).join("")}`:""}
     </div>`;
   },
+  goalCurrent(g){
+    if(g&&g.sources&&g.sources.length)return g.sources.reduce((s,x)=>s+(x.amount||0),0);
+    return g&&g.current||0;
+  },
+  goalCalc(g){
+    const target=g.target||0;
+    const current=this.goalCurrent(g);
+    const remaining=Math.max(0,target-current);
+    const pct=target>0?current/target*100:0;
+    const now=new Date();
+    let months=0;
+    if(g.date){
+      const y=parseInt(g.date.slice(0,4),10),m=parseInt(g.date.slice(5,7),10)-1;
+      months=(y-now.getFullYear())*12+(m-now.getMonth());
+    }
+    const plan=g.plan||0;
+    const required=months>0?Math.ceil(remaining/months/100)*100:0;
+    const est=plan>0?Math.ceil(remaining/plan):null;
+    const estDate=est!=null?new Date(now.getFullYear(),now.getMonth()+est,1):null;
+    let status;
+    if(g.completed)status="completed";
+    else if(current>=target&&(!g.date||months>=0))status="completed";
+    else if(months<0&&current<target)status="overdue";
+    else{
+      const plannedTotal=current+plan*Math.max(months,0);
+      status=(months>0&&plan>0&&plannedTotal>=target)?"on-track":"needs-attention";
+    }
+    return {target,current,remaining,pct,months,required,plan,est,estDate,status};
+  },
+  goalStatus(g){return this.goalCalc(g).status},
 
   /* ============ ACCOUNTS ============ */
   accounts(){
@@ -2003,24 +2128,152 @@ txnSheet(id){
         <button class="btn mini" data-act="cc-add">${IC.plus} Add category</button>
       </div>`;
   },
-  budSheet(id){
-    const b=id?this.data.budgets.find(x=>x.id===id):null;
-    this.budSet=b&&b.categoryIds?new Set(b.categoryIds):new Set();
-    this._budName=b?b.name:"";
-    this._budLimit=b?String(b.limit/100):"";
-    const cats=this.data.categories.filter(c=>c.kind==="expense");
+  goalSheet(id){
+    const srcs=this._goalSources||[];
     return `
       <div class="sh-grab"></div>
-      <div class="sh-title">${b?"Edit budget":"New budget"}</div>
-      <input type="text" id="bb-n" placeholder="Name" value="${esc(this._budName)}">
-      <div class="tsub" style="margin-bottom:2px">Monthly limit (₹)</div>
-      <input type="text" id="bb-l" inputmode="decimal" placeholder="${b?esc(String(b.limit/100)):"0"}" value="${esc(this._budLimit)}" style="margin-top:0">
-      <div class="tsub" style="margin:10px 2px 8px">Categories</div>
-      <div class="chip-row" style="margin:0">
-        <button class="chip ${this.budSet.size===0?"on":""}" data-act="bb-all">All</button>
-        ${cats.map(c=>`<button class="chip ${this.budSet.has(c.id)?"on":""}" data-act="bb-cat" data-id="${c.id}"><span class="dot" style="--c:${c.color}"></span>${esc(c.name)}</button>`).join("")}
+      <div class="sh-title">${id?"Edit goal":"Create goal"}</div>
+      <div class="goal-calc" id="goal-calc" style="display:none"></div>
+      <input type="text" id="gg-n" placeholder="What are you saving for?" value="${esc(this._goalName)}">
+      <div class="tsub" style="margin-bottom:2px">Estimated cost (₹)</div>
+      <input type="text" id="gg-t" inputmode="decimal" placeholder="e.g. 150000" value="${esc(this._goalTarget)}" style="margin-top:0">
+      <div class="tsub" style="margin-bottom:2px">Expected expense date</div>
+      <input type="month" id="gg-d" value="${esc(this._goalDate)}" style="margin-top:0">
+      <div class="tsub" style="margin-bottom:2px">Current amount saved (₹)</div>
+      <input type="text" id="gg-c" inputmode="decimal" placeholder="0" value="${esc(this._goalCur)}" style="margin-top:0">
+      <div class="tsub" style="margin-bottom:2px">Expected savings per month (₹)</div>
+      <input type="text" id="gg-m" inputmode="decimal" placeholder="0" value="${esc(this._goalMonthly)}" style="margin-top:0">
+      <button class="set" style="margin-top:14px" data-act="gg-src-open"><span class="s-label">Savings source${srcs.length?`<div class="s-sub">${srcs.length} source${srcs.length===1?"":"s"} · ${esc(srcs.map(s=>s.name).join(", "))}</div>`:`<div class="s-sub">Where the money for this goal is kept</div>`}</span><span class="csel">${srcs.length?`${IC.wallet}`:`${IC.plus}`}</span></button>
+      <button class="btn" style="margin-top:16px" data-act="goal-save" data-id="${id||""}">${IC.check} ${id?"Save goal":"Create goal"}</button>`;
+  },
+  updateGoalCalc(){
+    const box=document.getElementById("goal-calc");
+    if(!box)return;
+    const name=($("#gg-n")&&$("#gg-n").value||"").trim()||"This goal";
+    const target=Math.round(parseFloat(($("#gg-t")&&$("#gg-t").value||"").replace(/,/g,""))||0)*100;
+    const date=$("#gg-d")&&$("#gg-d").value||"";
+    const curIn=Math.round(parseFloat(($("#gg-c")&&$("#gg-c").value||"").replace(/,/g,""))||0)*100;
+    const plan=Math.round(parseFloat(($("#gg-m")&&$("#gg-m").value||"").replace(/,/g,""))||0)*100;
+    const srcTotal=this.goalCurrent({sources:this._goalSources||[],current:0});
+    const current=(this._goalSources&&this._goalSources.length)?srcTotal:curIn;
+    if(!target){box.style.display="none";return}
+    const g={id:"tmp",name,target,date,current,plan,sources:this._goalSources||[],completed:false};
+    const c=this.goalCalc(g);
+    const stL=c.status==="on-track"?"On Track":c.status==="needs-attention"?"Needs Attention":c.status==="overdue"?"Overdue":"Completed";
+    const stC=c.status==="on-track"?"on":c.status==="needs-attention"?"warn":c.status==="overdue"?"err":"ok";
+    const html=`
+      <div class="goal-calc-hdr">${esc(name)} · <span class="pill ${stC}">${stL}</span></div>
+      <div class="gc-grid">
+        <div><span class="gc-lbl">Saved</span><span class="gc-val inc">${rupees(current)}</span></div>
+        <div><span class="gc-lbl">Target</span><span class="gc-val">${rupees(target)}</span></div>
+        <div><span class="gc-lbl">Remaining</span><span class="gc-val neg">${rupees(c.remaining)}</span></div>
+        <div><span class="gc-lbl">Progress</span><span class="gc-val">${Math.round(c.pct)}%</span></div>
       </div>
-      <button class="btn" style="margin-top:16px" data-act="bud-save" data-id="${id||""}">${IC.check} Save budget</button>`;
+      ${c.months>0?`<div class="gc-note">${c.status==="on-track"?"Saving "+rupees(plan)+"/mo will reach the goal on time."
+        :c.status==="needs-attention"?`Need <b>${rupees(c.required)}/mo</b> to reach the target by ${parseMk(date).toLocaleDateString("en-IN",{month:"short",year:"numeric"})}${plan>0?(c.required>plan?` · currently saving ${rupees(plan)}/mo`:""):""}`
+        :c.status==="completed"?"Target saved — ready to buy!":""}`
+        :c.status==="overdue"?`<div class="gc-note err">Target date has passed — needs <b>${rupees(c.required)}/mo</b> now.`:""}
+      ${c.status==="completed"?`<div class="gc-note ok">All ${rupees(target)} saved — you can make the purchase!</div>`:""}
+    `;
+    box.innerHTML=html;
+    box.style.display="block";
+  },
+  goalDetailSheet(id){
+    const g=this.data.goals.find(x=>x.id===id);if(!g)return "";
+    const c=this.goalCalc(g);
+    const stL={completed:"Completed","on-track":"On Track","needs-attention":"Needs Attention",overdue:"Overdue"}[c.status];
+    const stC=c.status==="on-track"?"on":c.status==="needs-attention"?"warn":c.status==="overdue"?"err":"ok";
+    const srcTotal=this.goalCurrent(g);
+    const monthsLeft=c.months>0?c.months:(c.date?"past due":"no date");
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">${esc(g.name)}</div>
+      <div class="gd-status"><span class="pill ${stC}">${stL}</span></div>
+      <div class="gd-progress"><i style="width:${Math.min(100,c.pct)}%"></i></div>
+      <div class="gc-grid">
+        <div><span class="gc-lbl">Saved</span><span class="gc-val inc">${rupees(c.current)}</span></div>
+        <div><span class="gc-lbl">Target</span><span class="gc-val">${rupees(c.target)}</span></div>
+        <div><span class="gc-lbl">Remaining</span><span class="gc-val neg">${rupees(c.remaining)}</span></div>
+        <div><span class="gc-lbl">Progress</span><span class="gc-val">${Math.round(c.pct)}%</span></div>
+      </div>
+      ${!g.completed?`<div class="gd-note">${c.status==="on-track"?"Saving "+rupees(c.plan)+"/mo · on track for "+parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"})
+        :c.status==="needs-attention"?`Needs <b>${rupees(c.required)}/mo</b> to hit the target by ${parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"})}${c.plan>0?` · saving ${rupees(c.plan)}/mo`:""}`
+        :c.status==="overdue"?`Target date (${parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"})}) has passed — needs <b>${rupees(c.required)}/mo</b> now.`
+        :"Target saved — ready to buy!"}</div>`:""}
+      <div class="sec-label" style="margin-top:16px">Goal</div>
+      <div class="slab">
+        <span class="s-label">Estimated cost<div class="s-sub">${g.actualAmount?`Actual: ${rupees(g.actualAmount)} · ${g.actualAmount<=g.target?"under by "+rupees(g.target-g.actualAmount):"over by "+rupees(g.actualAmount-g.target)}`:""}</div></span>
+        <span>${rupees(c.target)}</span>
+      </div>
+      <div class="slab">
+        <span class="s-label">Expected date<div class="s-sub">${monthsLeft==="past due"?"Past due":(monthsLeft+" month"+(monthsLeft===1?"":"s")+" away")}</div></span>
+        <span>${g.date?parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"}):"—"}</span>
+      </div>
+      <div class="slab">
+        <span class="s-label">Monthly savings plan<div class="s-sub">${c.plan>0?"Estimated completion: "+(c.estDate?c.estDate.toLocaleDateString("en-IN",{month:"short",year:"numeric"}):"—"):"No monthly plan set"}</div></span>
+        <span>${rupees(c.plan)}/mo</span>
+      </div>
+      <div class="sec-label" style="margin-top:16px">Savings Sources ${srcTotal?`· ${rupees(srcTotal)}`:"· no source yet"}</div>
+      ${(g.sources&&g.sources.length)?g.sources.map(s=>`
+        <div class="slab">
+          <span class="s-label">${esc(s.name)}</span>
+          <span>${rupees(s.amount||0)}</span>
+        </div>`).join("")
+        :`<div class="tsub" style="margin:0 2px 4px;color:var(--muted)">No savings source allocated yet.</div>`}
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn ghost" style="flex:1" data-act="goal-edit" data-id="${g.id}">Edit</button>
+        ${!g.completed?`<button class="btn" style="flex:1" data-act="goal-complete" data-id="${g.id}">${IC.check} Purchased</button>`:""}
+      </div>
+      ${g.completed?`<div class="gd-note ok">Recorded as an expense${g.actualTxId?" · tap the Activity tab to see it":""}</div>`:""}
+      <button class="btn ghost" style="width:100%;margin-top:12px;color:var(--neg);border-color:rgba(192,91,77,.35)" data-act="goal-del" data-id="${g.id}">${IC.trash} ${this.pendingDel===id?"Tap again to delete":"Delete goal"}</button>`;
+  },
+  goalSrcSheet(){
+    const srcs=App._goalSources||[];
+    const total=srcs.reduce((s,x)=>s+(x.amount||0),0);
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">Savings sources</div>
+      <div class="tsub" style="margin:0 2px 10px;color:var(--muted)">Total saved across sources: <b>${rupees(total)}</b></div>
+      ${srcs.length?srcs.map((s,i)=>`
+        <div class="slab">
+          <span class="s-label">${esc(s.name)}</span>
+          <span style="display:flex;align-items:center;gap:10px"><b>${rupees(s.amount||0)}</b>
+            <button class="row-btn" data-act="src-edit" data-i="${i}">${IC.pen}</button>
+            <button class="row-btn" data-act="src-del" data-i="${i}">${IC.x}</button>
+          </span>
+        </div>`).join(""):`<div class="tsub" style="margin:0 2px 8px;color:var(--muted)">No sources yet — add where this goal's money is kept.</div>`}
+      <button class="set" style="margin-top:8px" data-act="src-add"><span class="s-label">Add source<div class="s-sub">Mutual Fund, Savings Account, FD, RD, Cash…</div></span>${IC.plus}</button>
+      <button class="btn" style="margin-top:16px" data-act="src-done">${IC.check} Done</button>`;
+  },
+  srcEntrySheet(idx){
+    const s=idx!=null?App._goalSources[idx]:null;
+    App._srcIdx=idx;
+    if(s){App._srcName=s.name;App._srcAmt=String(s.amount/100);}
+    const TYPES=["Mutual Fund — Groww","Savings Account — HDFC","Savings Account — ICICI","Recurring Deposit","Fixed Deposit","Cash","Other"];
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">${s?"Edit source":"Add source"}</div>
+      <div class="chip-row" style="margin-top:0">
+        ${TYPES.map(t=>`<button class="chip ${App._srcName===t?"on":""}" data-act="src-type" data-t="${esc(t)}">${esc(t.split(" — ")[0])}</button>`).join("")}
+      </div>
+      <div class="tsub" style="margin:8px 2px 4px">Source name</div>
+      <input type="text" id="gs-n" placeholder="e.g. Savings Account — HDFC" value="${esc(App._srcName)}" style="margin-top:0">
+      <div class="tsub" style="margin:8px 2px 4px">Amount saved (₹)</div>
+      <input type="text" id="gs-a" inputmode="decimal" placeholder="0" value="${esc(App._srcAmt)}" style="margin-top:0">
+      <button class="btn" style="margin-top:16px" data-act="src-save">${IC.check} ${s?"Save source":"Add source"}</button>`;
+  },
+  goalCompleteSheet(id){
+    const g=this.data.goals.find(x=>x.id===id);if(!g)return "";
+    App._gCompId=id;
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">Purchased ${esc(g.name)}?</div>
+      <div class="tsub" style="margin:0 2px 4px;color:var(--muted)">Record what you actually spent. The goal moves to your completed history.</div>
+      <div class="tsub" style="margin-bottom:2px">Purchase amount (₹)</div>
+      <input type="text" id="gc-a" inputmode="decimal" placeholder="${esc(String(g.target/100))}" style="margin-top:0">
+      <div class="tsub" style="margin-bottom:2px">Purchase date</div>
+      <input type="date" id="gc-d" value="${todayStr()}" style="margin-top:0">
+      <button class="btn" style="margin-top:16px" data-act="goal-complete-save">${IC.check} Mark purchased</button>`;
   },
   accAddSheet(){
     return `
@@ -2308,23 +2561,68 @@ txnSheet(id){
         emoji:fallbackEmoji({id,name:n})});
       App.save();App.swapSheet(App.catManageSheet());
     },
-    "bud-add":()=>App.openSheet(App.budSheet()),
-    "bb-cat":(el)=>{
+    "goal-add":()=>{App._goalId=null;App._goalName="";App._goalTarget="";App._goalDate="";App._goalCur="";App._goalMonthly="";App._goalSources=[];App.openSheet(App.goalSheet());setTimeout(()=>App.updateGoalCalc(),50)},
+    "goal-save":(el)=>{
+      const name=($("#gg-n").value||"").trim();
+      if(!name){App.toast("Enter a goal name");return}
+      const target=Math.round(parseFloat(($("#gg-t").value||"").replace(/,/g,""))||0)*100;
+      if(!isFinite(target)||target<=0){App.toast("Enter an estimated cost");return}
+      const date=($("#gg-d").value||"").trim()||null;
+      const curIn=Math.round(parseFloat(($("#gg-c").value||"").replace(/,/g,""))||0)*100;
+      const plan=Math.round(parseFloat(($("#gg-m").value||"").replace(/,/g,""))||0)*100;
       const id=el.dataset.id;
-      App.budSet.has(id)?App.budSet.delete(id):App.budSet.add(id);
-      App.renderDet(); },
-    "bb-all":()=>{App.budSet.clear();App.renderDet()},
-    "bud-save":(el)=>{
-      const name=($("#bb-n").value||"").trim()||"Budget";
-      const lim=parseFloat($("#bb-l").value||"0");
-      if(!isFinite(lim)||lim<=0){App.toast("Enter a limit");return}
-      const id=el.dataset.id;
-      const data={name,limit:Math.round(lim*100),categoryIds:Array.from(App.budSet),color:"#7C9AA6"};
-      if(id){const b=App.data.budgets.find(x=>x.id===id);Object.assign(b,data)}
-      else{App.data.budgets.push(Object.assign({id:uid()},data))}
-      App.save();App.closeSheet();App.render();App.toast(id?"Budget updated":"Budget created");
+      const sources=(App._goalSources||[]).map(s=>({id:s.id||uid(),name:s.name,type:s.type||"",amount:Math.round(s.amount||0)}));
+      let current;
+      if(!sources.length&&curIn>0){current=curIn;sources.push({id:uid(),name:"Cash",type:"cash",amount:curIn})}
+      else current=sources.reduce((s,x)=>s+x.amount,0);
+      const data={name,target,date,current,plan,sources};
+      if(id){const g=App.data.goals.find(x=>x.id===id);if(g){Object.assign(g,data);g.completed=false;}}
+      else{App.data.goals.push(Object.assign({id:uid(),completed:false,createdAt:Date.now()},data))}
+      App._goalSources=[];
+      App.save();App.closeSheet();App.render();
+      App.toast(id?"Goal updated":"Goal created");
     },
-    "bud-open":(el)=>App.openSheet(App.budSheet(el.dataset.id)),
+    "goal-open":(el)=>{App.pendingDel=null;App.openSheet(App.goalDetailSheet(el.dataset.id))},
+    "goal-edit":(el)=>{const g=App.data.goals.find(x=>x.id===el.dataset.id);if(!g)return;App._goalId=g.id;App._goalName=g.name;App._goalTarget=String(g.target/100);App._goalDate=g.date||"";App._goalCur="";App._goalMonthly=g.plan!=null?String(g.plan/100):"";App._goalSources=(g.sources||[]).map(s=>({id:s.id,name:s.name,type:s.type||"",amount:s.amount||0}));
+      App.swapSheet(App.goalSheet(g.id));setTimeout(()=>App.updateGoalCalc(),50)},
+    "gg-src-open":()=>App.swapSheet(App.goalSrcSheet()),
+    "src-add":()=>App.swapSheet(App.srcEntrySheet(null)),
+    "src-type":(el)=>{App._srcName=el.dataset.t;App.swapSheet(App.srcEntrySheet(App._srcIdx))},
+    "src-save":()=>{
+      const name=($("#gs-n").value||"").trim();
+      if(!name){App.toast("Enter a source name");return}
+      const amt=Math.round(parseFloat(($("#gs-a").value||"").replace(/,/g,""))||0)*100;
+      if(!isFinite(amt)||amt<0){App.toast("Enter an amount");return}
+      if(!App._goalSources)App._goalSources=[];
+      const rec={id:App._srcIdx!=null?App._goalSources[App._srcIdx].id:null,name,type:"",amount:amt};
+      if(App._srcIdx!=null)App._goalSources[App._srcIdx]=rec;
+      else App._goalSources.push(rec);
+      App.swapSheet(App.goalSrcSheet());
+    },
+    "src-edit":(el)=>App.swapSheet(App.srcEntrySheet(parseInt(el.dataset.i,10))),
+    "src-del":(el)=>{App._goalSources.splice(parseInt(el.dataset.i,10),1);App.swapSheet(App.goalSrcSheet())},
+    "src-done":()=>{App.swapSheet(App.goalSheet(App._goalId));setTimeout(()=>App.updateGoalCalc(),50)},
+    "goal-complete":(el)=>App.swapSheet(App.goalCompleteSheet(el.dataset.id)),
+    "goal-complete-save":()=>{
+      const id=App._gCompId;const g=App.data.goals.find(x=>x.id===id);if(!g)return;
+      const amtInput=($("#gc-a").value||"").trim();
+      const amt=amtInput?Math.round(parseFloat(amtInput.replace(/,/g,""))||0)*100:g.target;
+      if(!isFinite(amt)||amt<=0){App.toast("Enter a valid purchase amount");return}
+      const date=$("#gc-d").value||todayStr();
+      g.actualAmount=amt;g.actualDate=date;g.completed=true;g.completedAt=date;
+      const acc=App.data.accounts.find(a=>a.id!=="__prev"&&a.kind!=="card")||App.data.accounts[0];
+      if(acc){
+        let catId="cat-other";
+        const match=App.data.categories.find(c=>c.kind==="expense"&&g.name&&g.name.toLowerCase()===c.name.toLowerCase());
+        if(match)catId=match.id;
+        const t={id:uid(),date,dir:"expense",amount:amt,categoryId:catId,accountId:acc.id,note:(g.name||"")+" (goal)",createdAt:Date.now()};
+        App.data.transactions.push(t);
+        g.actualTxId=t.id;g.actualCatId=catId;
+      }
+      App.save();App.closeSheet();App.render();App.toast("Goal completed");
+    },
+    "goal-del":(el)=>{const id=el.dataset.id;if(App.pendingDel!==id){App.pendingDel=id;App.swapSheet(App.goalDetailSheet(id));return}
+      App.data.goals=App.data.goals.filter(x=>x.id!==id);App.save();App.closeSheet();App.render();App.toast("Goal deleted")},
     "acc-add":()=>{App._accMode="add";App._accKind="cash";App._accSec=false;App._accIcon=null;App._accName="";App._accOpening="";App.openSheet(App.accAddSheet())},
     "tr-open":()=>{
       const accs=App.data.accounts;
@@ -2498,8 +2796,13 @@ function sampleData(){
     {date:D(15),dir:"expense",amount:4200,categoryId:"cat-tra",accountId:"acc-card",name:"Train tickets"}
   ];
   App.data.transactions=txs.map((t,i)=>Object.assign({id:uid(),note:"",createdAt:Date.now()-i*1e6},t));
-  App.data.accounts[0].opening=20000;App.data.accounts[1].opening=45000;
-  App.data.budgets=[{id:"bud-1",name:"Groceries",limit:15600,categoryIds:["cat-gro"],color:"#7C9AA6"}];
+  App.data.accounts[0].opening=2000000;App.data.accounts[1].opening=4500000;
+  const ym=(n)=>{const d=new Date(today);d.setMonth(d.getMonth()+n);return dstr(d).slice(0,7)};
+  App.data.goals=[
+    {id:"goal-1",name:"iPhone 18",target:15000000,current:4500000,date:ym(12),plan:875000,completed:false,sources:[{id:uid(),name:"Savings Account — HDFC",type:"bank",amount:3000000},{id:uid(),name:"Mutual Fund — Groww",type:"mf",amount:1500000}]},
+    {id:"goal-2",name:"Europe Trip",target:12000000,current:8000000,date:ym(9),plan:600000,completed:false,sources:[{id:uid(),name:"Fixed Deposit",type:"fd",amount:8000000}]},
+    {id:"goal-3",name:"MacBook",target:10000000,current:2500000,date:ym(15),plan:500000,completed:false,sources:[{id:uid(),name:"Recurring Deposit",type:"rd",amount:2500000}]}
+  ];
 }
 
 /* ============================ GLOBAL CLICK DELEGATION ============================ */
@@ -2516,6 +2819,16 @@ document.addEventListener("input",e=>{
   if(e.target&&e.target.id==="tr-note")App.tr.note=e.target.value;
   if(e.target&&e.target.id==="aa-n")App._accName=e.target.value;
   if(e.target&&e.target.id==="aa-o")App._accOpening=e.target.value;
+  if(e.target&&e.target.id==="gg-n")App._goalName=e.target.value;
+  if(e.target&&e.target.id==="gg-t")App._goalTarget=e.target.value;
+  if(e.target&&e.target.id==="gg-d")App._goalDate=e.target.value;
+  if(e.target&&e.target.id==="gg-c")App._goalCur=e.target.value;
+  if(e.target&&e.target.id==="gg-m")App._goalMonthly=e.target.value;
+  if(e.target&&e.target.id==="gs-n")App._srcName=e.target.value;
+  if(e.target&&e.target.id==="gs-a")App._srcAmt=e.target.value;
+  if(e.target&&["gg-n","gg-t","gg-d","gg-c","gg-m"].includes(e.target.id)){
+    App.updateGoalCalc();
+  }
   if(e.target&&e.target.id==="ai-q"){
     const q=e.target.value.trim().toLowerCase();
     document.querySelectorAll(".ai-cell").forEach(b=>{
@@ -2598,18 +2911,8 @@ if("serviceWorker" in navigator){
 /* renderDet: re-render sheet content pieces handled by App.actions */
 App.renderDet=function(){
   const sb=$("#sheet-body");
-  if(sb&&sb.querySelector("[data-act=bb-cat]")){
-    const cats=App.data.categories.filter(c=>c.kind==="expense");
-    const chips=[...sb.querySelectorAll(".chip")];
-    chips.forEach((ch,n)=>{
-      const first=sb.querySelector("[data-act=bb-all]");
-      if(ch===first){ch.classList.toggle("on",App.budSet.size===0)}
-      else{
-        const idField=ch.dataset.id;
-        const c=cats.find(c=>c.id===idField);
-        if(c)ch.classList.toggle("on",App.budSet.has(c.id));
-      }
-    });
+  if(sb&&sb.querySelector("#goal-calc")){
+    App.updateGoalCalc();
   }
 };
 
