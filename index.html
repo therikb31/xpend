@@ -788,7 +788,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b41";
+const APP_VER="b42";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -2523,7 +2523,7 @@ txnSheet(id){
     "go-activity":()=>{App.flt.cat="all";App.view="activity";App.prevView="overview";App.render()},
     "go-summary":()=>{App.view="summary";App.prevView="summary";App.render()},
     "go-settings":()=>{App.view="settings";App.prevView="overview";App.render()},
-    "ov-cat":(el)=>{App.flt.cat=el.dataset.id;App.view="activity";App.prevView="overview";App.render()},
+    "ov-cat":(el)=>{App.flt.cat=el.dataset.id;App.prevView=App.view;App.view="activity";App.render()},
     "back":()=>{App.view=App.prevView||"overview";App.render()},
     "list-go":()=>{App.view="activity";App.prevView="overview";App.render()},
     "fl-exp":()=>{App.flt.dir=App.flt.dir==="expense"?"all":"expense";App.render()},
