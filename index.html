@@ -172,6 +172,20 @@ svg{display:block}
 .cat-spacer{visibility:hidden}
 .cat-chart .bar{background:rgba(255,255,255,.05)}
 .cat-chart .bar.on{background:var(--c,#8C52FF)}
+/* category screen: edge-to-edge like Activity — neutralize the intrinsic insets of the shared dashboard widgets */
+.scr.cat .ov-chart{margin:6px 0 4px}
+.scr.cat .ov-chips{padding:8px 0 4px}
+.scr.cat .cat-list .dg-head:first-child{padding-top:12px}
+.scr.cat .cat-list .empty{padding:40px 0}
+
+/* swipe month-navigation surfaces */
+.swipe-mk{
+  touch-action:pan-y;
+  transition:transform .18s ease;
+  will-change:transform;
+  -webkit-user-select:none;user-select:none;
+}
+.donut-wrap.big .donut-center>*{touch-action:pan-y;-webkit-user-select:none;user-select:none}
 
 .ov-chips{display:flex;gap:8px;overflow-x:auto;padding:8px 18px 4px;-webkit-overflow-scrolling:touch;-ms-overflow-style:none}
 .ov-chip{
@@ -803,7 +817,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b43";
+const APP_VER="b44";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1377,6 +1391,10 @@ this.render();
     const c=catById(cid);
     return idx>=0?PAL[idx%PAL.length]:(c&&c.color)||"#8C52FF";
   },
+  shiftMonth(delta){
+    const d=parseMk(this.mkey);d.setMonth(d.getMonth()+delta);
+    this.mkey=monthKey(d);this.render();
+  },
   accBalance(id){
     const a=accById(id);
     if(!a)return 0;
@@ -1444,7 +1462,7 @@ this.render();
     return `
     <div class="scr ov">
       <div class="ov-top"><button class="ov-gear" data-act="go-settings" aria-label="Settings">${IC.gear}</button></div>
-      <button class="ov-sum" data-act="mk-open" aria-label="Select month">
+      <button class="ov-sum swipe-mk" data-act="mk-open" aria-label="Select month">
         <span class="ov-mon">${esc(monthName)} ${IC.chev}</span>
         <span class="ov-total">${rupees(st.spent)}</span>
         ${pct==null?`<span class="ov-delta" style="color:var(--muted)">${IC.downcir} No earlier data</span>`
@@ -1600,7 +1618,7 @@ this.render();
       <div class="ov-top"><button class="ov-gear" data-act="go-settings" aria-label="Settings">${IC.gear}</button></div>
       <div class="sum-chart">
         <div class="donut-wrap big">${donut}
-          <div class="donut-center">
+          <div class="donut-center swipe-mk">
             <button class="dc-month" data-act="mk-open" aria-label="Select month">${esc(monthLabel)} ${IC.chev}</button>
             <div class="dc-main">${rupees(total)}</div>
             ${trend}
@@ -1681,7 +1699,7 @@ this.render();
     <div class="scr cat">
       <div class="cat-top">
         <button class="cbtn" data-act="back" aria-label="Back">${IC.left}</button>
-        <button class="cat-metric" data-act="mk-open" aria-label="Select month">
+        <button class="cat-metric swipe-mk" data-act="mk-open" aria-label="Select month">
           <span class="cat-title">${catEmoji(c)} ${esc(c.name)} ${IC.chev}</span>
           <span class="cat-total">${rupees(total)}</span>
           ${delta}
@@ -1695,14 +1713,14 @@ this.render();
         <button class="ov-chip ${acc?"on":""}" data-act="acc-fopen">${acc?`<span class="dot" style="--c:${acc.color}"></span>`:""}${esc(accTxt)}</button>
         <button class="ov-chip" data-act="fl-clear">All</button>
       </div>
-      <div class="ov-groups">
-        ${groups.length?groups.map(g=>
-          `<div class="ov-dg"><span class="ov-dg-day">${dayLabel(g.date)}</span><span class="ov-dg-amt">${rupees(g.items.reduce((s,t)=>s+t.amount,0))}</span></div>
-          <div class="ov-day">
-            ${g.items.map(t=>this.ovCard(t)).join("")}
-          </div>`
-        ).join("")
-          :`<div class="card" style="border-radius:24px"><div class="empty"><div>${IC.empty}</div><div class="t">No transactions</div><div class="s">Nothing in ${esc(c.name)} for this month yet</div></div></div>`}
+      <div class="cat-list">
+        ${groups.length?groups.map(g=>{
+          const pd=parseD(g.date);
+          const dayTotal=g.items.reduce((s,t)=>s+t.amount,0);
+          return `<div class="dg-head"><span class="dg-day">${pd.toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"})}</span><span class="dg-total">${rupees(dayTotal)}</span></div>`+
+            g.items.map(t=>this.txRow(t)).join("");
+        }).join("")
+          :`<div class="empty"><div>${IC.empty}</div><div class="t">No transactions</div><div class="s">Nothing in ${esc(c.name)} for this month yet</div></div>`}
       </div>
     </div>`;
   },
@@ -2919,11 +2937,44 @@ function sampleData(){
 
 /* ============================ GLOBAL CLICK DELEGATION ============================ */
 document.addEventListener("click",e=>{
+  if(App._swipeT){App._swipeT=0;return}
   const el=e.target.closest("[data-act]");
   if(!el)return;
   const fn=App.actions[el.dataset.act];
   if(fn)fn(el,e);
 });
+
+/* horizontal swipe on month-total surfaces (.swipe-mk): left = previous month, right = next month.
+   A real swipe also suppresses the mk-open click so the picker doesn't pop up. */
+let _swipe=null;
+document.addEventListener("pointerdown",e=>{
+  const el=e.target.closest(".swipe-mk");
+  if(!el){_swipe=null;return}
+  _swipe={el,x:e.clientX,y:e.clientY,t:Date.now()};
+},{passive:true});
+document.addEventListener("pointermove",e=>{
+  if(!_swipe)return;
+  const dx=e.clientX-_swipe.x,dy=e.clientY-_swipe.y;
+  if(Math.abs(dx)>Math.abs(dy)*1.4&&Math.abs(dx)>6){
+    const c=Math.max(-70,Math.min(70,dx));
+    _swipe.el.style.transition="none";
+    _swipe.el.style.transform="translateX("+c.toFixed(1)+"px)";
+  }
+},{passive:true});
+document.addEventListener("pointerup",e=>{
+  if(!_swipe)return;
+  const s=_swipe;_swipe=null;
+  const dx=e.clientX-s.x;
+  s.el.style.transform="";s.el.style.transition="";
+  if(Math.abs(dx)>44&&Date.now()-s.t<600){
+    App._swipeT=Date.now();
+    setTimeout(()=>{App._swipeT=0},150);
+    App.shiftMonth(dx<0?-1:1);
+  }
+},{passive:true});
+document.addEventListener("pointercancel",()=>{
+  if(_swipe){_swipe.el.style.transform="";_swipe.el.style.transition="";_swipe=null}
+},{passive:true});
 
 document.addEventListener("input",e=>{
   if(e.target&&e.target.id==="note-inline"){App.add.note=e.target.value;updateNoteSug();}
