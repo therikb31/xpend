@@ -693,6 +693,13 @@ input[type=text],textarea.tx{
   padding:15px 16px;font-size:16px;outline:0;margin:4px 0 14px;
 }
 textarea.tx{resize:none;font-family:none;min-height:64px}
+input[type=month],input[type=date]{
+  width:100%;box-sizing:border-box;background:var(--control);border:0;border-radius:16px;
+  padding:15px 16px;font-size:16px;font-family:inherit;color:var(--text);
+  outline:0;margin:4px 0 14px;color-scheme:dark;
+}
+input[type=month]::-webkit-calendar-picker-indicator,input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);cursor:pointer;opacity:.7}
+input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit{color:var(--text)}
 
 /* ============================ DESKTOP RAIL (≥768px) ============================ */
 @media (min-width:768px){
@@ -768,7 +775,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b38";
+const APP_VER="b39";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
