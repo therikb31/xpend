@@ -653,17 +653,29 @@ select.sel{
 .metric-val.neg{color:var(--neg)}
 .metric-lbl{font-size:12px;color:var(--muted)}
 .status-pills{display:flex;flex-wrap:wrap;gap:6px}
-.goal-row{display:flex;flex-direction:column;gap:10px;cursor:pointer;touch-action:manipulation}
+.goal-row{display:flex;flex-direction:column;gap:0;cursor:pointer;touch-action:manipulation}
 .goal-row:active{background:rgba(255,255,255,.05)}
-.goal-row .ccircle{align-self:flex-start}
-.goal-info{flex:1;min-width:0}
-.goal-name{font-size:16.5px;font-weight:700;color:var(--text);display:block}
-.goal-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
-.goal-meta .ok{color:#52E5A5}
-.goal-kv{display:flex;flex-direction:column;text-align:right}
-.goal-progress{height:8px;border-radius:99px;background:var(--control);overflow:hidden;width:100%}
-.goal-progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#8C52FF,#B666FF)}
-.goal-progress.err i{background:var(--neg)}
+.goal-head{display:flex;align-items:center;gap:11px}
+.goal-head .ccircle{flex:none}
+.goal-name{font-size:16.5px;font-weight:700;color:var(--text)}
+.goal-head .goal-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.goal-pbar{display:flex;align-items:center;gap:10px;margin-top:14px}
+.goal-pbar-track{flex:1;height:10px;border-radius:99px;background:var(--control);overflow:hidden}
+.goal-pbar-track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#8C52FF,#B666FF)}
+.goal-pbar.err .goal-pbar-track i{background:var(--neg)}
+.goal-pct{font-size:12.5px;font-weight:700;color:var(--muted-2);font-variant-numeric:tabular-nums;min-width:34px;text-align:right}
+.goal-fig{display:flex;align-items:baseline;gap:8px;margin-top:12px}
+.goal-saved{font-size:18px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+.goal-of{font-size:13px;color:var(--muted)}
+.goal-foot{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.gchip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;background:var(--control);color:var(--text-2);font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.gchip svg{width:14px;height:14px;color:var(--muted-2);flex:none}
+.gchip.ok{background:rgba(82,229,165,.13);color:#52E5A5}
+.gchip.ok svg{color:#52E5A5}
+.gchip.warn{background:rgba(255,159,67,.14);color:#FF9F43}
+.gchip.warn svg{color:#FF9F43}
+.gchip.err{background:rgba(255,90,90,.14);color:#FF5A5A}
+.gchip.err svg{color:#FF5A5A}
 .goal-calc{background:var(--control);border-radius:16px;padding:14px;margin-bottom:14px}
 .goal-calc-hdr{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700;margin-bottom:10px}
 .gc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -694,12 +706,13 @@ input[type=text],textarea.tx{
 }
 textarea.tx{resize:none;font-family:none;min-height:64px}
 input[type=month],input[type=date]{
-  width:100%;box-sizing:border-box;background:var(--control);border:0;border-radius:16px;
-  padding:15px 16px;font-size:16px;font-family:inherit;color:var(--text);
+  display:flex;align-items:center;
+  width:100%;min-width:0;box-sizing:border-box;background:var(--control);border:0;border-radius:16px;
+  height:52px;padding:0 16px;font-size:16px;font-family:inherit;color:var(--text);
   outline:0;margin:4px 0 14px;color-scheme:dark;
 }
-input[type=month]::-webkit-calendar-picker-indicator,input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);cursor:pointer;opacity:.7}
-input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit{color:var(--text)}
+input[type=month]::-webkit-calendar-picker-indicator,input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);cursor:pointer;opacity:.7;width:20px;height:20px;margin:0 0 0 6px;flex:none}
+input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit{color:var(--text);flex:1;min-width:0;padding:0}
 
 /* ============================ DESKTOP RAIL (≥768px) ============================ */
 @media (min-width:768px){
@@ -775,7 +788,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b40";
+const APP_VER="b41";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -816,6 +829,8 @@ const IC={
   bank:svg('<path d="M3 9.5 12 5l9 4.5"/><path d="M3 20h18"/><path d="M5 20v-9M9.5 20v-9M12 20v-9M14.5 20v-9M19 20v-9"/>'),
   mic:svg('<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6.5 11.5a5.5 5.5 0 0 0 11 0"/><path d="M12 17v3.5"/>'),
   chev:svg('<path d="M6 9l6 6 6-6"/>'),
+  cal:svg('<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M8 3.5v3M16 3.5v3M3 9.5h18"/>'),
+  trend:svg('<path d="M3 17l6-6 4 3 8-8"/><path d="M14 6h7v7"/>'),
   downcir:svg('<circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M8.4 15.6 12 19.2l3.6-3.6"/>'),
   plusB:svg('<path d="M12 5v14M5 12h14"/>')
 };
@@ -1689,17 +1704,20 @@ this.render();
       const st=c.status;
       const stL={completed:"Completed","on-track":"On Track","needs-attention":"Needs Attention",overdue:"Overdue"}[st];
       const stC=st==="on-track"?"on":st==="needs-attention"?"warn":st==="overdue"?"err":"ok";
+      const chipC=st==="completed"||st==="on-track"?"ok":st==="overdue"?"err":"warn";
+      const dateLbl=g.date?parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"}):"No date";
       return `<div class="card goal-row" data-act="goal-open" data-id="${g.id}" role="button">
-        <span class="ccircle" style="--c:${colors[g.id]}">${init(g.name)}</span>
-        <div class="goal-info">
+        <div class="goal-head">
+          <span class="ccircle" style="--c:${colors[g.id]}">${init(g.name)}</span>
           <span class="goal-name">${esc(g.name)}</span>
-          <div class="goal-meta">
-            <span class="pill ${stC}">${stL}</span>
-            <span>${Math.round(c.pct)}% · ${rupees(c.current)} / ${rupees(c.target)}</span>
-            ${g.completed?`<span class="ok">Purchased · ${rupees(g.actualAmount)}</span>`:`<span>${g.date?parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"}):"No date"} · ${rupees(c.required)}/mo</span>`}
-          </div>
+          <span class="pill ${stC}">${stL}</span>
         </div>
-        <div class="goal-progress ${st==="overdue"?"err":""}"><i style="width:${Math.min(100,c.pct)}%"></i></div>
+        <div class="goal-pbar ${st==="overdue"?"err":""}"><div class="goal-pbar-track"><i style="width:${Math.min(100,c.pct)}%"></i></div><span class="goal-pct">${Math.round(c.pct)}%</span></div>
+        <div class="goal-fig"><span class="goal-saved">${rupees(c.current)}</span><span class="goal-of">of ${rupees(c.target)} saved</span></div>
+        <div class="goal-foot">
+          ${g.completed?`<span class="gchip ok">${IC.check} Purchased · ${rupees(g.actualAmount)}</span>`
+          :`<span class="gchip">${IC.cal} ${dateLbl}</span><span class="gchip ${chipC}">${IC.trend} ${rupees(c.required)}/mo</span>`}
+        </div>
       </div>`;
     };
     return `
@@ -1741,8 +1759,9 @@ this.render();
       const y=parseInt(g.date.slice(0,4),10),m=parseInt(g.date.slice(5,7),10)-1;
       months=(y-now.getFullYear())*12+(m-now.getMonth());
     }
+    const saveMonths=months>1?months-1:(months===1?1:0);
     const plan=g.plan||0;
-    const required=months>0?Math.ceil(remaining/months/100)*100:0;
+    const required=saveMonths>0?Math.ceil(remaining/saveMonths/100)*100:0;
     const est=plan>0?Math.ceil(remaining/plan):null;
     const estDate=est!=null?new Date(now.getFullYear(),now.getMonth()+est,1):null;
     let status;
@@ -1750,10 +1769,10 @@ this.render();
     else if(current>=target&&(!g.date||months>=0))status="completed";
     else if(months<0&&current<target)status="overdue";
     else{
-      const plannedTotal=current+plan*Math.max(months,0);
-      status=(months>0&&plan>0&&plannedTotal>=target)?"on-track":"needs-attention";
+      const plannedTotal=current+plan*Math.max(saveMonths,0);
+      status=(saveMonths>0&&plan>0&&plannedTotal>=target)?"on-track":"needs-attention";
     }
-    return {target,current,remaining,pct,months,required,plan,est,estDate,status};
+    return {target,current,remaining,pct,months,saveMonths,required,plan,est,estDate,status};
   },
   goalStatus(g){return this.goalCalc(g).status},
 
@@ -2192,7 +2211,7 @@ txnSheet(id){
     const stL={completed:"Completed","on-track":"On Track","needs-attention":"Needs Attention",overdue:"Overdue"}[c.status];
     const stC=c.status==="on-track"?"on":c.status==="needs-attention"?"warn":c.status==="overdue"?"err":"ok";
     const srcTotal=this.goalCurrent(g);
-    const monthsLeft=c.months>0?c.months:(g.date?"past due":"no date");
+    const monthsLeft=c.saveMonths>0?c.saveMonths:(g.date?"past due":"no date");
     const dateTxt=g.date?parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"}):"—";
     return `
       <div class="sh-grab"></div>
@@ -2215,7 +2234,7 @@ txnSheet(id){
         <span>${rupees(c.target)}</span>
       </div>
       <div class="slab">
-        <span class="s-label">Expected date<div class="s-sub">${monthsLeft==="past due"?"Past due":(monthsLeft+" month"+(monthsLeft===1?"":"s")+" away")}</div></span>
+        <span class="s-label">Expected date<div class="s-sub">${monthsLeft==="past due"?"Past due":monthsLeft==="no date"?"No date set":(monthsLeft+" month"+(monthsLeft===1?"":"s")+" left to save")}</div></span>
         <span>${dateTxt}</span>
       </div>
       <div class="slab">
@@ -2808,9 +2827,9 @@ function sampleData(){
   App.data.accounts[0].opening=2000000;App.data.accounts[1].opening=4500000;
   const ym=(n)=>{const d=new Date(today);d.setMonth(d.getMonth()+n);return dstr(d).slice(0,7)};
   App.data.goals=[
-    {id:"goal-1",name:"iPhone 18",target:15000000,current:4500000,date:ym(12),plan:875000,completed:false,sources:[{id:uid(),name:"Savings Account — HDFC",type:"bank",amount:3000000},{id:uid(),name:"Mutual Fund — Groww",type:"mf",amount:1500000}]},
+    {id:"goal-1",name:"iPhone 18",target:15000000,current:4500000,date:ym(12),plan:960000,completed:false,sources:[{id:uid(),name:"Savings Account — HDFC",type:"bank",amount:3000000},{id:uid(),name:"Mutual Fund — Groww",type:"mf",amount:1500000}]},
     {id:"goal-2",name:"Europe Trip",target:12000000,current:8000000,date:ym(9),plan:600000,completed:false,sources:[{id:uid(),name:"Fixed Deposit",type:"fd",amount:8000000}]},
-    {id:"goal-3",name:"MacBook",target:10000000,current:2500000,date:ym(15),plan:500000,completed:false,sources:[{id:uid(),name:"Recurring Deposit",type:"rd",amount:2500000}]}
+    {id:"goal-3",name:"MacBook",target:10000000,current:2500000,date:ym(15),plan:540000,completed:false,sources:[{id:uid(),name:"Recurring Deposit",type:"rd",amount:2500000}]}
   ];
 }
 
