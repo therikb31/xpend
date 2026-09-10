@@ -775,7 +775,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b39";
+const APP_VER="b40";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1211,6 +1211,7 @@ function migrateGoals(d){
   for(const g of d.goals||[]){
     if(g.sources==null){g.sources=[];changed=true}
     if(g.completed==null){g.completed=false;changed=true}
+    if(g.date==null){g.date="";changed=true}
     if(g.completedAt==null&&g.completed){g.completedAt=new Date().toISOString().slice(0,7);changed=true}
   }
   s.goalV=1;
@@ -1224,7 +1225,7 @@ function defaultDoc(){
   return {schemaVersion:1,meta:{createdAt:new Date().toISOString()},
     settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,lastDate:null,lastCategoryId:null,catV:2,goalV:1},
     categories:JSON.parse(JSON.stringify(DEF_CATS)),
-    accounts:JSON.parse(JSON.parse(JSON.stringify(DEF_ACCS))),
+    accounts:JSON.parse(JSON.stringify(DEF_ACCS)),
     transactions:[],goals:[],shortcuts:[]};
 }
 
@@ -1695,7 +1696,7 @@ this.render();
           <div class="goal-meta">
             <span class="pill ${stC}">${stL}</span>
             <span>${Math.round(c.pct)}% · ${rupees(c.current)} / ${rupees(c.target)}</span>
-            ${g.completed?`<span class="ok">Purchased · ${rupees(g.actualAmount)}</span>`:`<span>${parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"})} · ${rupees(c.required)}/mo</span>`}
+            ${g.completed?`<span class="ok">Purchased · ${rupees(g.actualAmount)}</span>`:`<span>${g.date?parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"}):"No date"} · ${rupees(c.required)}/mo</span>`}
           </div>
         </div>
         <div class="goal-progress ${st==="overdue"?"err":""}"><i style="width:${Math.min(100,c.pct)}%"></i></div>
@@ -2191,7 +2192,8 @@ txnSheet(id){
     const stL={completed:"Completed","on-track":"On Track","needs-attention":"Needs Attention",overdue:"Overdue"}[c.status];
     const stC=c.status==="on-track"?"on":c.status==="needs-attention"?"warn":c.status==="overdue"?"err":"ok";
     const srcTotal=this.goalCurrent(g);
-    const monthsLeft=c.months>0?c.months:(c.date?"past due":"no date");
+    const monthsLeft=c.months>0?c.months:(g.date?"past due":"no date");
+    const dateTxt=g.date?parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"}):"—";
     return `
       <div class="sh-grab"></div>
       <div class="sh-title">${esc(g.name)}</div>
@@ -2203,9 +2205,9 @@ txnSheet(id){
         <div><span class="gc-lbl">Remaining</span><span class="gc-val neg">${rupees(c.remaining)}</span></div>
         <div><span class="gc-lbl">Progress</span><span class="gc-val">${Math.round(c.pct)}%</span></div>
       </div>
-      ${!g.completed?`<div class="gd-note">${c.status==="on-track"?"Saving "+rupees(c.plan)+"/mo · on track for "+parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"})
-        :c.status==="needs-attention"?`Needs <b>${rupees(c.required)}/mo</b> to hit the target by ${parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"})}${c.plan>0?` · saving ${rupees(c.plan)}/mo`:""}`
-        :c.status==="overdue"?`Target date (${parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"})}) has passed — needs <b>${rupees(c.required)}/mo</b> now.`
+      ${!g.completed?`<div class="gd-note">${c.status==="on-track"?"Saving "+rupees(c.plan)+"/mo"+(g.date?" · on track for "+dateTxt:"")
+        :c.status==="needs-attention"?`Needs <b>${rupees(c.required)}/mo</b> to hit the target${g.date?` by ${dateTxt}`:""}${c.plan>0?` · saving ${rupees(c.plan)}/mo`:""}`
+        :c.status==="overdue"?`Target date (${dateTxt}) has passed — needs <b>${rupees(c.required)}/mo</b> now.`
         :"Target saved — ready to buy!"}</div>`:""}
       <div class="sec-label" style="margin-top:16px">Goal</div>
       <div class="slab">
@@ -2214,7 +2216,7 @@ txnSheet(id){
       </div>
       <div class="slab">
         <span class="s-label">Expected date<div class="s-sub">${monthsLeft==="past due"?"Past due":(monthsLeft+" month"+(monthsLeft===1?"":"s")+" away")}</div></span>
-        <span>${g.date?parseMk(g.date).toLocaleDateString("en-IN",{month:"short",year:"numeric"}):"—"}</span>
+        <span>${dateTxt}</span>
       </div>
       <div class="slab">
         <span class="s-label">Monthly savings plan<div class="s-sub">${c.plan>0?"Estimated completion: "+(c.estDate?c.estDate.toLocaleDateString("en-IN",{month:"short",year:"numeric"}):"—"):"No monthly plan set"}</div></span>
@@ -2574,7 +2576,7 @@ txnSheet(id){
       if(!name){App.toast("Enter a goal name");return}
       const target=Math.round(parseFloat(($("#gg-t").value||"").replace(/,/g,""))||0)*100;
       if(!isFinite(target)||target<=0){App.toast("Enter an estimated cost");return}
-      const date=($("#gg-d").value||"").trim()||null;
+      const date=($("#gg-d").value||"").trim()||"";
       const curIn=Math.round(parseFloat(($("#gg-c").value||"").replace(/,/g,""))||0)*100;
       const plan=Math.round(parseFloat(($("#gg-m").value||"").replace(/,/g,""))||0)*100;
       const id=el.dataset.id;
