@@ -361,6 +361,7 @@ svg{display:block}
 .sum-ic .acc-ico{width:30px;height:30px;object-fit:contain;display:block;pointer-events:none}
 .sum-ic.logo{background:#fff}
 .sum-ic.logo::after{border-color:rgba(10,13,15,.25)}
+.sum-ic.logo .acc-ico{width:36px;height:36px}
 .cat-title .acc-ico{width:20px;height:20px;object-fit:contain;display:inline-block;pointer-events:none}
 .mi-url-box{display:flex;align-items:center;gap:10px;margin-top:8px}
 .mi-url-prev{width:44px;height:44px;border-radius:14px;background:var(--control);display:grid;place-items:center;flex:none;overflow:hidden;border:.5px solid rgba(255,255,255,.08)}
@@ -855,7 +856,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b52";
+const APP_VER="b53";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
