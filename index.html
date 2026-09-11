@@ -359,6 +359,8 @@ svg{display:block}
 .ccircle.pic{background:#fff}
 .ccircle .acc-ico{width:66%;height:66%;object-fit:contain;display:block;pointer-events:none;-webkit-user-drag:none}
 .sum-ic .acc-ico{width:30px;height:30px;object-fit:contain;display:block;pointer-events:none}
+.sum-ic.logo{background:#fff}
+.sum-ic.logo::after{border-color:rgba(10,13,15,.25)}
 .cat-title .acc-ico{width:20px;height:20px;object-fit:contain;display:inline-block;pointer-events:none}
 .mi-url-box{display:flex;align-items:center;gap:10px;margin-top:8px}
 .mi-url-prev{width:44px;height:44px;border-radius:14px;background:var(--control);display:grid;place-items:center;flex:none;overflow:hidden;border:.5px solid rgba(255,255,255,.08)}
@@ -853,7 +855,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b51";
+const APP_VER="b52";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1468,7 +1470,7 @@ this.render();
     this.renderNav();
     const scr=$("#screen");
     const appEl=document.getElementById("app");
-    appEl.classList.toggle("ov",this.view==="overview"||this.view==="category");
+    appEl.classList.toggle("ov",this.view==="overview"||this.view==="category"||this.view==="merchant");
     appEl.classList.toggle("add",this.view==="add");
     let html="";
     if(this.view==="add"){html=this.addScreen()}
@@ -2156,7 +2158,7 @@ this.render();
       const n=txs.filter(t=>(t.merchantId||"__none")===mid).length;
       const p=total>0?(amt/total*100).toFixed(2):"0.00";
       return `<button class="sum-card" data-act="ov-merch" data-id="${m?m.id:"__none"}">
-        <span class="sum-ic" style="--c:${colors[mid]}">${m?merchantIcon(m):"🧾"}</span>
+        <span class="sum-ic logo" style="--c:${colors[mid]}">${m?merchantIcon(m):"🧾"}</span>
         <span class="sum-cc">
           <span class="nm">${esc(m?m.name:"Unassigned")}</span>
           <span class="sum-count">${n}</span>
