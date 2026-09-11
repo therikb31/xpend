@@ -1378,9 +1378,15 @@ function migrateMerch(d){
     s.merchV=2;
     return changed;
   }
-  d.merchants=JSON.parse(JSON.stringify(DEF_MERCHS));
+  if(s.merchV>=2)return false;
+  /* legacy (pre-merchant or unversioned): seed defaults only when empty */
+  if(!Array.isArray(d.merchants)||!d.merchants.length){
+    d.merchants=JSON.parse(JSON.stringify(DEF_MERCHS));
+    s.merchV=2;
+    return true;
+  }
   s.merchV=2;
-  return true;
+  return false;
 }
 
 /* ============================ APP ============================ */
