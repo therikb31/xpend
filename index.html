@@ -1396,7 +1396,7 @@ const TABS=[
 const App={
   data:null,view:"overview",prevView:"overview",
   mkey:monthKey(new Date()),
-  add:null,dp:null,budSet:null,pendingDel:null,txOpen:null,tr:null,
+  add:null,dp:null,budSet:null,pendingDel:null,txOpen:null,tr:null,_scrollRestore:null,
   flt:{q:"",dir:"all",cat:"all",acc:"all",merch:"all"},
 
   /* ---------- boot ---------- */
@@ -1447,6 +1447,11 @@ this.render();
     clearTimeout(this._tt);this._tt=setTimeout(()=>t.classList.remove("on"),1900);
   },
   rerender(){this.render()},
+  restoreScroll(){
+    if(App._scrollRestore==null)return;
+    const s=$("#screen");if(s)s.scrollTop=App._scrollRestore;
+    App._scrollRestore=null;
+  },
 
   /* ---------- render ---------- */
   render(){
@@ -3155,13 +3160,13 @@ txnSheet(id){
   /* ---------- actions ---------- */
   actions:{
     tab:(el)=>{
-      const t=el.dataset.tab;
+      const t=el.dataset.tab;App._scrollRestore=null;
       if(t!=="budget"&&App.mkey>monthKey(new Date()))App.mkey=monthKey(new Date());
       if(t==="activity"){App.view="overview";App.prevView="overview";App.render();return}
       App.view=t;App.render();
       App.prevView=t;
     },
-    "close-add":()=>{App.closeSheet();App.txOpen=null;App.view=App.prevView||"overview";App.render()},
+    "close-add":()=>{App.closeSheet();App.txOpen=null;App.view=App.prevView||"overview";App.render();App.restoreScroll()},
     "close-sheet":()=>App.closeSheet(),
     "dp-open":()=>{const d=parseD(App.add.date);App.dp={y:d.getFullYear(),m:d.getMonth()};App.openSheet(App.dpSheet())},
     "dp-prev":()=>{App.dp.m--;if(App.dp.m<0){App.dp.m=11;App.dp.y--}App.swapSheet(App.dpSheet())},
@@ -3196,6 +3201,7 @@ txnSheet(id){
         App.data.settings.lastCategoryId=a.categoryId;
         App.data.settings.lastMerchantId=a.merchantId;
         App.save();App.add=App.freshAdd();App.view=App.prevView;App.render();
+        App.restoreScroll();
         App.toast("Updated "+rupees(existing.amount));
         return;
       }
@@ -3207,6 +3213,7 @@ txnSheet(id){
       App.data.settings.lastCategoryId=a.categoryId;
       App.data.settings.lastMerchantId=a.merchantId;
       App.save();App.add=App.freshAdd();App.view=App.prevView;App.render();
+      App.restoreScroll();
       App.toast("Added "+rupees(txn.amount));
     },
     "add-more":()=>App.openSheet(App.moreSheet()),
@@ -3246,7 +3253,7 @@ txnSheet(id){
     "go-settings":()=>{App.view="settings";App.prevView="overview";App.render()},
     "ov-cat":(el)=>{App.flt.cat=el.dataset.id;App.prevView=App.view;App.view="category";App.render()},
     "ov-merch":(el)=>{App.flt.merch=el.dataset.id;App.prevView=App.view;App.view="merchant";App.render()},
-    "back":()=>{App.view=App.prevView||"overview";App.render()},
+    "back":()=>{App._scrollRestore=null;App.view=App.prevView||"overview";App.render()},
     "list-go":()=>{App.prevView=App.view;App.view="activity";App.render()},
     "fl-exp":()=>{App.flt.dir=App.flt.dir==="expense"?"all":"expense";App.render()},
     "fl-clear":()=>{App.flt.dir="all";App.flt.acc="all";App.flt.merch="all";App.render()},
@@ -3258,7 +3265,7 @@ txnSheet(id){
     "mk-next":()=>{const d=parseMk(App.mkey);d.setMonth(d.getMonth()+1);const k=monthKey(d);if(k>monthKey(new Date())&&App.view!=="budget")return;App.mkey=k;App.swapSheet(App.mkeySheet())},
     "mk-pick":(el)=>{App.mkey=el.dataset.key;App.closeSheet();App.render()},
     "mk-today":()=>{App.mkey=monthKey(new Date());App.closeSheet();App.render()},
-    "fab-add":()=>{App.prevView=App.view;App.add=App.freshAdd();App.txOpen=null;App.view="add";App.render()},
+    "fab-add":()=>{App.prevView=App.view;App._scrollRestore=$("#screen").scrollTop;App.add=App.freshAdd();App.txOpen=null;App.view="add";App.render()},
     "note-pick":(el)=>{App.add.note=el.dataset.n;
       const inp=document.getElementById("note-inline");if(inp)inp.value=el.dataset.n;
       document.getElementById("note-sug")?.classList.remove("show")},
@@ -3266,6 +3273,7 @@ txnSheet(id){
     "fd":(el)=>{App.flt[el.dataset.f]=el.dataset.v;App.render()},
     "open-txn":(el)=>{App.txOpen=el.dataset.id;App.pendingDel=null;App.openSheet(App.txnSheet(el.dataset.id))},
     "txn-edit":()=>{const t=App.data.transactions.find(x=>x.id===App.txOpen);if(!t)return;
+      App._scrollRestore=$("#screen").scrollTop;
       App.add={amount:String(t.amount/100).replace(/\.0+$/,""),dir:t.dir,categoryId:t.categoryId,accountId:t.accountId,date:t.date,note:t.note,merchantId:t.merchantId||""};
       App.prevView=App.view;App.closeSheet();App.view="add";App.render();},
     "txn-del":(el)=>{
