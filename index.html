@@ -363,6 +363,7 @@ svg{display:block}
 .sum-ic.logo{background:#fff;width:44px;height:44px;border-radius:50%}
 .sum-ic.logo::after{inset:-3px;border-radius:50%;border-color:rgba(10,13,15,.25)}
 .sum-ic.logo .acc-ico{width:calc(40px * var(--ls,100) / 100);height:calc(40px * var(--ls,100) / 100);object-fit:cover;border-radius:50%}
+.sum-ic.logo .no-img{font-size:14px;font-weight:600;color:#23272B;display:grid;place-items:center}
 .cat-title .acc-ico{width:20px;height:20px;object-fit:contain;display:inline-block;pointer-events:none}
 .mi-url-box{display:flex;align-items:center;gap:10px;margin-top:8px}
 .mi-url-prev{width:44px;height:44px;border-radius:14px;background:var(--control);display:grid;place-items:center;flex:none;overflow:hidden;border:.5px solid rgba(255,255,255,.08)}
@@ -860,7 +861,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b57";
+const APP_VER="b58";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -2720,7 +2721,7 @@ this.render();
       <div class="chip-row" style="margin:0">
         ${MERCH_COLS.map((col,i)=>`<button class="chip ${App._merchColor===col?"on":""}" data-act="mm-col" data-col="${col}" data-i="${i}"><span class="dot" style="--c:${col}"></span></button>`).join("")}
       </div>
-      <button class="set" style="margin-top:14px" data-act="mi-open"><span class="s-label">Logo<div class="s-sub">App or service logo shown as the merchant icon</div></span><span class="csel" id="mi-prev">${merchantCell({icon:App._merchIcon,name:App._merchName||"N",color:App._merchColor,iconUrl:App._merchIconUrl,logoScale:App._merchLogoScale})}</span></button>
+      <button class="set" style="margin-top:14px" data-act="mi-open"><span class="s-label">Logo<div class="s-sub">App or service logo shown as the merchant icon</div></span><span class="csel" id="mi-prev"><span class="sum-ic logo" style="--c:${App._merchColor}">${App._merchIcon||App._merchIconUrl?merchantIcon({name:App._merchName||"N",icon:App._merchIcon,iconUrl:App._merchIconUrl,color:App._merchColor,logoScale:App._merchLogoScale}):`<span class="acc-ico no-img">${init(App._merchName||"N")}</span>`}</span></span></button>
       <div class="mm-ls-row">
         <span class="s-label" style="font-size:13.5px;font-weight:600">Logo size</span>
         <span id="mm-ls-val" class="mm-ls-val">${App._merchLogoScale}%</span>
@@ -3760,7 +3761,7 @@ document.addEventListener("input",e=>{
     const v=document.getElementById("mm-ls-val");
     if(v)v.textContent=App._merchLogoScale+"%";
     const prev=document.getElementById("mi-prev");
-    if(prev)prev.innerHTML=merchantCell({icon:App._merchIcon,name:App._merchName||"N",color:App._merchColor,iconUrl:App._merchIconUrl,logoScale:App._merchLogoScale});
+    if(prev)prev.innerHTML=`<span class="sum-ic logo" style="--c:${App._merchColor}">${App._merchIcon||App._merchIconUrl?merchantIcon({name:App._merchName||"N",icon:App._merchIcon,iconUrl:App._merchIconUrl,color:App._merchColor,logoScale:App._merchLogoScale}):`<span class="acc-ico no-img">${init(App._merchName||"N")}</span>`}</span>`;
   }
   if(e.target&&["gg-n","gg-t","gg-d","gg-c","gg-m"].includes(e.target.id)){
     App.updateGoalCalc();
