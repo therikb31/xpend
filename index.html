@@ -273,8 +273,9 @@ svg{display:block}
 .ov-cc .sb{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ov-card .amt{font-size:16.5px;font-weight:700;font-variant-numeric:tabular-nums}
 .ov-card .amt.sm{font-size:13px;font-weight:500;color:var(--muted)}
-.ov-card .amt.sm.inc{color:var(--inc);font-weight:600}
-.ov-card .amt.inc{color:var(--inc)}
+  .ov-card .amt.sm.inc{color:var(--inc);font-weight:600}
+  .ov-card .amt.sm.nom{color:var(--warn);font-weight:600}
+  .ov-card .amt.inc{color:var(--inc)}
 .ov-card .amt.sav{color:var(--neg)}
 .see-all{display:block;text-align:center;padding:12px 0 4px;color:var(--muted);font-size:14.5px;font-weight:600}
 .see-all:active{color:var(--text)}
@@ -852,7 +853,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b49";
+const APP_VER="b50";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1360,7 +1361,7 @@ const DEF_MERCHS=[
 ];
 function defaultDoc(){
   return {schemaVersion:1,meta:{createdAt:new Date().toISOString()},
-    settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,lastDate:null,lastCategoryId:null,lastMerchantId:"",catV:2,goalV:1,merchV:2},
+    settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,highlightNoMerchant:true,lastDate:null,lastCategoryId:null,lastMerchantId:"",catV:2,goalV:1,merchV:2},
     categories:JSON.parse(JSON.stringify(DEF_CATS)),
     accounts:JSON.parse(JSON.stringify(DEF_ACCS)),
     merchants:JSON.parse(JSON.stringify(DEF_MERCHS)),
@@ -2000,7 +2001,7 @@ this.render();
       <span class="ov-cc">
         <span class="nm">${esc(t.note||c.name)}</span>
       </span>
-      <span class="amt sm ${t.dir==="income"?"inc":sav?"sav":""}">${rupees(t.amount)}</span>
+      <span class="amt sm ${t.dir==="income"?"inc":sav?"sav":""}${!t.merchantId&&this.data.settings.highlightNoMerchant!==false?" nom":""}">${rupees(t.amount)}</span>
     </button>`;
   },
   floaters(){
@@ -2328,7 +2329,7 @@ this.render();
       <span class="trow-body">
         <span class="tname">${esc(t.note||c.name)}</span>
       </span>
-      <span class="tamt ${(t.dir==="income"?"inc ":sav?"sav ":"")+(t.dir!=="trans"&&!t.merchantId?"nom":"")}">${rupees(t.amount)}</span>
+      <span class="tamt ${(t.dir==="income"?"inc ":sav?"sav ":"")+(t.dir!=="trans"&&!t.merchantId&&this.data.settings.highlightNoMerchant!==false?"nom":"")}">${rupees(t.amount)}</span>
     </button>`;
   },
 
@@ -2467,6 +2468,9 @@ this.render();
       <div class="card">
         <div class="slab">
           <button class="set" data-act="t-hide"><span class="s-label">Hide balances<div class="s-sub">Blur amount figures</div></span><span class="switch ${s.hideBalances?"on":""}"></span></button>
+        </div>
+        <div class="slab">
+          <button class="set" data-act="t-nom"><span class="s-label">Highlight untagged<div class="s-sub">Yellow amounts when no merchant is set</div></span><span class="switch ${s.highlightNoMerchant!==false?"on":""}"></span></button>
         </div>
         <div class="slab">
           <span class="set" style="cursor:default"><span class="s-label">Month starts on<div class="s-sub">Budget &amp; overview period start</div></span>
@@ -3316,6 +3320,7 @@ txnSheet(id){
       App.save();App.closeSheet();App.render();App.toast("Account deleted");
     },
     "t-hide":()=>{App.data.settings.hideBalances=!App.data.settings.hideBalances;App.save();App.render()},
+    "t-nom":()=>{App.data.settings.highlightNoMerchant=App.data.settings.highlightNoMerchant!==false?false:true;App.save();App.render()},
     "cat-manage":()=>App.openSheet(App.catManageSheet()),
     "cat-del":(el)=>{App.data.categories=App.data.categories.filter(c=>c.id!==el.dataset.id);
       App.data.transactions.forEach(t=>{if(t.categoryId===el.dataset.id)t.categoryId="cat-ext"});App.save();App.swapSheet(App.catManageSheet())},
