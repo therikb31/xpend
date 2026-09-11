@@ -1507,6 +1507,14 @@ this.render();
     }
     return map;
   },
+  merchantCount(){
+    const map={};
+    for(const t of this.data.transactions){
+      if(t.dir!=="expense")continue;
+      const k=t.merchantId||"__none";map[k]=(map[k]||0)+1
+    }
+    return map;
+  },
   merchAccent(mid){
     const PAL=["#7B61FF","#FF5678","#31C4F3","#FF9F43","#52E5A5","#FFD166","#9B8CFA","#4EC49B"];
     const entries=Object.entries(this.merchantSpend(this.mkey)).sort((a,b)=>b[1]-a[1]);
@@ -2606,7 +2614,8 @@ this.render();
       <button class="btn ghost" style="margin-top:14px" data-act="acc-add">${IC.plus} New account</button>`;
   },
   merchSheet(){
-    const mts=this.data.merchants||[];
+    const cnt=this.merchantCount();
+    const mts=(this.data.merchants||[]).slice().sort((a,b)=>(cnt[b.id]||0)-(cnt[a.id]||0));
     return `
       <div class="sh-grab"></div>
       <div class="sh-title">Merchant</div>
@@ -2621,7 +2630,8 @@ this.render();
       <button class="btn ghost" style="margin-top:14px" data-act="merch-add">${IC.plus} New merchant</button>`;
   },
   merchManageSheet(){
-    const mts=this.data.merchants||[];
+    const cnt=this.merchantCount();
+    const mts=(this.data.merchants||[]).slice().sort((a,b)=>(cnt[b.id]||0)-(cnt[a.id]||0));
     return `
       <div class="sh-grab"></div>
       <div class="sh-title">Merchants</div>
