@@ -356,6 +356,8 @@ svg{display:block}
 .ccircle svg{width:17px;height:17px;color:#D6DADD}
 .ccircle.pic{background:#fff}
 .ccircle .acc-ico{width:66%;height:66%;object-fit:contain;display:block;pointer-events:none;-webkit-user-drag:none}
+.sum-ic .acc-ico{width:30px;height:30px;object-fit:contain;display:block;pointer-events:none}
+.cat-title .acc-ico{width:20px;height:20px;object-fit:contain;display:inline-block;pointer-events:none}
 .ai-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
 .ai-cell{background:var(--card);border:2px solid transparent;border-radius:14px;padding:12px 6px 10px;display:flex;flex-direction:column;align-items:center;gap:8px}
 .ai-cell .ccircle{width:42px;height:42px}
@@ -554,7 +556,9 @@ select.sel{
   box-shadow:0 0 0 2.5px color-mix(in srgb,var(--c) 30%,transparent)}
 
 /* ============================ ADD-EXPENSE SCREEN (spec §26-30) ============================ */
-.add-top{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
+#app.add #screen{overflow:hidden}
+#app.add .scr.pad-nav{height:100%;min-height:0}
+.add-top{display:flex;align-items:center;justify-content:space-between;padding:2px 0}
 .add-top-col{display:flex;gap:12px;align-items:center}
 .starbtn{position:relative}
 .star-badge{
@@ -564,49 +568,50 @@ select.sel{
 .star-badge svg{width:11px;height:11px}
 .add-amount{
   display:flex;align-items:center;justify-content:center;gap:10px;
-  padding:16px 0 6px;min-height:72px;
+  padding:10px 0 2px;min-height:54px;flex:none;
 }
 .add-amount .cur{font-size:.42em;font-weight:700;color:var(--muted-2);margin-top:.34em}
 .add-amount .num{
-  font-size:clamp(58px,19vw,84px);font-weight:700;letter-spacing:-.03em;
+  font-size:clamp(52px,18vw,76px);font-weight:700;letter-spacing:-.03em;
   font-variant-numeric:tabular-nums;line-height:1;
 }
-.add-amount .num.small{font-size:clamp(42px,14vw,62px)}
+.add-amount .num.small{font-size:clamp(40px,13vw,58px)}
 .close-cap{
   align-self:center;margin-left:14px;
-  width:44px;height:44px;border-radius:var(--r-pill);
+  width:40px;height:40px;border-radius:var(--r-pill);
   background:var(--control);color:#DFE3E6;display:grid;place-items:center;flex:none;
 }
-.close-cap svg{width:19px;height:19px}
-.add-fields{display:flex;flex-direction:column;margin:6px 0 14px}
+.close-cap svg{width:18px;height:18px}
+.add-fields{display:flex;flex-direction:column;margin:2px 0 8px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .field{
   display:flex;align-items:center;gap:14px;width:100%;
-  padding:16px 4px;text-align:left;
+  padding:11px 4px;text-align:left;flex:none;
 }
 .field+.field{border-top:.5px solid rgba(255,255,255,.06)}
 .field .f-name{flex:1;font-size:16px}
+.field .f-name.mute{color:var(--muted-2)}
 .field .f-val{color:var(--muted-2);font-size:15px;font-variant-numeric:tabular-nums}
-.note-field{flex:1;min-width:0}
+.note-field{flex:1;min-width:0;overflow:hidden}
 .note-inline{
   flex:1;min-width:0;background:transparent;border:0;outline:0;
   font-size:16px;color:var(--text);padding:2px 0;
 }
 .note-inline::placeholder{color:var(--muted-2)}
 .ficon{
-  width:44px;height:44px;border-radius:14px;flex:none;
+  width:40px;height:40px;border-radius:13px;flex:none;
   display:grid;place-items:center;
   background:rgba(255,255,255,.06);
   border:.5px solid rgba(255,255,255,.09);
   -webkit-backdrop-filter:blur(14px) saturate(160%);
   backdrop-filter:blur(14px) saturate(160%);
   box-shadow:0 4px 14px rgba(0,0,0,.12);
-  font-size:20px;line-height:1;color:var(--text);
+  font-size:18px;line-height:1;color:var(--text);
 }
-.ficon svg{width:20px;height:20px;color:var(--text-2)}
+.ficon svg{width:18px;height:18px;color:var(--text-2)}
 .field > svg{width:18px;height:18px;color:var(--muted)}
 .note-sug{
   display:none;position:fixed;left:18px;right:18px;z-index:70;
-  bottom:calc(278px + env(safe-area-inset-bottom,0px));
+  bottom:calc(244px + env(safe-area-inset-bottom,0px));
   background:rgba(20,23,25,.92);
   border:.5px solid rgba(255,255,255,.12);
   border-radius:14px;overflow:hidden;
@@ -622,11 +627,11 @@ select.sel{
 .note-sug-item b{color:var(--teal,#4AA8A0);font-weight:700}
 .note-sug-item:active{background:rgba(255,255,255,.07)}
 .keypad{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:9px;
-  padding:2px 0 8px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  padding:2px 0 6px;flex:none;
 }
 .kbtn{
-  height:48px;border-radius:20px;background:var(--card);
+  height:46px;border-radius:20px;background:var(--card);
   color:var(--text);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;
   display:grid;place-items:center;
 }
@@ -635,6 +640,15 @@ select.sel{
 .kbtn.tick{background:var(--sel);color:var(--sel-txt)}
 .kbtn.tick svg{width:28px;height:28px;color:var(--sel-txt)}
 .rate-note{text-align:center;font-size:12.5px;color:var(--muted);padding-bottom:4px}
+@media (max-height:720px){
+  #app.add .add-top{padding:0}
+  #app.add .add-amount{min-height:44px;padding:6px 0 0}
+  #app.add .add-amount .num{font-size:clamp(40px,15vw,58px)}
+  #app.add .field{padding:9px 4px}
+  #app.add .ficon{width:36px;height:36px;font-size:16px;border-radius:11px}
+  #app.add .keypad{gap:6px;padding:0 0 2px}
+  #app.add .kbtn{height:42px;border-radius:18px;font-size:20px}
+}
 
 /* ============================ TOAST ============================ */
 #toast{
@@ -827,7 +841,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b48";
+const APP_VER="b49";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -837,6 +851,7 @@ function dayLabel(dateStr){
 function isPhone(){return typeof window!=="undefined"&&window.matchMedia?window.matchMedia("(max-width:600px)").matches:false}
 function catById(id){return App.data.categories.find(c=>c.id===id)||App.data.categories.find(c=>c.id==="cat-ext")||App.data.categories.find(c=>c.kind==="expense")}
 function accById(id){return App.data.accounts.find(a=>a.id===id)||App.data.accounts[0]}
+function merchById(id){return (App.data.merchants||[]).find(m=>m.id===id)}
 
 /* ============================ ICONS (thin line, monochrome) ============================ */
 const svg=inner=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
@@ -899,7 +914,56 @@ const ACC_ICONS={
 function accIconCell(a){
   const ic=a&&a.icon&&ACC_ICONS[a.icon];
   if(!ic)return `<span class="ccircle" style="--c:${a.color}">${init(a.name)}</span>`;
-  return `<span class="ccircle pic" style="--c:${a.color}"><img class="acc-ico" src="${ic.src}" alt="${esc(ic.name)}" loading="lazy"></span>`;
+  return `<span class="ccircle pic" style="--c:${a.color}"><img class="acc-ico" src="${ic.src}" alt="${esc(ic.name)}" loading="lazy" onerror="imgToInitials(this)"></span>`;
+}
+/* logo image that fails to load collapses to initials (kept in its colored circle) */
+function imgToInitials(img){
+  const p=img&&img.parentElement;if(!p)return;
+  p.textContent=init(img.getAttribute("data-name")||"");
+  p.classList.remove("pic");
+}
+
+/* merchant logos for the merchant portal (CDN-hosted SVGs, same pattern as ACC_ICONS) */
+const MERCH_ICONS={
+  zomato:{name:"Zomato",g:"Food & Delivery",src:"https://cdn.simpleicons.org/zomato/ED6A45"},
+  swiggy:{name:"Swiggy",g:"Food & Delivery",src:"https://cdn.simpleicons.org/swiggy/FC8019"},
+  doms:{name:"Domino's",g:"Food & Delivery",src:"https://cdn.simpleicons.org/dominos/006491"},
+  kfc:{name:"KFC",g:"Food & Delivery",src:"https://cdn.simpleicons.org/kfc/F40027"},
+  mcd:{name:"McDonald's",g:"Food & Delivery",src:"https://cdn.simpleicons.org/mcdonalds/FBC216"},
+  starb:{name:"Starbucks",g:"Food & Delivery",src:"https://cdn.simpleicons.org/starbucks/00704A"},
+  blink:{name:"Blinkit",g:"Groceries",src:"https://cdn.simpleicons.org/blinkit/F8CB46"},
+  zepto:{name:"Zepto",g:"Groceries",src:"https://cdn.simpleicons.org/zepto/8507E0"},
+  bbask:{name:"BigBasket",g:"Groceries",src:"https://cdn.simpleicons.org/bigbasket/2CA01C"},
+  dmart:{name:"DMart",g:"Groceries",src:"https://cdn.simpleicons.org/dmart/E31E24"},
+  uber:{name:"Uber",g:"Ride & Travel",src:"https://cdn.simpleicons.org/uber"},
+  ola:{name:"Ola",g:"Ride & Travel",src:"https://cdn.simpleicons.org/ola"},
+  rapido:{name:"Rapido",g:"Ride & Travel",src:"https://cdn.simpleicons.org/rapido/E9E9E9"},
+  irctc:{name:"IRCTC",g:"Ride & Travel",src:"https://cdn.simpleicons.org/irctc/E31837"},
+  redbus:{name:"redBus",g:"Ride & Travel",src:"https://cdn.simpleicons.org/redbus/D84E2C"},
+  amaz:{name:"Amazon",g:"E-commerce",src:"https://cdn.simpleicons.org/amazon/FF9900"},
+  flip:{name:"Flipkart",g:"E-commerce",src:"https://cdn.simpleicons.org/flipkart/2874F0"},
+  mynt:{name:"Myntra",g:"E-commerce",src:"https://cdn.simpleicons.org/myntra/FF3F6C"},
+  ppe:{name:"PhonePe",g:"Payments & UPI",src:"https://cdn.simpleicons.org/phonepe/5F259F"},
+  gpay:{name:"Google Pay",g:"Payments & UPI",src:"https://cdn.simpleicons.org/googlepay/4285F4"},
+  patm:{name:"Paytm",g:"Payments & UPI",src:"https://cdn.simpleicons.org/paytm/002D70"},
+  ampay:{name:"Amazon Pay",g:"Payments & UPI",src:"https://cdn.simpleicons.org/amazonpay/FF9900"},
+  bhim:{name:"BHIM UPI",g:"Payments & UPI",src:"https://cdn.simpleicons.org/bhim/0071C5"},
+  cred:{name:"CRED",g:"Payments & UPI",src:"https://cdn.simpleicons.org/cred/FFC300"},
+  airtel:{name:"Airtel",g:"Bills & Services",src:"https://cdn.simpleicons.org/airtel/E40000"},
+  jio:{name:"Jio",g:"Bills & Services",src:"https://cdn.simpleicons.org/jio/0A288A"},
+  netflix:{name:"Netflix",g:"Bills & Services",src:"https://cdn.simpleicons.org/netflix/E50914"},
+  spotfy:{name:"Spotify",g:"Bills & Services",src:"https://cdn.simpleicons.org/spotify/1DB954"}
+};
+function merchantIcon(m){
+  const rec=m&&m.icon&&MERCH_ICONS[m.icon];
+  if(!rec)return "";
+  return `<img class="acc-ico" src="${rec.src}" alt="${esc(rec.name)}" data-name="${esc(m.name)}" loading="lazy" onerror="imgToInitials(this)">`;
+}
+function merchantCell(m){
+  const color=(m&&m.color)||"#7C9AA6";
+  const ic=merchantIcon(m);
+  if(ic)return `<span class="ccircle pic" style="--c:${color}">${ic}</span>`;
+  return `<span class="ccircle" style="--c:${color}">${init(m&&m.name)}</span>`;
 }
 
 /* ============================ STORAGE (IDB → localStorage → memory) ============================ */
@@ -1140,6 +1204,7 @@ const Gist={
       migrateCats(App.data);
       migrateSav(App.data);
       migrateBud(App.data);
+      if(migrateMerch(App.data))Store.set("doc",App.data).catch(()=>{});
       Store.set("doc",App.data).catch(()=>{});
       this.saveCfg();
       return true;
@@ -1170,6 +1235,7 @@ const Gist={
     migrateCats(App.data);
     migrateSav(App.data);
     migrateBud(App.data);
+    if(migrateMerch(App.data))Store.set("doc",App.data).catch(()=>{});
     Store.set("doc",App.data).catch(()=>{});
     this.saveCfg();
   },
@@ -1280,12 +1346,37 @@ const DEF_ACCS=[
   {id:"acc-cash",name:"Cash",kind:"cash",opening:0,color:"#7C9AA6"},
   {id:"acc-card",name:"Card",kind:"card",opening:0,color:"#8CA683"}
 ];
+const DEF_MERCHS=[
+  {id:"mer-zomato",name:"Zomato",icon:"zomato",color:"#ED6A45"},
+  {id:"mer-swiggy",name:"Swiggy",icon:"swiggy",color:"#FC8019"},
+  {id:"mer-blinkit",name:"Blinkit",icon:"blink",color:"#C7A71C"},
+  {id:"mer-bigbasket",name:"BigBasket",icon:"bbask",color:"#2CA01C"},
+  {id:"mer-uber",name:"Uber",icon:"uber",color:"#0B0B0C"},
+  {id:"mer-ola",name:"Ola",icon:"ola",color:"#A4C400"},
+  {id:"mer-amazon",name:"Amazon",icon:"amaz",color:"#FF9900"},
+  {id:"mer-flipkart",name:"Flipkart",icon:"flip",color:"#2874F0"},
+  {id:"mer-phonepe",name:"PhonePe",icon:"ppe",color:"#5F259F"},
+  {id:"mer-gpay",name:"Google Pay",icon:"gpay",color:"#4285F4"},
+  {id:"mer-paytm",name:"Paytm",icon:"patm",color:"#002D70"},
+  {id:"mer-kirana",name:"Kirana / UPI",icon:"bhim",color:"#0071C5"}
+];
 function defaultDoc(){
   return {schemaVersion:1,meta:{createdAt:new Date().toISOString()},
-    settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,lastDate:null,lastCategoryId:null,catV:2,goalV:1},
+    settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,lastDate:null,lastCategoryId:null,lastMerchantId:"",catV:2,goalV:1,merchV:1},
     categories:JSON.parse(JSON.stringify(DEF_CATS)),
     accounts:JSON.parse(JSON.stringify(DEF_ACCS)),
+    merchants:JSON.parse(JSON.stringify(DEF_MERCHS)),
     transactions:[],goals:[],budgets:[],shortcuts:[]};
+}
+function migrateMerch(d){
+  const s=d.settings=d.settings||{};
+  if(s.merchV===1){
+    if(!Array.isArray(d.merchants))d.merchants=[];
+    return false;
+  }
+  d.merchants=JSON.parse(JSON.stringify(DEF_MERCHS));
+  s.merchV=1;
+  return true;
 }
 
 /* ============================ APP ============================ */
@@ -1302,7 +1393,7 @@ const App={
   data:null,view:"overview",prevView:"overview",
   mkey:monthKey(new Date()),
   add:null,dp:null,budSet:null,pendingDel:null,txOpen:null,tr:null,
-  flt:{q:"",dir:"all",cat:"all",acc:"all"},
+  flt:{q:"",dir:"all",cat:"all",acc:"all",merch:"all"},
 
   /* ---------- boot ---------- */
   async boot(){
@@ -1315,6 +1406,7 @@ const App={
     if(migrateSav(d))Store.set("doc",d).catch(()=>{});
     if(!Array.isArray(d.accounts)||!d.accounts.length)d.accounts=JSON.parse(JSON.stringify(DEF_ACCS));
     d.goals=d.goals||[];d.shortcuts=d.shortcuts||[];d.transactions=d.transactions||[];
+    if(!Array.isArray(d.merchants)||!d.merchants.length){d.merchants=migrateMerch(d)?d.merchants:[]}
     migrateBud(d);
     if(migrateGoals(d))Store.set("doc",d).catch(()=>{});
     this.data=d;
@@ -1337,8 +1429,9 @@ this.render();
     const s=this.data&&this.data.settings;
     const d=this.data;
     const cid=(s&&s.lastCategoryId)||"cat-gro";
+    const mid=s&&s.lastMerchantId&&(d.merchants||[]).some(m=>m.id===s.lastMerchantId)?s.lastMerchantId:"";
     return {amount:"",dir:"expense",categoryId:d&&d.categories.some(c=>c.id===cid)?cid:"cat-gro",accountId:d&&d.accounts[0]?d.accounts[0].id:"",
-      date:(s&&s.lastDate)||todayStr(),note:""};
+      date:(s&&s.lastDate)||todayStr(),note:"",merchantId:mid};
   },
   save(){
     this.data.meta.updatedAt=new Date().toISOString();
@@ -1365,6 +1458,7 @@ this.render();
     else if(this.view==="summary"){html=this.summary()}
     else if(this.view==="budget"){html=this.budget()}
     else if(this.view==="category"){html=this.category()}
+    else if(this.view==="merchant"){html=this.merchant()}
     else if(this.view==="goals"){html=this.goals()}
     else if(this.view==="analytics"){html=this.analytics()}
     else if(this.view==="accounts"){html=this.accounts()}
@@ -1375,7 +1469,7 @@ this.render();
   renderNav(){
     const nav=$("#nav");
     nav.innerHTML=TABS.map(t=>{
-      const on=(t.id==="activity")?(this.view==="overview"||this.view==="activity"||(this.view==="category"&&(this.prevView==="overview"||this.prevView==="activity"))):(this.view===t.id||(this.view==="category"&&this.prevView===t.id));
+      const on=(t.id==="activity")?(this.view==="overview"||this.view==="activity"||(this.view==="category"&&(this.prevView==="overview"||this.prevView==="activity"))):(this.view===t.id||(this.view==="category"&&this.prevView===t.id)||(this.view==="merchant"&&this.prevView===t.id));
       return `<button type="button" class="nav-item ${on?"on":""}" data-act="tab" data-tab="${t.id}"><span class="ni-ic">${t.icon}</span><span>${t.label}</span></button>`;
     }).join("");
   },
@@ -1401,6 +1495,20 @@ this.render();
       if(t.dir==="expense"&&t.date.slice(0,7)===key)map[t.categoryId]=(map[t.categoryId]||0)+t.amount;
     }
     return map;
+  },
+  merchantSpend(key){
+    const map={};
+    for(const t of this.data.transactions){
+      if(t.dir==="expense"&&t.date.slice(0,7)===key){const k=t.merchantId||"__none";map[k]=(map[k]||0)+t.amount}
+    }
+    return map;
+  },
+  merchAccent(mid){
+    const PAL=["#7B61FF","#FF5678","#31C4F3","#FF9F43","#52E5A5","#FFD166","#9B8CFA","#4EC49B"];
+    const entries=Object.entries(this.merchantSpend(this.mkey)).sort((a,b)=>b[1]-a[1]);
+    const idx=entries.findIndex(e=>e[0]===mid);
+    const m=mid==="__none"?null:merchById(mid);
+    return idx>=0?PAL[idx%PAL.length]:(m&&m.color)||"#8C52FF";
   },
   catAccent(cid){
     const PAL=["#7B61FF","#FF5678","#31C4F3","#FF9F43","#52E5A5","#FFD166","#9B8CFA","#4EC49B"];
@@ -1945,35 +2053,131 @@ this.render();
     </div>`;
   },
 
-  /* ============ ANALYTICS (trends) ============ */
+  /* ============ ANALYTICS (merchant-wise, mirrors Summary) ============ */
   analytics(){
     const mk=parseMk(this.mkey);
-    const months=[];
-    const d=new Date(mk.getFullYear(),mk.getMonth()-5,1);
-    for(let i=0;i<6;i++){months.push({key:monthKey(d),name:d.toLocaleDateString("en-IN",{month:"short"})});d.setMonth(d.getMonth()+1)}
-    const max=Math.max.apply(null,months.map(m=>this.monthStats(m.key).spent));
-    const catMap=this.catSpend(this.mkey);
-    const rows=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,7);
+    const prev=new Date(mk);prev.setMonth(prev.getMonth()-1);
+    const prevKey=monthKey(prev),prevSt=this.monthStats(prevKey);
+    const cur=new Date();
+    const monthLabel=mk.getFullYear()===cur.getFullYear()&&mk.getMonth()===cur.getMonth()
+      ?"This month":mk.toLocaleDateString("en-IN",{month:"long"});
+    const txs=this.data.transactions.filter(t=>
+      t.dir==="expense"&&t.date.slice(0,7)===this.mkey&&(this.flt.acc==="all"||t.accountId===this.flt.acc));
+    const mercMap={};
+    for(const t of txs){const k=t.merchantId||"__none";mercMap[k]=(mercMap[k]||0)+t.amount}
+    const entries=Object.entries(mercMap).sort((a,b)=>b[1]-a[1]);
+    const total=entries.reduce((s,e)=>s+e[1],0);
+    const pct=prevSt.spent>0?Math.round((prevSt.spent-total)/prevSt.spent*100):null;
+    const down=pct!=null&&pct>=0;
+    const prevName=parseMk(prevKey).toLocaleDateString("en-IN",{month:"short"});
+    const PAL=["#7B61FF","#FF5678","#31C4F3","#FF9F43","#52E5A5","#FFD166","#9B8CFA","#4EC49B"];
+    const colors={};entries.forEach((e,i)=>{colors[e[0]]=PAL[i%PAL.length]});
+    const R=110,W=20;
+    const C=2*Math.PI*R;
+    let acc=0;
+    const arcs=entries.map(([mid,amt])=>{
+      const seg=total>0?amt/total*C:0;
+      const a=`<circle cx="150" cy="150" r="${R}" fill="none" stroke="${colors[mid]}" stroke-width="${W}" stroke-linecap="round"
+        stroke-dasharray="${seg.toFixed(2)} ${(C-seg).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}"
+        transform="rotate(-90 150 150)"/>`;
+      acc+=seg;return a;
+    }).join("");
+    const donut=`<svg viewBox="0 0 300 300" class="donut-svg">
+      <g transform="rotate(-90 150 150)">${arcs}</g>
+    </svg>`;
+    const tIcn=down?IC.downcir:`<span style="transform:scaleY(-1);display:inline-flex">${IC.downcir}</span>`;
+    const trend=pct==null?`<span class="dc-trend mute">${IC.downcir} No earlier data</span>`
+      :`<span class="dc-trend${down?"":" up"}">${tIcn} ${Math.abs(pct)}% ${down?"from":"up from"} ${prevName}</span>`;
+    const cards=entries.map(([mid,amt])=>{
+      const m=mid==="__none"?null:merchById(mid);
+      const n=txs.filter(t=>(t.merchantId||"__none")===mid).length;
+      const p=total>0?(amt/total*100).toFixed(2):"0.00";
+      return `<button class="sum-card" data-act="ov-merch" data-id="${m?m.id:"__none"}">
+        <span class="sum-ic" style="--c:${colors[mid]}">${m?merchantIcon(m):"🧾"}</span>
+        <span class="sum-cc">
+          <span class="nm">${esc(m?m.name:"Unassigned")}</span>
+          <span class="sum-count">${n}</span>
+        </span>
+        <span class="sums-right">
+          <span class="sum-amt">${rupees(amt)}</span>
+          <span class="sum-pct">${p}%</span>
+        </span>
+      </button>`;
+    }).join("");
     return `
-    <div class="scr">
-      <header class="scrhdr"><div class="hdr-title">Analytics</div></header>
-      <div class="card">
-        <div class="card-title">Last 6 months</div>
-        ${months.map(m=>{
-          const st=this.monthStats(m.key);
-          return `<div class="an-row"><span class="an-n">${m.name}</span><div class="an-track"><i style="width:${max>0?Math.round(st.spent/max*100):0}%"></i></div><span class="an-v">${shortAmt(st.spent)}</span></div>`;
-        }).join("")}
+    <div class="scr sum">
+      <div class="ov-top"><button class="ov-gear" data-act="go-settings" aria-label="Settings">${IC.gear}</button></div>
+      <div class="sum-chart">
+        <div class="donut-wrap big">${donut}
+          <div class="donut-center swipe-mk">
+            <button class="dc-month" data-act="mk-open" aria-label="Select month">${esc(monthLabel)} ${IC.chev}</button>
+            <div class="dc-main">${rupees(total)}</div>
+            ${trend}
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-title">This month by category</div>
-        ${rows.length?rows.map(([cid,amt])=>{
-          const c=catById(cid);
-          return `<button class="brow" data-act="ov-cat" data-id="${cid}">
-            <span class="ccircle" style="--c:${c.color}">${catEmoji(c)}</span>
-            <span class="bname">${esc(c.name)}</span>
-            <span class="bamt">${rupees(amt)}</span>
-          </button>`;
-        }).join(""):`<div class="empty"><div>${IC.empty}</div><div class="t">No spending yet</div><div class="s">Add transactions to see category splits</div></div>`}
+      ${this.chips(false)}
+      <div class="sum-list">
+        ${cards||`<div class="card"><div class="empty"><div>${IC.empty}</div><div class="t">No spending yet</div><div class="s">Tag a merchant when adding an expense</div></div></div>`}
+      </div>
+    </div>`;
+  },
+  merchant(){
+    const mid=this.flt.merch==="__none"?"__none":this.flt.merch;
+    const m=mid!=="__none"?merchById(mid):null;
+    const mk=parseMk(this.mkey);
+    const prev=new Date(mk);prev.setMonth(prev.getMonth()-1);
+    const prevKey=monthKey(prev);
+    const mercKey=mid==="__none"?"__none":(m?m.id:"__none");
+    const total=(this.merchantSpend(this.mkey)[mercKey]||0);
+    const prevTotal=this.merchantSpend(prevKey)[mercKey]||0;
+    const prevName=parseMk(prevKey).toLocaleDateString("en-IN",{month:"short"});
+    const monthName=mk.toLocaleDateString("en-IN",{month:"short",year:"numeric"});
+    let delta;
+    if(total===0)delta=`<span class="cat-delta mute">No spending this month</span>`;
+    else if(prevTotal===0)delta=`<span class="cat-delta mute">${IC.downcir} New this month</span>`;
+    else{
+      const d=Math.round((prevTotal-total)/prevTotal*100);
+      const du=d>=0;
+      const dIcon=du?IC.downcir:`<span style="transform:scaleY(-1);display:inline-flex">${IC.downcir}</span>`;
+      delta=`<span class="cat-delta${du?"":" neg"}">${dIcon} ${Math.abs(d)}% ${du?"from":"up from"} ${prevName}</span>`;
+    }
+    const flt=this.flt;
+    let list=this.sortedTxs().filter(t=>t.dir==="expense"&&t.date.slice(0,7)===this.mkey&&(t.merchantId||"__none")===mercKey);
+    if(flt.acc!=="all")list=list.filter(t=>t.accountId===flt.acc);
+    const groups=[];
+    for(const t of list){
+      let g=groups[groups.length-1];
+      if(!g||g.date!==t.date){g={date:t.date,items:[]};groups.push(g)}
+      g.items.push(t);
+    }
+    const acc=flt.acc!=="all"?accById(flt.acc):null;
+    const accTxt=acc?(acc.name.length>11?acc.name.slice(0,11)+"…":acc.name):"All accounts";
+    const name=m?m.name:"Unassigned";
+    return `
+    <div class="scr cat">
+      <div class="cat-top">
+        <button class="cbtn" data-act="back" aria-label="Back">${IC.left}</button>
+        <button class="cat-metric swipe-mk" data-act="mk-open" aria-label="Select month">
+          <span class="cat-title">${m?merchantIcon(m):"🧾"} ${esc(name)} ${IC.chev}</span>
+          <span class="cat-total">${rupees(total)}</span>
+          ${delta}
+        </button>
+        <span class="cbtn cat-spacer" aria-hidden="true"></span>
+      </div>
+      <div class="ov-chips">
+        <button class="ov-chip" data-act="fl-period">${esc(monthName)}</button>
+        <button class="ov-chip ${acc?"on":""}" data-act="acc-fopen">${acc?`<span class="dot" style="--c:${acc.color}"></span>`:""}${esc(accTxt)}</button>
+        <button class="ov-chip" data-act="fl-clear">All</button>
+      </div>
+      <div class="cat-list">
+        ${groups.length?groups.map(g=>{
+          const pd=parseD(g.date);
+          const dayTotal=g.items.reduce((s,t)=>s+t.amount,0);
+          return `<div class="dg-head"><span class="dg-day">${pd.toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"})}</span><span class="dg-total">${rupees(dayTotal)}</span></div>`+
+            g.items.map(t=>this.txRow(t)).join("");
+        }).join("")
+          :`<div class="empty"><div>${IC.empty}</div><div class="t">No transactions</div><div class="s">Nothing at ${esc(name)} for this month yet</div></div>`}
       </div>
     </div>`;
   },
@@ -2044,6 +2248,7 @@ this.render();
     let list=this.sortedTxs();
     if(flt.dir!=="all")list=list.filter(t=>t.dir===flt.dir);
     if(flt.cat!=="all")list=list.filter(t=>t.categoryId===flt.cat);
+    if(flt.merch!=="all")list=list.filter(t=>(t.merchantId||"__none")===flt.merch);
     if(flt.acc!=="all")list=list.filter(t=>t.accountId===flt.acc||t.from===flt.acc||t.to===flt.acc);
     if(flt.q)list=list.filter(t=>{
       const hay=(t.note||"")+" "+(t.dir==="trans"?this.trNames(t):(this.catName(t.categoryId)||""))+" "+t.date;
@@ -2251,6 +2456,7 @@ this.render();
         <button class="set" data-act="cat-manage"><span class="s-label">Categories<div class="s-sub">${d.categories.length} categories</div></span>${IC.right}</button>
         <button class="set" data-act="shortcuts"><span class="s-label">Shortcuts<div class="s-sub">Quick-fill common transactions</div></span>${IC.right}</button>
         <button class="set" data-act="acc-add"><span class="s-label">Accounts<div class="s-sub">${d.accounts.length} accounts</div></span>${IC.right}</button>
+        <button class="set" data-act="merch-manage"><span class="s-label">Merchants<div class="s-sub">${(d.merchants||[]).length} merchants</div></span>${IC.right}</button>
         <button class="set" data-act="pwa-help"><span class="s-label">Install as app<div class="s-sub">Add to Home Screen — runs offline</div></span>${IC.right}</button>
       </div>
 
@@ -2285,6 +2491,7 @@ this.render();
   /* ============ ADD EXPENSE (spec screen) ============ */
   addScreen(){
     const a=this.add,c=catById(a.categoryId),ac=accById(a.accountId),hide=this.data.settings.hideBalances;
+    const m=merchById(a.merchantId);
     const pd=parseD(a.date);
     const amtStr=a.amount||"0";
     const last=this.sortedTxs()[0];
@@ -2318,6 +2525,10 @@ this.render();
         <button class="field" data-act="acc-open-pick">
           <span class="ficon">💵</span>
           <span class="f-name">${esc(ac.name)}</span><span class="f-val">Account</span>${IC.right}
+        </button>
+        <button class="field" data-act="merch-open">
+          <span class="ficon">🏷️</span>
+          <span class="f-name ${m?"":"mute"}">${m?esc(m.name):"None"}</span><span class="f-val">Merchant</span>${IC.right}
         </button>
         <button class="field" data-act="dp-open">
           <span class="ficon">🗓️</span>
@@ -2389,6 +2600,67 @@ this.render();
         </button>`;
       }).join("")}
       <button class="btn ghost" style="margin-top:14px" data-act="acc-add">${IC.plus} New account</button>`;
+  },
+  merchSheet(){
+    const mts=this.data.merchants||[];
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">Merchant</div>
+      <button class="sh-row ${this.add.merchantId?"":"sel"}" data-act="pick-merch" data-id="">
+        <span class="ccircle" style="--c:#2B3339">${IC.x}</span>
+        <span class="rname">None</span>${this.add.merchantId?"":IC.check}
+      </button>
+      ${mts.map(m=>`<button class="sh-row ${this.add.merchantId===m.id?"sel":""}" data-act="pick-merch" data-id="${m.id}">
+        ${merchantCell(m)}
+        <span class="rname">${esc(m.name)}</span>${this.add.merchantId===m.id?IC.check:IC.right}
+      </button>`).join("")}
+      <button class="btn ghost" style="margin-top:14px" data-act="merch-add">${IC.plus} New merchant</button>`;
+  },
+  merchManageSheet(){
+    const mts=this.data.merchants||[];
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">Merchants</div>
+      ${mts.length?mts.map(m=>`
+        <div style="display:flex;align-items:center">
+          <button class="sh-row" style="flex:1" data-act="open-merch" data-id="${m.id}">
+            ${merchantCell(m)}
+            <span class="rname">${esc(m.name)}</span>${IC.right}
+          </button>
+          <button class="cbtn small" data-act="merch-del" data-id="${m.id}" style="background:transparent;color:var(--muted)">${IC.trash}</button>
+        </div>`).join(""):
+        `<div class="empty"><div>🏷️</div><div class="t">No merchants</div><div class="s">Add merchants to tag where each expense happens</div></div>`}
+      <button class="btn" style="margin-top:16px" data-act="merch-add">${IC.plus} New merchant</button>`;
+  },
+  merchAddSheet(id){
+    const MERCH_COLS=["#7C9AA6","#8CA683","#A68A7C","#7C8FA6","#A6A07C","#A68393","#9B8CA6","#83A68C","#6E8F87","#C06A5D"];
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">${id?"Edit merchant":"New merchant"}</div>
+      <input type="text" id="mm-n" placeholder="Name" value="${esc(App._merchName||"")}">
+      <div class="tsub" style="margin:8px 2px 4px">Colour</div>
+      <div class="chip-row" style="margin:0">
+        ${MERCH_COLS.map((col,i)=>`<button class="chip ${App._merchColor===col?"on":""}" data-act="mm-col" data-col="${col}" data-i="${i}"><span class="dot" style="--c:${col}"></span></button>`).join("")}
+      </div>
+      <button class="set" style="margin-top:14px" data-act="mi-open"><span class="s-label">Logo<div class="s-sub">App or service logo shown as the merchant icon</div></span><span class="csel" id="mi-prev">${merchantCell({icon:App._merchIcon,name:App._merchName||"N",color:App._merchColor})}</span></button>
+      <button class="btn" style="margin-top:16px" data-act="merch-save" data-id="${id||""}">${IC.check} ${id?"Save merchant":"Create merchant"}</button>`;
+  },
+  merchIconSheet(){
+    const cur=App._merchIcon;
+    return `
+      <div class="sh-grab"></div>
+      <div class="sh-title">Merchant logo</div>
+      <div class="search" style="margin-bottom:8px">${IC.search}<input type="text" id="mi-q" placeholder="Search app or service"></div>
+      ${Object.keys(MERCH_ICONS).map(k=>MERCH_ICONS[k].g).filter((g,i,a)=>a.indexOf(g)===i).map((g,gi)=>`
+        <div class="sec-label" style="margin-top:${gi===0?"0":"12px"}">${esc(g)}</div>
+        <div class="ai-grid">
+        ${Object.keys(MERCH_ICONS).filter(k=>MERCH_ICONS[k].g===g).map(k=>{const i=MERCH_ICONS[k];
+          return `<button class="ai-cell ${cur===k?"on":""}" data-act="mi-pick" data-id="${k}">
+            <span class="ccircle pic" style="--c:#fff"><img class="acc-ico" src="${i.src}" alt="${esc(i.name)}" data-name="${esc(i.name)}" loading="lazy" onerror="imgToInitials(this)"></span>
+            <span class="ai-name">${esc(i.name)}</span>
+          </button>`}).join("")}
+        </div>`).join("")}
+      <button class="set" style="margin-top:16px" data-act="mi-clear"><span class="s-label">No logo<div class="s-sub">Show the merchant's initials instead</div></span>${IC.x}</button>`;
   },
   trSheet(){
     const a=this.data.accounts;
@@ -2878,6 +3150,8 @@ txnSheet(id){
     "dp-pickcat":(el)=>{App.add.categoryId=el.dataset.id;App.closeSheet();App.render()},
     "acc-open-pick":()=>App.openSheet(App.accSheet()),
     "pick-acc":(el)=>{App.add.accountId=el.dataset.id;App.closeSheet();App.render()},
+    "merch-open":()=>App.openSheet(App.merchSheet()),
+    "pick-merch":(el)=>{App.add.merchantId=el.dataset.id||"";App.closeSheet();App.render()},
     "note-open":()=>{App.closeSheet();const ni=$("#note-inline");if(ni){App.render();setTimeout(()=>$("#note-inline").focus(),40)}},
     "note-save":()=>{const v=$("#nt").value.trim();App.add.note=v;App.closeSheet();App.render()},
     "seg-dir":(el)=>{
@@ -2893,21 +3167,23 @@ txnSheet(id){
       if(existing){
         const before=Object.assign({},existing,{accountId:existing.accountId,dir:existing.dir,amount:existing.amount});
         Object.assign(existing,{date:a.date,dir:a.dir,amount:Math.round(v*100),
-          categoryId:a.categoryId,accountId:a.accountId,note:a.note});
+          categoryId:a.categoryId,accountId:a.accountId,note:a.note,merchantId:a.merchantId});
         App.savSync(before,existing);
         App.txOpen=null;
         App.data.settings.lastDate=a.date;
         App.data.settings.lastCategoryId=a.categoryId;
+        App.data.settings.lastMerchantId=a.merchantId;
         App.save();App.add=App.freshAdd();App.view=App.prevView;App.render();
         App.toast("Updated "+rupees(existing.amount));
         return;
       }
       const txn={id:uid(),date:a.date,dir:a.dir,amount:Math.round(v*100),
-        categoryId:a.categoryId,accountId:a.accountId,name:"",note:a.note,createdAt:Date.now()};
+        categoryId:a.categoryId,accountId:a.accountId,merchantId:a.merchantId,name:"",note:a.note,createdAt:Date.now()};
       App.data.transactions.push(txn);
       App.savSync(null,txn);
       App.data.settings.lastDate=a.date;
       App.data.settings.lastCategoryId=a.categoryId;
+      App.data.settings.lastMerchantId=a.merchantId;
       App.save();App.add=App.freshAdd();App.view=App.prevView;App.render();
       App.toast("Added "+rupees(txn.amount));
     },
@@ -2918,13 +3194,14 @@ txnSheet(id){
       if(t.dir==="trans"){App.toast("Last was a transfer");return}
       App.add.amount=String(t.amount/100).replace(/\.0+$/,"");
       App.add.dir=t.dir;App.add.categoryId=t.categoryId;App.add.accountId=t.accountId;
+      App.add.merchantId=t.merchantId||"";
       App.render();App.toast("Repeated last "+(t.name||catById(t.categoryId).name));
     },
     "shortcuts":()=>App.openSheet(App.shortcutsSheet()),
     "short-save":()=>{
       const a=App.add;
       App.data.shortcuts.push({id:uid(),name:a.note||"Shortcut",dir:a.dir,amount:a.amount,
-        categoryId:a.categoryId,accountId:a.accountId});
+        categoryId:a.categoryId,accountId:a.accountId,merchantId:a.merchantId});
       App.save();App.closeSheet();App.toast("Shortcut saved");
     },
     "short-pick":(el)=>{
@@ -2932,6 +3209,7 @@ txnSheet(id){
       App.add.amount=sh.amount;App.add.dir=sh.dir||App.add.dir;
       if(sh.categoryId)App.add.categoryId=sh.categoryId;
       if(sh.accountId)App.add.accountId=sh.accountId;
+      if(sh.merchantId!=null)App.add.merchantId=sh.merchantId;
       if(sh.name&&sh.name!=="Shortcut")App.add.note=sh.name;
       App.closeSheet();App.render();
     },
@@ -2945,10 +3223,11 @@ txnSheet(id){
     "go-summary":()=>{App.view="summary";App.prevView="summary";App.render()},
     "go-settings":()=>{App.view="settings";App.prevView="overview";App.render()},
     "ov-cat":(el)=>{App.flt.cat=el.dataset.id;App.prevView=App.view;App.view="category";App.render()},
+    "ov-merch":(el)=>{App.flt.merch=el.dataset.id;App.prevView=App.view;App.view="merchant";App.render()},
     "back":()=>{App.view=App.prevView||"overview";App.render()},
     "list-go":()=>{App.prevView=App.view;App.view="activity";App.render()},
     "fl-exp":()=>{App.flt.dir=App.flt.dir==="expense"?"all":"expense";App.render()},
-    "fl-clear":()=>{App.flt.dir="all";App.flt.acc="all";App.render()},
+    "fl-clear":()=>{App.flt.dir="all";App.flt.acc="all";App.flt.merch="all";App.render()},
     "fl-period":()=>App.openSheet(App.mkeySheet()),
     "acc-fopen":()=>App.openSheet(App.accFilterSheet()),
     "acc-fset":(el)=>{App.flt.acc=el.dataset.id;App.closeSheet();App.render()},
@@ -2965,7 +3244,7 @@ txnSheet(id){
     "fd":(el)=>{App.flt[el.dataset.f]=el.dataset.v;App.render()},
     "open-txn":(el)=>{App.txOpen=el.dataset.id;App.pendingDel=null;App.openSheet(App.txnSheet(el.dataset.id))},
     "txn-edit":()=>{const t=App.data.transactions.find(x=>x.id===App.txOpen);if(!t)return;
-      App.add={amount:String(t.amount/100).replace(/\.0+$/,""),dir:t.dir,categoryId:t.categoryId,accountId:t.accountId,date:t.date,note:t.note};
+      App.add={amount:String(t.amount/100).replace(/\.0+$/,""),dir:t.dir,categoryId:t.categoryId,accountId:t.accountId,date:t.date,note:t.note,merchantId:t.merchantId||""};
       App.prevView=App.view;App.closeSheet();App.view="add";App.render();},
     "txn-del":(el)=>{
       const id=el.dataset.id;
@@ -3191,6 +3470,35 @@ txnSheet(id){
       if(a){a.icon=null;App.save();App.swapSheet(App.accEditSheet(App._accId))}
       else{App._accIcon=null;App.swapSheet(App.accAddSheet())}
     },
+    "merch-manage":()=>App.openSheet(App.merchManageSheet()),
+    "merch-add":()=>{App._merchId=null;App._merchName="";App._merchIcon=null;App._merchColor="#7C9AA6";App.openSheet(App.merchAddSheet())},
+    "open-merch":(el)=>{
+      const m=merchById(el.dataset.id);if(!m)return;
+      App._merchId=m.id;App._merchName=m.name;App._merchIcon=m.icon||null;App._merchColor=m.color||"#7C9AA6";
+      App.openSheet(App.merchAddSheet(m.id));
+    },
+    "mm-col":(el)=>{
+      App._merchColor=el.dataset.col;
+      document.querySelectorAll("[data-act=mm-col]").forEach(b=>b.classList.toggle("on",b.dataset.col===el.dataset.col));
+    },
+    "mi-open":()=>App.openSheet(App.merchIconSheet()),
+    "mi-pick":(el)=>{App._merchIcon=el.dataset.id;App.swapSheet(App.merchAddSheet(App._merchId))},
+    "mi-clear":()=>{App._merchIcon=null;App.swapSheet(App.merchAddSheet(App._merchId))},
+    "merch-save":(el)=>{
+      const n=($("#mm-n").value||"").trim();
+      if(!n){App.toast("Enter a name");return}
+      if(App.data.merchants.some(m=>m.name.toLowerCase()===n.toLowerCase()&&m.id!==el.dataset.id)){App.toast("Already exists");return}
+      const data={name:n,icon:App._merchIcon||null,color:App._merchColor||"#7C9AA6"};
+      if(el.dataset.id){const m=merchById(el.dataset.id);if(m)Object.assign(m,data)}
+      else App.data.merchants.push(Object.assign({id:"mer-u-"+uid(),createdAt:Date.now()},data));
+      App.save();App.closeSheet();App.render();App.toast(el.dataset.id?"Merchant updated":"Merchant created");
+    },
+    "merch-del":(el)=>{
+      const id=el.dataset.id;
+      if(App.pendingDel!==id){App.pendingDel=id;App.swapSheet(App.merchManageSheet());return}
+      App.data.merchants=App.data.merchants.filter(m=>m.id!==id);
+      App.save();App.swapSheet(App.merchManageSheet());App.toast("Merchant deleted");
+    },
     "gb-setup":()=>App.openSheet(App.gbSetupSheet()),
     "gb-setup-save":async()=>{
       const pass=$("#gb-pass").value,pat=$("#gb-pat").value.trim();
@@ -3341,6 +3649,7 @@ document.addEventListener("input",e=>{
   if(e.target&&e.target.id==="gs-a")App._srcAmt=e.target.value;
   if(e.target&&e.target.id==="bb-n")App._budName=e.target.value;
   if(e.target&&e.target.id==="bb-t")App._budLimit=e.target.value;
+  if(e.target&&e.target.id==="mm-n")App._merchName=e.target.value;
   if(e.target&&["gg-n","gg-t","gg-d","gg-c","gg-m"].includes(e.target.id)){
     App.updateGoalCalc();
   }
@@ -3352,6 +3661,13 @@ document.addEventListener("input",e=>{
     document.querySelectorAll(".ai-cell").forEach(b=>{
       const i=ACC_ICONS[b.dataset.id];
       b.style.display=(i&&(i.name+(i.alt?" "+i.alt:"")+" "+i.g).toLowerCase().includes(q))?"":"none";
+    });
+  }
+  if(e.target&&e.target.id==="mi-q"){
+    const q=e.target.value.trim().toLowerCase();
+    document.querySelectorAll(".ai-cell").forEach(b=>{
+      const i=MERCH_ICONS[b.dataset.id];
+      b.style.display=(i&&(i.name+" "+i.g).toLowerCase().includes(q))?"":"none";
     });
   }
 });
