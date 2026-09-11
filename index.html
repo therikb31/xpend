@@ -358,6 +358,14 @@ svg{display:block}
 .ccircle .acc-ico{width:66%;height:66%;object-fit:contain;display:block;pointer-events:none;-webkit-user-drag:none}
 .sum-ic .acc-ico{width:30px;height:30px;object-fit:contain;display:block;pointer-events:none}
 .cat-title .acc-ico{width:20px;height:20px;object-fit:contain;display:inline-block;pointer-events:none}
+.mi-url-box{display:flex;align-items:center;gap:10px;margin-top:8px}
+.mi-url-prev{width:44px;height:44px;border-radius:14px;background:var(--control);display:grid;place-items:center;flex:none;overflow:hidden;border:.5px solid rgba(255,255,255,.08)}
+.mi-url-prev .acc-ico{width:100%;height:100%;object-fit:contain}
+.mi-url-ph{font-size:12px;color:var(--muted-2);font-weight:600}
+.mi-url-box input[type=text]{flex:1;background:var(--control);border:0;border-radius:14px;padding:12px 14px;font-size:14px;color:var(--text);outline:0}
+.mi-url-box input[type=text]::placeholder{color:var(--muted-2)}
+.mi-url-box input[type=text]:focus{box-shadow:inset 0 0 0 1px var(--sel)}
+.btn:disabled{opacity:.45;pointer-events:none}
 .ai-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
 .ai-cell{background:var(--card);border:2px solid transparent;border-radius:14px;padding:12px 6px 10px;display:flex;flex-direction:column;align-items:center;gap:8px}
 .ai-cell .ccircle{width:42px;height:42px}
@@ -941,6 +949,7 @@ const MERCH_ICONS={
   spotfy:{name:"Spotify",g:"Bills & Services",src:"https://cdn.simpleicons.org/spotify/1DB954"}
 };
 function merchantIcon(m){
+  if(m&&m.iconUrl)return `<img class="acc-ico" src="${esc(m.iconUrl)}" alt="${esc(m.name)}" data-name="${esc(m.name)}" loading="lazy" onerror="imgToInitials(this)">`;
   const rec=m&&m.icon&&MERCH_ICONS[m.icon];
   if(!rec)return "";
   return `<img class="acc-ico" src="${rec.src}" alt="${esc(rec.name)}" data-name="${esc(m.name)}" loading="lazy" onerror="imgToInitials(this)">`;
@@ -2637,20 +2646,28 @@ this.render();
       <div class="chip-row" style="margin:0">
         ${MERCH_COLS.map((col,i)=>`<button class="chip ${App._merchColor===col?"on":""}" data-act="mm-col" data-col="${col}" data-i="${i}"><span class="dot" style="--c:${col}"></span></button>`).join("")}
       </div>
-      <button class="set" style="margin-top:14px" data-act="mi-open"><span class="s-label">Logo<div class="s-sub">App or service logo shown as the merchant icon</div></span><span class="csel" id="mi-prev">${merchantCell({icon:App._merchIcon,name:App._merchName||"N",color:App._merchColor})}</span></button>
+      <button class="set" style="margin-top:14px" data-act="mi-open"><span class="s-label">Logo<div class="s-sub">App or service logo shown as the merchant icon</div></span><span class="csel" id="mi-prev">${merchantCell({icon:App._merchIcon,name:App._merchName||"N",color:App._merchColor,iconUrl:App._merchIconUrl})}</span></button>
       <button class="btn" style="margin-top:16px" data-act="merch-save" data-id="${id||""}">${IC.check} ${id?"Save merchant":"Create merchant"}</button>`;
   },
   merchIconSheet(){
     const cur=App._merchIcon;
+    const curUrl=App._merchIconUrl||"";
     return `
       <div class="sh-grab"></div>
       <div class="sh-title">Merchant logo</div>
+      <div class="sec-label">Uploaded image</div>
+      <div class="mi-url-box">
+        <div class="mi-url-prev" id="mi-url-prev">${curUrl?`<img class="acc-ico" src="${esc(curUrl)}" alt="logo" onerror="this.style.visibility='hidden'">`:`<span class="mi-url-ph">URL</span>`}</div>
+        <input type="text" id="mi-url" placeholder="Paste a logo image URL (https://…)" value="${esc(curUrl)}">
+      </div>
+      <button class="btn" style="margin:8px 0 4px" data-act="mi-url-set" id="mi-url-set" ${curUrl?"":"disabled"}>${IC.check} Use this image</button>
+      <div class="sec-label" style="margin-top:8px">Or pick a preset</div>
       <div class="search" style="margin-bottom:8px">${IC.search}<input type="text" id="mi-q" placeholder="Search app or service"></div>
       ${Object.keys(MERCH_ICONS).map(k=>MERCH_ICONS[k].g).filter((g,i,a)=>a.indexOf(g)===i).map((g,gi)=>`
         <div class="sec-label" style="margin-top:${gi===0?"0":"12px"}">${esc(g)}</div>
         <div class="ai-grid">
         ${Object.keys(MERCH_ICONS).filter(k=>MERCH_ICONS[k].g===g).map(k=>{const i=MERCH_ICONS[k];
-          return `<button class="ai-cell ${cur===k?"on":""}" data-act="mi-pick" data-id="${k}">
+          return `<button class="ai-cell ${cur===k&&!curUrl?"on":""}" data-act="mi-pick" data-id="${k}">
             <span class="ccircle pic" style="--c:#fff"><img class="acc-ico" src="${i.src}" alt="${esc(i.name)}" data-name="${esc(i.name)}" loading="lazy" onerror="imgToInitials(this)"></span>
             <span class="ai-name">${esc(i.name)}</span>
           </button>`}).join("")}
@@ -3466,10 +3483,10 @@ txnSheet(id){
       else{App._accIcon=null;App.swapSheet(App.accAddSheet())}
     },
     "merch-manage":()=>App.openSheet(App.merchManageSheet()),
-    "merch-add":()=>{App._merchId=null;App._merchName="";App._merchIcon=null;App._merchColor="#7C9AA6";App.openSheet(App.merchAddSheet())},
+    "merch-add":()=>{App._merchId=null;App._merchName="";App._merchIcon=null;App._merchIconUrl="";App._merchColor="#7C9AA6";App.openSheet(App.merchAddSheet())},
     "open-merch":(el)=>{
       const m=merchById(el.dataset.id);if(!m)return;
-      App._merchId=m.id;App._merchName=m.name;App._merchIcon=m.icon||null;App._merchColor=m.color||"#7C9AA6";
+      App._merchId=m.id;App._merchName=m.name;App._merchIcon=m.icon||null;App._merchIconUrl=m.iconUrl||"";App._merchColor=m.color||"#7C9AA6";
       App.openSheet(App.merchAddSheet(m.id));
     },
     "mm-col":(el)=>{
@@ -3477,13 +3494,20 @@ txnSheet(id){
       document.querySelectorAll("[data-act=mm-col]").forEach(b=>b.classList.toggle("on",b.dataset.col===el.dataset.col));
     },
     "mi-open":()=>App.openSheet(App.merchIconSheet()),
-    "mi-pick":(el)=>{App._merchIcon=el.dataset.id;App.swapSheet(App.merchAddSheet(App._merchId))},
-    "mi-clear":()=>{App._merchIcon=null;App.swapSheet(App.merchAddSheet(App._merchId))},
+    "mi-pick":(el)=>{App._merchIcon=el.dataset.id;App._merchIconUrl="";App.swapSheet(App.merchAddSheet(App._merchId))},
+    "mi-url-set":()=>{
+      const v=($("#mi-url").value||"").trim();
+      if(!v){App.toast("Paste an image URL first");return}
+      if(!/^(https?:\/\/|data:image\/)/i.test(v)){App.toast("Enter an http(s) or image data URL");return}
+      App._merchIconUrl=v;App._merchIcon=null;
+      App.swapSheet(App.merchAddSheet(App._merchId));
+    },
+    "mi-clear":()=>{App._merchIcon=null;App._merchIconUrl="";App.swapSheet(App.merchAddSheet(App._merchId))},
     "merch-save":(el)=>{
       const n=($("#mm-n").value||"").trim();
       if(!n){App.toast("Enter a name");return}
       if(App.data.merchants.some(m=>m.name.toLowerCase()===n.toLowerCase()&&m.id!==el.dataset.id)){App.toast("Already exists");return}
-      const data={name:n,icon:App._merchIcon||null,color:App._merchColor||"#7C9AA6"};
+      const data={name:n,icon:App._merchIcon||null,iconUrl:App._merchIconUrl||null,color:App._merchColor||"#7C9AA6"};
       if(el.dataset.id){const m=merchById(el.dataset.id);if(m)Object.assign(m,data)}
       else App.data.merchants.push(Object.assign({id:"mer-u-"+uid(),createdAt:Date.now()},data));
       App.save();App.closeSheet();App.render();App.toast(el.dataset.id?"Merchant updated":"Merchant created");
@@ -3664,6 +3688,13 @@ document.addEventListener("input",e=>{
       const i=MERCH_ICONS[b.dataset.id];
       b.style.display=(i&&(i.name+" "+i.g).toLowerCase().includes(q))?"":"none";
     });
+  }
+  if(e.target&&e.target.id==="mi-url"){
+    const v=e.target.value.trim();
+    const prev=document.getElementById("mi-url-prev");
+    const btn=document.getElementById("mi-url-set");
+    if(prev)prev.innerHTML=v?`<img class="acc-ico" src="${esc(v)}" alt="logo" style="max-width:100%;max-height:100%;object-fit:contain" onerror="this.style.visibility='hidden'">`:`<span class="mi-url-ph">URL</span>`;
+    if(btn)btn.disabled=!v;
   }
 });
 
