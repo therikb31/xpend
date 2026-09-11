@@ -244,9 +244,10 @@ svg{display:block}
   content:"";position:absolute;inset:-3.5px;border-radius:21.5px;
   border:1.5px solid var(--c,#7B61FF);opacity:.42;pointer-events:none;
 }
-.sum-cc{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:5px}
-.sum-cc .nm{font-size:15.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.sum-count{background:var(--surface-2);color:var(--text-2);border-radius:99px;padding:2px 8px;font-size:11.5px;font-weight:600}
+.sum-cc{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:5px}
+.sum-name{display:flex;align-items:center;gap:7px;max-width:100%}
+.sum-cc .nm{font-size:15.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sum-count{flex:none;background:var(--surface-2);color:var(--text-2);border-radius:99px;padding:1px 7px;font-size:11px;font-weight:600;line-height:1.35}
 .sums-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
 .sum-amt{font-size:15.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .sum-pct{background:var(--surface-2);color:var(--muted);border-radius:99px;padding:2.5px 9px;font-size:11.5px;font-weight:600;white-space:nowrap}
@@ -856,7 +857,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b54";
+const APP_VER="b55";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -2161,8 +2162,7 @@ this.render();
       return `<button class="sum-card" data-act="ov-merch" data-id="${m?m.id:"__none"}">
         <span class="sum-ic logo" style="--c:${colors[mid]}">${m?merchantIcon(m):"🧾"}</span>
         <span class="sum-cc">
-          <span class="nm">${esc(m?m.name:"Unassigned")}</span>
-          <span class="sum-count">${n}</span>
+          <span class="sum-name"><span class="nm">${esc(m?m.name:"Unassigned")}</span><span class="sum-count">${n}</span></span>
         </span>
         <span class="sums-right">
           <span class="sum-amt">${rupees(amt)}</span>
