@@ -358,11 +358,11 @@ svg{display:block}
 .ccircle.small{width:24px;height:24px;font-size:12.5px}
 .ccircle svg{width:17px;height:17px;color:#D6DADD}
 .ccircle.pic{background:#fff}
-.ccircle .acc-ico{width:66%;height:66%;object-fit:contain;display:block;pointer-events:none;-webkit-user-drag:none}
+.ccircle .acc-ico{width:calc(66% * var(--ls,100) / 100);height:calc(66% * var(--ls,100) / 100);object-fit:contain;display:block;pointer-events:none;-webkit-user-drag:none}
 .sum-ic .acc-ico{width:30px;height:30px;object-fit:contain;display:block;pointer-events:none}
 .sum-ic.logo{background:#fff;width:44px;height:44px;border-radius:50%}
 .sum-ic.logo::after{inset:-3px;border-radius:50%;border-color:rgba(10,13,15,.25)}
-.sum-ic.logo .acc-ico{width:40px;height:40px;object-fit:cover;border-radius:50%}
+.sum-ic.logo .acc-ico{width:calc(40px * var(--ls,100) / 100);height:calc(40px * var(--ls,100) / 100);object-fit:cover;border-radius:50%}
 .cat-title .acc-ico{width:20px;height:20px;object-fit:contain;display:inline-block;pointer-events:none}
 .mi-url-box{display:flex;align-items:center;gap:10px;margin-top:8px}
 .mi-url-prev{width:44px;height:44px;border-radius:14px;background:var(--control);display:grid;place-items:center;flex:none;overflow:hidden;border:.5px solid rgba(255,255,255,.08)}
@@ -380,6 +380,9 @@ svg{display:block}
 .ai-cell.on .ai-name{color:var(--bg)}
 .ai-name{font-size:11.5px;color:var(--muted-2);text-align:center;line-height:1.25}
 .csel{display:inline-flex;align-items:center}
+.mm-ls-row{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:4px 12px;margin-top:14px}
+.mm-ls-row .mm-ls-val{font-size:12px;font-weight:600;color:var(--muted);justify-self:end;background:var(--surface-2);border-radius:99px;padding:2px 9px}
+.mm-ls-row #mm-ls{grid-column:1 / -1;width:100%;accent-color:var(--sel)}
 
 /* amount */
 .amt{font-variant-numeric:tabular-nums;font-weight:600}
@@ -857,7 +860,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b56";
+const APP_VER="b57";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -957,10 +960,12 @@ const MERCH_ICONS={
   spotfy:{name:"Spotify",g:"Bills & Services",src:"https://cdn.simpleicons.org/spotify/1DB954"}
 };
 function merchantIcon(m){
-  if(m&&m.iconUrl)return `<img class="acc-ico" src="${esc(m.iconUrl)}" alt="${esc(m.name)}" data-name="${esc(m.name)}" loading="lazy" onerror="imgToInitials(this)">`;
+  const ls=m&&m.logoScale?m.logoScale:100;
+  const st=`style="--ls:${ls}"`;
+  if(m&&m.iconUrl)return `<img class="acc-ico" ${st} src="${esc(m.iconUrl)}" alt="${esc(m.name)}" data-name="${esc(m.name)}" loading="lazy" onerror="imgToInitials(this)">`;
   const rec=m&&m.icon&&MERCH_ICONS[m.icon];
   if(!rec)return "";
-  return `<img class="acc-ico" src="${rec.src}" alt="${esc(rec.name)}" data-name="${esc(m.name)}" loading="lazy" onerror="imgToInitials(this)">`;
+  return `<img class="acc-ico" ${st} src="${rec.src}" alt="${esc(rec.name)}" data-name="${esc(m.name)}" loading="lazy" onerror="imgToInitials(this)">`;
 }
 function merchantCell(m){
   const color=(m&&m.color)||"#7C9AA6";
@@ -2715,7 +2720,12 @@ this.render();
       <div class="chip-row" style="margin:0">
         ${MERCH_COLS.map((col,i)=>`<button class="chip ${App._merchColor===col?"on":""}" data-act="mm-col" data-col="${col}" data-i="${i}"><span class="dot" style="--c:${col}"></span></button>`).join("")}
       </div>
-      <button class="set" style="margin-top:14px" data-act="mi-open"><span class="s-label">Logo<div class="s-sub">App or service logo shown as the merchant icon</div></span><span class="csel" id="mi-prev">${merchantCell({icon:App._merchIcon,name:App._merchName||"N",color:App._merchColor,iconUrl:App._merchIconUrl})}</span></button>
+      <button class="set" style="margin-top:14px" data-act="mi-open"><span class="s-label">Logo<div class="s-sub">App or service logo shown as the merchant icon</div></span><span class="csel" id="mi-prev">${merchantCell({icon:App._merchIcon,name:App._merchName||"N",color:App._merchColor,iconUrl:App._merchIconUrl,logoScale:App._merchLogoScale})}</span></button>
+      <div class="mm-ls-row">
+        <span class="s-label" style="font-size:13.5px;font-weight:600">Logo size</span>
+        <span id="mm-ls-val" class="mm-ls-val">${App._merchLogoScale}%</span>
+        <input type="range" id="mm-ls" min="50" max="150" step="5" value="${App._merchLogoScale}">
+      </div>
       <button class="btn" style="margin-top:16px" data-act="merch-save" data-id="${id||""}">${IC.check} ${id?"Save merchant":"Create merchant"}</button>`;
   },
   merchIconSheet(){
@@ -3559,10 +3569,10 @@ txnSheet(id){
       else{App._accIcon=null;App.swapSheet(App.accAddSheet())}
     },
     "merch-manage":()=>App.openSheet(App.merchManageSheet()),
-    "merch-add":()=>{App._merchId=null;App._merchName="";App._merchIcon=null;App._merchIconUrl="";App._merchColor="#7C9AA6";App.openSheet(App.merchAddSheet())},
+    "merch-add":()=>{App._merchId=null;App._merchName="";App._merchIcon=null;App._merchIconUrl="";App._merchLogoScale=100;App._merchColor="#7C9AA6";App.openSheet(App.merchAddSheet())},
     "open-merch":(el)=>{
       const m=merchById(el.dataset.id);if(!m)return;
-      App._merchId=m.id;App._merchName=m.name;App._merchIcon=m.icon||null;App._merchIconUrl=m.iconUrl||"";App._merchColor=m.color||"#7C9AA6";
+      App._merchId=m.id;App._merchName=m.name;App._merchIcon=m.icon||null;App._merchIconUrl=m.iconUrl||"";App._merchLogoScale=m.logoScale||100;App._merchColor=m.color||"#7C9AA6";
       App.openSheet(App.merchAddSheet(m.id));
     },
     "mm-col":(el)=>{
@@ -3583,7 +3593,7 @@ txnSheet(id){
       const n=($("#mm-n").value||"").trim();
       if(!n){App.toast("Enter a name");return}
       if(App.data.merchants.some(m=>m.name.toLowerCase()===n.toLowerCase()&&m.id!==el.dataset.id)){App.toast("Already exists");return}
-      const data={name:n,icon:App._merchIcon||null,iconUrl:App._merchIconUrl||null,color:App._merchColor||"#7C9AA6"};
+      const data={name:n,icon:App._merchIcon||null,iconUrl:App._merchIconUrl||null,color:App._merchColor||"#7C9AA6",logoScale:+(App._merchLogoScale||100)};
       if(el.dataset.id){const m=merchById(el.dataset.id);if(m)Object.assign(m,data)}
       else App.data.merchants.push(Object.assign({id:"mer-u-"+uid(),createdAt:Date.now()},data));
       App.save();App.closeSheet();App.render();App.toast(el.dataset.id?"Merchant updated":"Merchant created");
@@ -3745,6 +3755,13 @@ document.addEventListener("input",e=>{
   if(e.target&&e.target.id==="bb-n")App._budName=e.target.value;
   if(e.target&&e.target.id==="bb-t")App._budLimit=e.target.value;
   if(e.target&&e.target.id==="mm-n")App._merchName=e.target.value;
+  if(e.target&&e.target.id==="mm-ls"){
+    App._merchLogoScale=+e.target.value;
+    const v=document.getElementById("mm-ls-val");
+    if(v)v.textContent=App._merchLogoScale+"%";
+    const prev=document.getElementById("mi-prev");
+    if(prev)prev.innerHTML=merchantCell({icon:App._merchIcon,name:App._merchName||"N",color:App._merchColor,iconUrl:App._merchIconUrl,logoScale:App._merchLogoScale});
+  }
   if(e.target&&["gg-n","gg-t","gg-d","gg-c","gg-m"].includes(e.target.id)){
     App.updateGoalCalc();
   }
