@@ -32,6 +32,7 @@
   --scrim:rgba(0,0,0,.68);
   --inc:#5BB98C;         /* muted income green */
   --neg:#C05B4D;         /* muted over-budget red */
+  --warn:#E2BE54;        /* yellow highlight — transaction missing a merchant */
   --teal:#3A9586;        /* muted accent (star badge) */
   --teal-deep:#12455A;   /* overview hero (upper section) */
   --teal-hi:#164C61;
@@ -422,9 +423,11 @@ svg{display:block}
 .tamt{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
 .tamt.inc{color:var(--inc)}
 .tamt.sav{color:var(--neg)}
-.mute{color:var(--muted)!important}
-.trow .tamt{font-size:13px;font-weight:500;color:var(--muted)}
-.trow .tamt.inc{color:var(--inc);font-weight:600}
+  .tamt.nom{color:var(--warn)}
+  .mute{color:var(--muted)!important}
+  .trow .tamt{font-size:13px;font-weight:500;color:var(--muted)}
+  .trow .tamt.inc{color:var(--inc);font-weight:600}
+  .trow .tamt.nom{color:var(--warn);font-weight:600}
 
 /* txn detail sheet */
 .txn-row{display:flex;align-items:center;gap:12px;padding:2px 0 14px}
@@ -2322,7 +2325,7 @@ this.render();
       <span class="trow-body">
         <span class="tname">${esc(t.note||c.name)}</span>
       </span>
-      <span class="tamt ${t.dir==="income"?"inc":sav?"sav":""}">${rupees(t.amount)}</span>
+      <span class="tamt ${(t.dir==="income"?"inc ":sav?"sav ":"")+(t.dir!=="trans"&&!t.merchantId?"nom":"")}">${rupees(t.amount)}</span>
     </button>`;
   },
 
