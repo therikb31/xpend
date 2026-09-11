@@ -362,7 +362,7 @@ svg{display:block}
 .sum-ic .acc-ico{width:30px;height:30px;object-fit:contain;display:block;pointer-events:none}
 .sum-ic.logo{background:#fff;width:44px;height:44px;border-radius:50%}
 .sum-ic.logo::after{inset:-3px;border-radius:50%;border-color:rgba(10,13,15,.25)}
-.sum-ic.logo .acc-ico{width:calc(40px * var(--ls,100) / 100);height:calc(40px * var(--ls,100) / 100);object-fit:cover;border-radius:50%}
+.sum-ic.logo .acc-ico{width:calc(40px * var(--ls,100) / 100);height:calc(40px * var(--ls,100) / 100);object-fit:contain;border-radius:0;display:block;pointer-events:none}
 .sum-ic.logo .no-img{font-size:14px;font-weight:600;color:#23272B;display:grid;place-items:center}
 .cat-title .acc-ico{width:20px;height:20px;object-fit:contain;display:inline-block;pointer-events:none}
 .mi-url-box{display:flex;align-items:center;gap:10px;margin-top:8px}
@@ -861,7 +861,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b58";
+const APP_VER="b59";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
