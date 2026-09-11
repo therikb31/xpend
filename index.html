@@ -827,7 +827,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b47";
+const APP_VER="b48";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1139,6 +1139,7 @@ const Gist={
       App.data=doc;
       migrateCats(App.data);
       migrateSav(App.data);
+      migrateBud(App.data);
       Store.set("doc",App.data).catch(()=>{});
       this.saveCfg();
       return true;
@@ -1168,6 +1169,7 @@ const Gist={
     App.data=doc;
     migrateCats(App.data);
     migrateSav(App.data);
+    migrateBud(App.data);
     Store.set("doc",App.data).catch(()=>{});
     this.saveCfg();
   },
@@ -1258,6 +1260,9 @@ function migrateSav(d){
   s.savV=2;
   return changed;
 }
+function migrateBud(d){
+  d.budgets=(d.budgets||[]).map(b=>{if(!b.mkey)b.mkey=monthKey(new Date());return b});
+}
 function migrateGoals(d){
   const s=d.settings=d.settings||{};
   if(s.goalV===1)return false;
@@ -1310,7 +1315,7 @@ const App={
     if(migrateSav(d))Store.set("doc",d).catch(()=>{});
     if(!Array.isArray(d.accounts)||!d.accounts.length)d.accounts=JSON.parse(JSON.stringify(DEF_ACCS));
     d.goals=d.goals||[];d.shortcuts=d.shortcuts||[];d.transactions=d.transactions||[];
-    d.budgets=(d.budgets||[]).map(b=>{if(!b.mkey)b.mkey=monthKey(new Date());return b});
+    migrateBud(d);
     if(migrateGoals(d))Store.set("doc",d).catch(()=>{});
     this.data=d;
     this.add=this.freshAdd();
