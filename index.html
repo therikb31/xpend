@@ -927,28 +927,14 @@ function imgToInitials(img){
 const MERCH_ICONS={
   zomato:{name:"Zomato",g:"Food & Delivery",src:"https://cdn.simpleicons.org/zomato/ED6A45"},
   swiggy:{name:"Swiggy",g:"Food & Delivery",src:"https://cdn.simpleicons.org/swiggy/FC8019"},
-  doms:{name:"Domino's",g:"Food & Delivery",src:"https://cdn.simpleicons.org/dominos/006491"},
   kfc:{name:"KFC",g:"Food & Delivery",src:"https://cdn.simpleicons.org/kfc/F40027"},
   mcd:{name:"McDonald's",g:"Food & Delivery",src:"https://cdn.simpleicons.org/mcdonalds/FBC216"},
   starb:{name:"Starbucks",g:"Food & Delivery",src:"https://cdn.simpleicons.org/starbucks/00704A"},
-  blink:{name:"Blinkit",g:"Groceries",src:"https://cdn.simpleicons.org/blinkit/F8CB46"},
-  zepto:{name:"Zepto",g:"Groceries",src:"https://cdn.simpleicons.org/zepto/8507E0"},
   bbask:{name:"BigBasket",g:"Groceries",src:"https://cdn.simpleicons.org/bigbasket/2CA01C"},
-  dmart:{name:"DMart",g:"Groceries",src:"https://cdn.simpleicons.org/dmart/E31E24"},
   uber:{name:"Uber",g:"Ride & Travel",src:"https://cdn.simpleicons.org/uber"},
-  ola:{name:"Ola",g:"Ride & Travel",src:"https://cdn.simpleicons.org/ola"},
-  rapido:{name:"Rapido",g:"Ride & Travel",src:"https://cdn.simpleicons.org/rapido/E9E9E9"},
-  irctc:{name:"IRCTC",g:"Ride & Travel",src:"https://cdn.simpleicons.org/irctc/E31837"},
-  redbus:{name:"redBus",g:"Ride & Travel",src:"https://cdn.simpleicons.org/redbus/D84E2C"},
-  amaz:{name:"Amazon",g:"E-commerce",src:"https://cdn.simpleicons.org/amazon/FF9900"},
-  flip:{name:"Flipkart",g:"E-commerce",src:"https://cdn.simpleicons.org/flipkart/2874F0"},
-  mynt:{name:"Myntra",g:"E-commerce",src:"https://cdn.simpleicons.org/myntra/FF3F6C"},
   ppe:{name:"PhonePe",g:"Payments & UPI",src:"https://cdn.simpleicons.org/phonepe/5F259F"},
   gpay:{name:"Google Pay",g:"Payments & UPI",src:"https://cdn.simpleicons.org/googlepay/4285F4"},
   patm:{name:"Paytm",g:"Payments & UPI",src:"https://cdn.simpleicons.org/paytm/002D70"},
-  ampay:{name:"Amazon Pay",g:"Payments & UPI",src:"https://cdn.simpleicons.org/amazonpay/FF9900"},
-  bhim:{name:"BHIM UPI",g:"Payments & UPI",src:"https://cdn.simpleicons.org/bhim/0071C5"},
-  cred:{name:"CRED",g:"Payments & UPI",src:"https://cdn.simpleicons.org/cred/FFC300"},
   airtel:{name:"Airtel",g:"Bills & Services",src:"https://cdn.simpleicons.org/airtel/E40000"},
   jio:{name:"Jio",g:"Bills & Services",src:"https://cdn.simpleicons.org/jio/0A288A"},
   netflix:{name:"Netflix",g:"Bills & Services",src:"https://cdn.simpleicons.org/netflix/E50914"},
@@ -1349,20 +1335,20 @@ const DEF_ACCS=[
 const DEF_MERCHS=[
   {id:"mer-zomato",name:"Zomato",icon:"zomato",color:"#ED6A45"},
   {id:"mer-swiggy",name:"Swiggy",icon:"swiggy",color:"#FC8019"},
-  {id:"mer-blinkit",name:"Blinkit",icon:"blink",color:"#C7A71C"},
+  {id:"mer-blinkit",name:"Blinkit",color:"#C7A71C"},
   {id:"mer-bigbasket",name:"BigBasket",icon:"bbask",color:"#2CA01C"},
   {id:"mer-uber",name:"Uber",icon:"uber",color:"#0B0B0C"},
-  {id:"mer-ola",name:"Ola",icon:"ola",color:"#A4C400"},
-  {id:"mer-amazon",name:"Amazon",icon:"amaz",color:"#FF9900"},
-  {id:"mer-flipkart",name:"Flipkart",icon:"flip",color:"#2874F0"},
+  {id:"mer-ola",name:"Ola",color:"#A4C400"},
+  {id:"mer-amazon",name:"Amazon",color:"#FF9900"},
+  {id:"mer-flipkart",name:"Flipkart",color:"#2874F0"},
   {id:"mer-phonepe",name:"PhonePe",icon:"ppe",color:"#5F259F"},
   {id:"mer-gpay",name:"Google Pay",icon:"gpay",color:"#4285F4"},
   {id:"mer-paytm",name:"Paytm",icon:"patm",color:"#002D70"},
-  {id:"mer-kirana",name:"Kirana / UPI",icon:"bhim",color:"#0071C5"}
+  {id:"mer-kirana",name:"Kirana / UPI",color:"#0071C5"}
 ];
 function defaultDoc(){
   return {schemaVersion:1,meta:{createdAt:new Date().toISOString()},
-    settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,lastDate:null,lastCategoryId:null,lastMerchantId:"",catV:2,goalV:1,merchV:1},
+    settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,lastDate:null,lastCategoryId:null,lastMerchantId:"",catV:2,goalV:1,merchV:2},
     categories:JSON.parse(JSON.stringify(DEF_CATS)),
     accounts:JSON.parse(JSON.stringify(DEF_ACCS)),
     merchants:JSON.parse(JSON.stringify(DEF_MERCHS)),
@@ -1372,10 +1358,19 @@ function migrateMerch(d){
   const s=d.settings=d.settings||{};
   if(s.merchV===1){
     if(!Array.isArray(d.merchants))d.merchants=[];
-    return false;
+    const preseed={};
+    for(const m of DEF_MERCHS)preseed[m.id]=m.icon||null;
+    let changed=false;
+    for(const m of d.merchants){
+      if(m&&preseed.hasOwnProperty(m.id)&&m.icon!==preseed[m.id]){
+        m.icon=preseed[m.id];changed=true;
+      }
+    }
+    s.merchV=2;
+    return changed;
   }
   d.merchants=JSON.parse(JSON.stringify(DEF_MERCHS));
-  s.merchV=1;
+  s.merchV=2;
   return true;
 }
 
