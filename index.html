@@ -853,7 +853,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b50";
+const APP_VER="b51";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1605,16 +1605,26 @@ this.render();
   budgetsFor(mkey){
     return (this.data.budgets||[]).filter(b=>(b.mkey||this.mkey)===mkey);
   },
+  isOverall(b){
+    return !(b.categoryIds&&b.categoryIds.length);
+  },
+  catBudgets(mkey){
+    return this.budgetsFor(mkey||this.mkey).filter(b=>!this.isOverall(b));
+  },
+  overallLimit(mkey){
+    return this.catBudgets(mkey||this.mkey).reduce((s,b)=>s+(b.limit||0),0);
+  },
+  aggSpentV(mkey){
+    const ids=this.aggIdsRaw(mkey||this.mkey);
+    return (ids||[]).length?this.budgetDaily(mkey||this.mkey,ids).reduce((s,v)=>s+v,0):0;
+  },
   aggCatIds(mkey){
     const set=new Set();
     for(const b of this.budgetsFor(mkey||this.mkey)){(b.categoryIds||[]).forEach(id=>set.add(id))}
     return set;
   },
   aggIdsRaw(mkey){
-    const set=this.aggCatIds(mkey||this.mkey);
-    if(set.size===0)return null;
-    if(this.budgetsFor(mkey||this.mkey).some(b=>!(b.categoryIds&&b.categoryIds.length)))return null;
-    return Array.from(set);
+    return Array.from(this.aggCatIds(mkey||this.mkey));
   },
   budgetMonthCtx(mkey){
     const mk=parseMk(mkey||this.mkey),now=new Date();
@@ -1702,12 +1712,12 @@ this.render();
     const monthName=mk.toLocaleDateString("en-IN",{month:"long"});
     const prevName=parseMk(prevKey).toLocaleDateString("en-IN",{month:"short"});
     const dIcon=down?IC.downcir:`<span style="transform:scaleY(-1);display:inline-flex">${IC.downcir}</span>`;
-    const aggLimit=budgets.reduce((s,b)=>s+(b.limit||0),0);
+    const aggLimit=this.overallLimit(this.mkey);
     const aggIds=this.aggIdsRaw(this.mkey);
-    const aggSpent=aggIds==null?st.spent:this.budgetDaily(this.mkey,aggIds).reduce((s,v)=>s+v,0);
+    const aggSpent=this.aggSpentV(this.mkey);
     const agg=this.budgetCtx(this.mkey,aggLimit,aggSpent);
     const unbudgeted=Math.max(0,st.spent-aggSpent);
-    const stOf=b=>this.budgetCtx(b.mkey||this.mkey,b.limit||0,this.budgetSpent(b)).status;
+    const stOf=b=>{const all=this.isOverall(b);return this.budgetCtx(b.mkey||this.mkey,all?this.overallLimit(b.mkey||this.mkey):(b.limit||0),all?this.aggSpentV(b.mkey||this.mkey):this.budgetSpent(b)).status};
     const onN=budgets.filter(b=>stOf(b)==="on").length;
     const aheadN=budgets.filter(b=>stOf(b)==="ahead").length;
     const overN=budgets.filter(b=>stOf(b)==="over").length;
@@ -1752,8 +1762,10 @@ this.render();
   },
   budgetCard(b,i){
     const cats=this.budgetCats(b);
-    const all=!(b.categoryIds&&b.categoryIds.length);
-    const c=this.budgetCtx(b.mkey||this.mkey,b.limit||0,this.budgetSpent(b));
+    const all=this.isOverall(b);
+    let limit=b.limit||0,spent=this.budgetSpent(b),ids=all?null:b.categoryIds;
+    if(all){limit=this.overallLimit(b.mkey||this.mkey);ids=this.aggIdsRaw(b.mkey||this.mkey);spent=this.aggSpentV(b.mkey||this.mkey)}
+    const c=this.budgetCtx(b.mkey||this.mkey,limit,spent);
     const accent=all?"#52E5A5":this.budgetAccent(b);
     const pct=Math.round(c.pct*100);
     const stL=this.budStLabel(c.status),stC=this.budStClass(c.status);
@@ -1769,8 +1781,8 @@ this.render();
         <span class="pill ${stC}">${stL}</span>
       </div>
       <div class="goal-pbar"><div class="goal-pbar-track"><i style="width:${Math.min(100,c.pct*100)}%;background:${this.budBarColor(c)}"></i></div><span class="goal-pct">${pct}%</span></div>
-      <div class="goal-fig"><span class="goal-saved">${rupees(c.spent)}</span><span class="goal-of">of ${rupees(b.limit)} spent · ${pct}%</span></div>
-      ${this.budPaceSvg(b.mkey||this.mkey,all?null:b.categoryIds,b.limit||0,accent,240,56)}
+      <div class="goal-fig"><span class="goal-saved">${rupees(c.spent)}</span><span class="goal-of">of ${rupees(limit)} spent · ${pct}%</span></div>
+      ${this.budPaceSvg(b.mkey||this.mkey,ids,limit,accent,240,56)}
       <div class="goal-foot">
         <span class="gchip">${esc(names)}</span>
         <span class="gchip ${chipC}">${chipTxt}</span>
@@ -1788,8 +1800,10 @@ this.render();
       <div class="sh-title">${id?"Edit budget":"Set budget"}</div>
       <div class="goal-calc" id="budget-calc" style="display:none"></div>
       <input type="text" id="bb-n" placeholder="What is this budget for?" value="${esc(this._budName||"")}">
-      <div class="tsub" style="margin-bottom:2px">Monthly limit (₹)</div>
-      <input type="text" id="bb-t" inputmode="decimal" placeholder="e.g. 30000" value="${esc(this._budLimit||"")}" style="margin-top:0">
+      ${sel.size===0
+        ?`<div class="tsub" style="background:rgba(255,255,255,.05);padding:10px 12px;border-radius:12px;margin-top:8px">Overall cap auto-calculates as the sum of your category budgets.</div>`
+        :`<div class="tsub" style="margin-bottom:2px">Monthly limit (₹)</div>
+      <input type="text" id="bb-t" inputmode="decimal" placeholder="e.g. 30000" value="${esc(this._budLimit||"")}" style="margin-top:0">`}
       <div class="tsub" style="margin:6px 2px 2px">Month</div>
       <div class="chip-row">
         ${mw.map(k=>`<button class="chip ${k===mkey?"on":""}" data-act="bud-mm" data-key="${k}"><span class="dot" style="--c:${k===monthKey(new Date())?"#52E5A5":"#3A4147"}"></span>${esc(this.monthShort(k))}</button>`).join("")}
@@ -1813,10 +1827,32 @@ this.render();
     const box=document.getElementById("budget-calc");
     if(!box)return;
     const name=($("#bb-n")&&$("#bb-n").value||"").trim()||"This budget";
-    const limit=Math.round(parseFloat(($("#bb-t")&&$("#bb-t").value||"").replace(/,/g,""))||0)*100;
     const set=new Set(App._budCats||[]);
-    if(!limit){box.style.display="none";return}
     const mk=App._budMkey||App.mkey;
+    const mmName=parseMk(mk).toLocaleDateString("en-IN",{month:"long",year:"numeric"});
+    if(set.size===0){
+      const limit=App.overallLimit(mk);
+      const spent=App.aggSpentV(mk);
+      const c=App.budgetCtx(mk,limit,spent);
+      const stL=c.status==="over"?"Over":c.status==="ahead"?"Ahead of pace — slow down":"On pace";
+      const stC=App.budStClass(c.status);
+      const n=App.catBudgets(mk).length;
+      const note=n?`<div class="gc-note">Auto cap from <b>${n}</b> category budget${n===1?"":"s"} in ${mmName} — adjust those to change it.</div>`
+        :`<div class="gc-note">No category budgets in ${mmName} yet — the overall cap is ₹0 until you add some.</div>`;
+      const html=`<div class="goal-calc-hdr">${esc(name)} · <span class="pill ${stC}">${stL}</span></div>
+        <div class="gc-grid">
+          <div><span class="gc-lbl">Auto cap</span><span class="gc-val">${rupees(limit)}</span></div>
+          <div><span class="gc-lbl">Current spend</span><span class="gc-val">${rupees(spent)}</span></div>
+          <div><span class="gc-lbl">Remaining</span><span class="gc-val ${c.status==="over"?"neg":""}">${rupees(c.remaining)}</span></div>
+          <div><span class="gc-lbl">Progress</span><span class="gc-val">${Math.round(c.pct*100)}%</span></div>
+        </div>
+        ${note}`;
+      box.innerHTML=html;
+      box.style.display="block";
+      return;
+    }
+    const limit=Math.round(parseFloat(($("#bb-t")&&$("#bb-t").value||"").replace(/,/g,""))||0)*100;
+    if(!limit){box.style.display="none";return}
     let spent=0;
     for(const t of this.data.transactions){
       if(t.dir!=="expense"||t.date.slice(0,7)!==mk)continue;
@@ -1826,33 +1862,32 @@ this.render();
     const c=this.budgetCtx(mk,limit,spent);
     const stL=c.status==="over"?"Over":c.status==="ahead"?"Ahead of pace — slow down":"On pace";
     const stC=this.budStClass(c.status);
-    const mmName=parseMk(mk).toLocaleDateString("en-IN",{month:"long",year:"numeric"});
     const note=
       c.status==="over"?`<div class="gc-note err">Over by <b>${rupees(c.overage)}</b> — trim spending to get back on budget.</div>`
       :c.elapsed===0?`<div class="gc-note">Planned for <b>${mmName}</b> — nothing spent yet. Safe pace <b>${rupees(c.safeDaily)}/day</b> keeps you on budget.</div>`
       :c.status==="ahead"?`<div class="gc-note warn">Ahead of the linear pace — safe pace is <b>${rupees(c.safeDaily)}/day</b>.</div>`
       :`<div class="gc-note">On pace — ${rupees(spent)} of ${rupees(c.expected)} expected by day ${c.elapsed} · safe pace <b>${rupees(c.safeDaily)}/day</b>.</div>`;
-    const html=`
-      <div class="goal-calc-hdr">${esc(name)} · <span class="pill ${stC}">${stL}</span></div>
+    const html=`<div class="goal-calc-hdr">${esc(name)} · <span class="pill ${stC}">${stL}</span></div>
       <div class="gc-grid">
         <div><span class="gc-lbl">Current spend</span><span class="gc-val">${rupees(spent)}</span></div>
         <div><span class="gc-lbl">Limit</span><span class="gc-val">${rupees(limit)}</span></div>
         <div><span class="gc-lbl">Remaining</span><span class="gc-val ${c.remaining===0||c.status==="over"?"neg":""}">${rupees(c.remaining)}</span></div>
         <div><span class="gc-lbl">Progress</span><span class="gc-val">${Math.round(c.pct*100)}%</span></div>
       </div>
-      ${note}
-    `;
+      ${note}`;
     box.innerHTML=html;
     box.style.display="block";
   },
   budgetDetailSheet(id){
     const b=this.data.budgets.find(x=>x.id===id);if(!b)return "";
     const cats=this.budgetCats(b);
-    const all=!(b.categoryIds&&b.categoryIds.length);
-    const c=this.budgetCtx(b.mkey||this.mkey,b.limit||0,this.budgetSpent(b));
+    const all=this.isOverall(b);
+    let limit=b.limit||0,spent=this.budgetSpent(b);
+    if(all){limit=this.overallLimit(b.mkey||this.mkey);spent=this.aggSpentV(b.mkey||this.mkey)}
+    const c=this.budgetCtx(b.mkey||this.mkey,limit,spent);
     const accent=all?"#52E5A5":this.budgetAccent(b);
     const stL=this.budStLabel(c.status),stC=this.budStClass(c.status);
-    const names=all?"Every expense category counts":cats.length?cats.map(x=>x.name).join(" · "):"Categories removed";
+    const names=all?"Auto cap — sum of your category budgets":cats.length?cats.map(x=>x.name).join(" · "):"Categories removed";
     const bMonthName=parseMk(b.mkey||this.mkey).toLocaleDateString("en-IN",{month:"long",year:"numeric"});
     return `
       <div class="sh-grab"></div>
@@ -1861,7 +1896,7 @@ this.render();
       <div class="gd-progress"><i style="width:${Math.min(100,c.pct*100)}%;background:${this.budBarColor(c)}"></i></div>
       <div class="gc-grid">
         <div><span class="gc-lbl">Spent</span><span class="gc-val">${rupees(c.spent)}</span></div>
-        <div><span class="gc-lbl">Limit</span><span class="gc-val">${rupees(b.limit)}</span></div>
+        <div><span class="gc-lbl">Limit</span><span class="gc-val">${rupees(limit)}</span></div>
         <div><span class="gc-lbl">Remaining</span><span class="gc-val ${c.status==="over"?"neg":""}">${rupees(c.remaining)}</span></div>
         <div><span class="gc-lbl">Safe pace</span><span class="gc-val">${c.status==="over"?"₹0":rupees(c.safeDaily)+"/d"}</span></div>
       </div>
@@ -2001,7 +2036,7 @@ this.render();
       <span class="ov-cc">
         <span class="nm">${esc(t.note||c.name)}</span>
       </span>
-      <span class="amt sm ${t.dir==="income"?"inc":sav?"sav":""}${!t.merchantId&&this.data.settings.highlightNoMerchant!==false?" nom":""}">${rupees(t.amount)}</span>
+      <span class="amt sm ${t.dir==="income"?"inc":sav?"sav":""}${t.dir==="expense"&&!t.merchantId&&this.data.settings.highlightNoMerchant!==false?" nom":""}">${rupees(t.amount)}</span>
     </button>`;
   },
   floaters(){
@@ -2329,7 +2364,7 @@ this.render();
       <span class="trow-body">
         <span class="tname">${esc(t.note||c.name)}</span>
       </span>
-      <span class="tamt ${(t.dir==="income"?"inc ":sav?"sav ":"")+(t.dir!=="trans"&&!t.merchantId&&this.data.settings.highlightNoMerchant!==false?"nom":"")}">${rupees(t.amount)}</span>
+      <span class="tamt ${(t.dir==="income"?"inc ":sav?"sav ":"")+(t.dir==="expense"&&!t.merchantId&&this.data.settings.highlightNoMerchant!==false?"nom":"")}">${rupees(t.amount)}</span>
     </button>`;
   },
 
@@ -3407,11 +3442,14 @@ txnSheet(id){
     "budget-save":(el)=>{
       const name=($("#bb-n")&&$("#bb-n").value||"").trim();
       if(!name){App.toast("Enter a budget name");return}
-      const limit=Math.round(parseFloat(($("#bb-t")&&$("#bb-t").value||"").replace(/,/g,""))||0)*100;
-      if(!isFinite(limit)||limit<=0){App.toast("Enter a monthly limit");return}
       const ids=App._budCats||[];
       const id=el.dataset.id;
       const mkey=App._budMkey||App.mkey;
+      let limit=0;
+      if(ids.length){
+        limit=Math.round(parseFloat(($("#bb-t")&&$("#bb-t").value||"").replace(/,/g,""))||0)*100;
+        if(!isFinite(limit)||limit<=0){App.toast("Enter a monthly limit");return}
+      }
       const same=App.data.budgets.filter(b=>b.id!==id&&(b.mkey||App.mkey)===mkey);
       if(same.some(b=>b.name.trim().toLowerCase()===name.toLowerCase())){App.toast("A budget named "+name+" already exists");return}
       if(ids.length){
