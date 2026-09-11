@@ -1930,19 +1930,20 @@ this.render();
       </div>
     </div>`;
   },
-  daily(cid){
+  daily(cid,mid){
     const dim=new Date(parseMk(this.mkey).getFullYear(),parseMk(this.mkey).getMonth()+1,0).getDate();
     const arr=new Array(dim).fill(0);
     for(const t of this.data.transactions){
       if(t.dir!=="expense"||t.date.slice(0,7)!==this.mkey)continue;
       if(cid&&t.categoryId!==cid)continue;
+      if(mid&&(t.merchantId||"__none")!==mid)continue;
       const day=parseInt(t.date.slice(8,10),10)||1;
       arr[day-1]+=t.amount;
     }
     return arr;
   },
-  chart(cid){
-    const arr=this.daily(cid);
+  chart(cid,mid){
+    const arr=this.daily(cid,mid);
     const mx=Math.max.apply(null,arr)||100;
     const yv=Math.max(100,Math.ceil((mx/0.88)/50)*50);
     const hi=new Set(arr.map((v,i)=>v>0?i:-1).filter(i=>i>=0).slice(-6));
@@ -2191,7 +2192,9 @@ this.render();
         </button>
         <span class="cbtn cat-spacer" aria-hidden="true"></span>
       </div>
+      <div class="cat-chart" style="--c:${this.merchAccent(mercKey)}">${this.chart(null,mercKey)}</div>
       <div class="ov-chips">
+        <button class="ov-chip circ" data-act="list-go" aria-label="Search">${IC.search}</button>
         <button class="ov-chip" data-act="fl-period">${esc(monthName)}</button>
         <button class="ov-chip ${acc?"on":""}" data-act="acc-fopen">${acc?`<span class="dot" style="--c:${acc.color}"></span>`:""}${esc(accTxt)}</button>
         <button class="ov-chip" data-act="fl-clear">All</button>
