@@ -861,7 +861,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b60";
+const APP_VER="b61";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1369,6 +1369,38 @@ const DEF_MERCHS=[
   {id:"mer-paytm",name:"Paytm",icon:"patm",color:"#002D70"},
   {id:"mer-kirana",name:"Kirana / UPI",color:"#0071C5"}
 ];
+/* Shared merchant pool — bundled with each deploy so every user sees the same
+   branded merchants (name → icon/colour). Add newly-created logo merchants here
+   and redeploy to sync them to all users. */
+const MERCH_POOL=[
+  {name:"Zomato",icon:"zomato",color:"#ED6A45"},
+  {name:"Swiggy",icon:"swiggy",color:"#FC8019"},
+  {name:"BigBasket",icon:"bbask",color:"#2CA01C"},
+  {name:"Uber",icon:"uber",color:"#0B0B0C"},
+  {name:"PhonePe",icon:"ppe",color:"#5F259F"},
+  {name:"Google Pay",icon:"gpay",color:"#4285F4"},
+  {name:"Paytm",icon:"patm",color:"#002D70"},
+  {name:"McDonald's",icon:"mcd",color:"#FBC216"},
+  {name:"KFC",icon:"kfc",color:"#F40027"},
+  {name:"Starbucks",icon:"starb",color:"#00704A"},
+  {name:"Netflix",icon:"netflix",color:"#E50914"},
+  {name:"Spotify",icon:"spotfy",color:"#1DB954"},
+  {name:"Airtel",icon:"airtel",color:"#E40000"},
+  {name:"Jio",icon:"jio",color:"#0A288A"},
+  {name:"Blinkit",iconUrl:"https://cdn.brandfetch.io/idqFC5Rk0D/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1700856650602",color:"#C7A71C"},
+  {name:"Amazon",iconUrl:"https://cdn.brandfetch.io/idawOgYOsG/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1747149760488",color:"#FF9900"},
+  {name:"Ola",color:"#A4C400"},
+  {name:"Flipkart",color:"#2874F0"},
+  {name:"Merchant UPI",iconUrl:"https://www.vectorlogo.zone/logos/upi/upi-icon.svg",color:"#0071C5"},
+  {name:"District",iconUrl:"https://b.zmtcdn.com/data/o2_assets/97b2cc0514896aee1292f2a4b96212291770448620.png",color:"#7C9AA6"},
+  {name:"Net Banking",iconUrl:"https://cdn-icons-png.flaticon.com/128/1652/1652007.png",color:"#7C9AA6"},
+  {name:"Zepto",iconUrl:"https://cdn.iconscout.com/icon/free/png-512/free-zepto-icon-svg-download-png-12158609.png?f=webp&w=512",color:"#7C9AA6"},
+  {name:"Ratnadeep",iconUrl:"https://cdn.brandfetch.io/idW213JOfJ/w/400/h/400/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX&t=1781748589386",color:"#A68A7C"},
+  {name:"DMart",iconUrl:"https://cdn.brandfetch.io/idbIaGXY_H/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1668076332427",color:"#7C9AA6"},
+  {name:"Indian Oil",iconUrl:"https://cdn.brandfetch.io/idG17-gn3R/theme/dark/symbol.svg?c=1bxid64Mup7aczewSAYMX&t=1668078179236",color:"#7C9AA6"},
+  {name:"Youtube",iconUrl:"https://cdn.brandfetch.io/idVfYwcuQz/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1728452987792",color:"#7C9AA6"},
+  {name:"Kirana / UPI",color:"#0071C5"}
+];
 function defaultDoc(){
   return {schemaVersion:1,meta:{createdAt:new Date().toISOString()},
     settings:{currency:"INR",monthStartDay:1,weekStartsOn:1,hideBalances:false,highlightNoMerchant:true,lastDate:null,lastCategoryId:null,lastMerchantId:"",catV:2,goalV:1,merchV:2},
@@ -1402,6 +1434,34 @@ function migrateMerch(d){
   s.merchV=2;
   return false;
 }
+/* Merge the shared merchant pool into a user's list on every boot.
+   Per-user deletions live in settings.merchHidden (lowercased names), so
+   removing a pool merchant only hides it for that user. Backfills logo /
+   colour onto existing merchants that have none. */
+function mergePool(d){
+  const s=d.settings=d.settings||{};
+  if(!Array.isArray(s.merchHidden))s.merchHidden=[];
+  if(!s.merchPoolV)s.merchPoolV=0;
+  const byName=new Map(d.merchants.map(m=>[(m.name||"").toLowerCase(),m]));
+  let changed=false;
+  for(const p of MERCH_POOL){
+    const key=(p.name||"").toLowerCase();
+    if(!key||s.merchHidden.includes(key))continue;
+    const ex=byName.get(key);
+    if(ex){
+      if(!ex.icon&&!ex.iconUrl&&p.icon){ex.icon=p.icon;changed=true}
+      if(!ex.icon&&!ex.iconUrl&&p.iconUrl){ex.iconUrl=p.iconUrl;changed=true}
+      if(!ex.color&&p.color){ex.color=p.color;changed=true}
+    }else{
+      d.merchants.push(Object.assign({id:"mer-pool-"+uid(),createdAt:Date.now(),fromPool:true},
+        JSON.parse(JSON.stringify(p))));
+      byName.set(key,d.merchants[d.merchants.length-1]);
+      changed=true;
+    }
+  }
+  s.merchPoolV=1;
+  return changed;
+}
 
 /* ============================ APP ============================ */
 const TABS=[
@@ -1431,6 +1491,7 @@ const App={
     if(!Array.isArray(d.accounts)||!d.accounts.length)d.accounts=JSON.parse(JSON.stringify(DEF_ACCS));
     d.goals=d.goals||[];d.shortcuts=d.shortcuts||[];d.transactions=d.transactions||[];
     if(!Array.isArray(d.merchants)||!d.merchants.length){d.merchants=migrateMerch(d)?d.merchants:[]}
+    if(mergePool(d))Store.set("doc",d).catch(()=>{});
     migrateBud(d);
     if(migrateGoals(d))Store.set("doc",d).catch(()=>{});
     this.data=d;
@@ -3601,8 +3662,14 @@ txnSheet(id){
     },
     "merch-del":(el)=>{
       const id=el.dataset.id;
+      const m=merchById(id);
       if(App.pendingDel!==id){App.pendingDel=id;App.swapSheet(App.merchManageSheet());return}
-      App.data.merchants=App.data.merchants.filter(m=>m.id!==id);
+      App.data.merchants=App.data.merchants.filter(x=>x.id!==id);
+      if(m&&m.name){
+        if(!App.data.settings.merchHidden)App.data.settings.merchHidden=[];
+        const key=m.name.toLowerCase();
+        if(!App.data.settings.merchHidden.includes(key))App.data.settings.merchHidden.push(key);
+      }
       App.save();App.swapSheet(App.merchManageSheet());App.toast("Merchant deleted");
     },
     "gb-setup":()=>App.openSheet(App.gbSetupSheet()),
