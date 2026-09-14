@@ -123,7 +123,7 @@ svg{display:block}
 }
 
 /* ============================ OVERVIEW DASHBOARD (reference UI) ============================ */
-.ov-top{display:flex;justify-content:flex-start;padding:calc(12px + env(safe-area-inset-top,0px)) 20px 0}
+.ov-top{display:flex;justify-content:space-between;padding:calc(12px + env(safe-area-inset-top,0px)) 20px 0}
 .ov-gear{
   width:46px;height:46px;border-radius:50%;
   background:rgba(18,20,22,.32);border:.5px solid rgba(140,170,185,.4);
@@ -171,7 +171,6 @@ svg{display:block}
 .cat-delta svg{width:15px;height:15px}
 .cat-delta.neg{color:var(--neg)}
 .cat-delta.mute{color:var(--muted);font-weight:500}
-.cat-spacer{visibility:hidden}
 .cat-chart .bar{background:rgba(255,255,255,.05)}
 .cat-chart .bar.on{background:var(--c,#8C52FF)}
 /* category screen: edge-to-edge like Activity — neutralize the intrinsic insets of the shared dashboard widgets */
@@ -861,7 +860,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b61";
+const APP_VER="b62";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1795,7 +1794,7 @@ this.render();
     const stL=this.budStLabel(agg.status),stC=this.budStClass(agg.status);
     return `
     <div class="scr">
-      <header class="scrhdr"><div class="hdr-title">Budget</div><div class="hdr-left"><button class="btn mini" data-act="budget-add">${IC.plus} Set budget</button></div></header>
+      <header class="scrhdr"><div class="hdr-title">Budget</div><div class="hdr-left"><button class="cbtn small" data-act="exp-open" aria-label="Export data">${IC.dots}</button><button class="btn mini" data-act="budget-add">${IC.plus} Set budget</button></div></header>
       <button class="ov-sum swipe-mk" data-act="mk-open" aria-label="Select month">
         <span class="ov-mon">${esc(monthName)} ${IC.chev}</span>
         <span class="ov-total">${rupees(st.spent)}</span>
@@ -2015,7 +2014,7 @@ this.render();
     const dIcon=down?IC.downcir:`<span style="transform:scaleY(-1);display:inline-flex">${IC.downcir}</span>`;
     return `
     <div class="scr ov">
-      <div class="ov-top"><button class="ov-gear" data-act="go-settings" aria-label="Settings">${IC.gear}</button></div>
+      <div class="ov-top"><button class="ov-gear" data-act="go-settings" aria-label="Settings">${IC.gear}</button><button class="ov-gear" data-act="exp-open" aria-label="Export data">${IC.dots}</button></div>
       <button class="ov-sum swipe-mk" data-act="mk-open" aria-label="Select month">
         <span class="ov-mon">${esc(monthName)} ${IC.chev}</span>
         <span class="ov-total">${rupees(st.spent)}</span>
@@ -2170,7 +2169,7 @@ this.render();
     }).join("");
     return `
     <div class="scr sum">
-      <div class="ov-top"><button class="ov-gear" data-act="go-settings" aria-label="Settings">${IC.gear}</button></div>
+      <div class="ov-top"><button class="ov-gear" data-act="go-settings" aria-label="Settings">${IC.gear}</button><button class="ov-gear" data-act="exp-open" aria-label="Export data">${IC.dots}</button></div>
       <div class="sum-chart">
         <div class="donut-wrap big">${donut}
           <div class="donut-center swipe-mk">
@@ -2239,7 +2238,7 @@ this.render();
     }).join("");
     return `
     <div class="scr sum">
-      <div class="ov-top"><button class="ov-gear" data-act="go-settings" aria-label="Settings">${IC.gear}</button></div>
+      <div class="ov-top"><button class="ov-gear" data-act="go-settings" aria-label="Settings">${IC.gear}</button><button class="ov-gear" data-act="exp-open" aria-label="Export data">${IC.dots}</button></div>
       <div class="sum-chart">
         <div class="donut-wrap big">${donut}
           <div class="donut-center swipe-mk">
@@ -2296,7 +2295,7 @@ this.render();
           <span class="cat-total">${rupees(total)}</span>
           ${delta}
         </button>
-        <span class="cbtn cat-spacer" aria-hidden="true"></span>
+        <button class="cbtn" data-act="exp-open" aria-label="Export data">${IC.dots}</button>
       </div>
       <div class="cat-chart" style="--c:${this.merchAccent(mercKey)}">${this.chart(null,mercKey)}</div>
       <div class="ov-chips">
@@ -2356,7 +2355,7 @@ this.render();
           <span class="cat-total">${rupees(total)}</span>
           ${delta}
         </button>
-        <span class="cbtn cat-spacer" aria-hidden="true"></span>
+        <button class="cbtn" data-act="exp-open" aria-label="Export data">${IC.dots}</button>
       </div>
       <div class="cat-chart" style="--c:${this.catAccent(this.flt.cat)}">${this.chart(this.flt.cat)}</div>
       <div class="ov-chips">
@@ -2398,7 +2397,7 @@ this.render();
     const cats=d.categories;
     return `
     <div class="scr">
-      <header class="scrhdr"><div class="hdr-left"><button class="cbtn small" data-act="back" aria-label="Back">${IC.left}</button><div class="hdr-title">Activity</div></div><div class="hdr-left"><button class="cbtn small" data-act="go-settings" aria-label="Settings">${IC.gear}</button></div></header>
+      <header class="scrhdr"><div class="hdr-left"><button class="cbtn small" data-act="back" aria-label="Back">${IC.left}</button><div class="hdr-title">Activity</div></div><div class="hdr-left"><button class="cbtn small" data-act="exp-open" aria-label="Export data">${IC.dots}</button><button class="cbtn small" data-act="go-settings" aria-label="Settings">${IC.gear}</button></div></header>
 
       <div class="search">${IC.search}<input type="text" placeholder="Search transactions" value="${esc(flt.q)}" oninput="App.onSearch(this.value)"></div>
 
@@ -2477,7 +2476,7 @@ this.render();
     };
     return `
     <div class="scr">
-      <header class="scrhdr"><div class="hdr-title">Goals</div><div class="hdr-left"><button class="btn mini" data-act="goal-add">${IC.plus} Create Goal</button></div></header>
+      <header class="scrhdr"><div class="hdr-title">Goals</div><div class="hdr-left"><button class="cbtn small" data-act="exp-open" aria-label="Export data">${IC.dots}</button><button class="btn mini" data-act="goal-add">${IC.plus} Create Goal</button></div></header>
       <div class="card"><div class="card-title">Overview</div>
         <div class="metrics-grid">
           <div class="metric"><span class="metric-val">${rupees(totalTarget)}</span><span class="metric-lbl">Total Needed</span></div>
@@ -2539,7 +2538,7 @@ this.render();
     const net=accs.reduce((s,a)=>s+(a.kind==="savings"||a.secondary?0:this.accBalance(a.id)),0);
     return `
     <div class="scr">
-      <header class="scrhdr"><div class="hdr-title">Accounts</div><div class="hdr-left"><button class="btn mini" data-act="tr-open">⇄ Move</button><button class="btn mini" data-act="acc-add">${IC.plus} Add</button></div></header>
+      <header class="scrhdr"><div class="hdr-title">Accounts</div><div class="hdr-left"><button class="cbtn small" data-act="exp-open" aria-label="Export data">${IC.dots}</button><button class="btn mini" data-act="tr-open">⇄ Move</button><button class="btn mini" data-act="acc-add">${IC.plus} Add</button></div></header>
       <div class="card">
         <div class="card-title">Net worth</div>
         <div class="dc-main" style="font-size:38px;margin:2px 0 4px">${rupees(net)}</div>
@@ -2567,7 +2566,7 @@ this.render();
     const s=this.data.settings,d=this.data;
     return `
     <div class="scr">
-      <header class="scrhdr"><div class="hdr-title">Settings</div></header>
+      <header class="scrhdr"><div class="hdr-title">Settings</div><div class="hdr-left"><button class="cbtn small" data-act="exp-open" aria-label="Export data">${IC.dots}</button></div></header>
 
       <div class="sec-label">Preferences</div>
       <div class="card">
@@ -2624,6 +2623,144 @@ this.render();
     if(dirty)return "Pending changes…";
     if(!iso)return "Never synced";
     try{return "Synced "+new Date(iso).toLocaleDateString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}catch(e){return "Synced"}
+  },
+
+  /* ---------- export JSON dump per screen ---------- */
+  expLabel(){
+    return {overview:"Overview",summary:"Summary",analytics:"Analytics",category:"Category",merchant:"Merchant",activity:"Activity",budget:"Budget",goals:"Goals",accounts:"Accounts",settings:"Settings"}[this.view]||"Data";
+  },
+  resolvedTxs(list){
+    return list.map(t=>{
+      const r={id:t.id,date:t.date,dir:t.dir,amount:t.amount};
+      if(t.note)r.note=t.note;
+      if(t.createdAt)r.createdAt=t.createdAt;
+      if(t.dir==="trans"){
+        const parts=this.trNames(t).split(" → ");
+        r.from=parts[0];r.to=parts[1]||parts[0];
+      }else{
+        const c=catById(t.categoryId),a=accById(t.accountId),m=t.merchantId?merchById(t.merchantId):null;
+        r.category=c?{id:c.id,name:c.name,emoji:catEmoji(c)}:null;
+        r.account=a?{id:a.id,name:a.name,kind:a.kind}:null;
+        r.merchant=m?{id:m.id,name:m.name}:null;
+      }
+      return r;
+    });
+  },
+  expData(){
+    const d=this.data,mk=parseMk(this.mkey);
+    const now=new Date();
+    const monthLabel=mk.getFullYear()===now.getFullYear()&&mk.getMonth()===now.getMonth()?"This month":mk.toLocaleDateString("en-IN",{month:"long"});
+    const prev=new Date(mk);prev.setMonth(prev.getMonth()-1);
+    const prevKey=monthKey(prev);
+    const flt=this.flt;
+    const env={app:"Xpend",version:APP_VER,view:this.view,exportedAt:new Date().toISOString(),month:this.mkey,monthLabel,filters:Object.assign({},flt),stats:this.monthStats(this.mkey)};
+    if(this.view==="overview"){
+      let list=this.sortedTxs();
+      if(flt.dir!=="all")list=list.filter(t=>t.dir===flt.dir);
+      if(flt.acc!=="all")list=list.filter(t=>t.accountId===flt.acc||t.from===flt.acc||t.to===flt.acc);
+      env.data={transactions:this.resolvedTxs(list)};
+      return env;
+    }
+    if(this.view==="summary"||this.view==="analytics"){
+      const byMerch=this.view==="analytics";
+      const txs=d.transactions.filter(t=>t.dir==="expense"&&t.date.slice(0,7)===this.mkey&&(flt.acc==="all"||t.accountId===flt.acc));
+      const map={};
+      for(const t of txs){const k=byMerch?(t.merchantId||"__none"):t.categoryId;map[k]=(map[k]||0)+t.amount}
+      const entries=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+      const total=entries.reduce((s,e)=>s+e[1],0);
+      const prevSt=this.monthStats(prevKey);
+      const PAL=["#7B61FF","#FF5678","#31C4F3","#FF9F43","#52E5A5","#FFD166","#9B8CFA","#4EC49B"];
+      const rows=entries.map(([k,amt],i)=>{
+        const n=txs.filter(t=>(byMerch?(t.merchantId||"__none"):t.categoryId)===k).length;
+        const base={amount:amt,count:n,pct:total>0?+(amt/total*100).toFixed(2):0,color:PAL[i%PAL.length]};
+        if(byMerch){
+          const m=k==="__none"?null:merchById(k);
+          return Object.assign({id:k,merchantId:k,name:m?m.name:"Unassigned",icon:m?m.icon||null:null,iconUrl:m?m.iconUrl||null:null,logoScale:m?(m.logoScale||100):null},base);
+        }
+        const c=catById(k);
+        return Object.assign({id:k,categoryId:k,name:c?c.name:"Unknown",emoji:catEmoji(c)},base);
+      });
+      env.data={total,prevMonthSpent:prevSt.spent,entries:rows};
+      return env;
+    }
+    if(this.view==="category"||this.view==="merchant"){
+      const byMerch=this.view==="merchant";
+      const key=byMerch?this.flt.merch:this.flt.cat;
+      const mercKey=byMerch?(key==="__none"?"__none":(merchById(key)?merchById(key).id:"__none")):null;
+      const total=byMerch?(this.merchantSpend(this.mkey)[mercKey]||0):(this.catSpend(this.mkey)[key]||0);
+      const prevTotal=byMerch?(this.merchantSpend(prevKey)[mercKey]||0):(this.catSpend(prevKey)[key]||0);
+      const deltaPct=prevTotal>0?Math.round((prevTotal-total)/prevTotal*100):null;
+      let list=this.sortedTxs().filter(t=>t.dir==="expense"&&t.date.slice(0,7)===this.mkey&&(byMerch?((t.merchantId||"__none")===mercKey):(t.categoryId===key)));
+      if(flt.acc!=="all")list=list.filter(t=>t.accountId===flt.acc);
+      const m=byMerch?merchById(mercKey):null;
+      const c=byMerch?null:catById(key);
+      env.data={scope:byMerch?(m?{id:m.id,name:m.name,icon:m.icon||null,iconUrl:m.iconUrl||null}:{id:"__none",name:"Unassigned"}):(c?{id:c.id,name:c.name,emoji:catEmoji(c)}:{id:key,name:"Unknown"}),total,prevTotal,deltaPct,transactions:this.resolvedTxs(list)};
+      return env;
+    }
+    if(this.view==="activity"){
+      let list=this.sortedTxs();
+      if(flt.dir!=="all")list=list.filter(t=>t.dir===flt.dir);
+      if(flt.cat!=="all")list=list.filter(t=>t.categoryId===flt.cat);
+      if(flt.merch!=="all")list=list.filter(t=>(t.merchantId||"__none")===flt.merch);
+      if(flt.acc!=="all")list=list.filter(t=>t.accountId===flt.acc||t.from===flt.acc||t.to===flt.acc);
+      if(flt.q)list=list.filter(t=>{
+        const hay=(t.note||"")+" "+(t.dir==="trans"?this.trNames(t):(this.catName(t.categoryId)||""))+" "+t.date;
+        return hay.toLowerCase().includes(flt.q.toLowerCase());
+      });
+      env.data={transactions:this.resolvedTxs(list)};
+      return env;
+    }
+    if(this.view==="budget"){
+      const aggLimit=this.overallLimit(this.mkey);
+      const aggSpent=this.aggSpentV(this.mkey);
+      const agg=this.budgetCtx(this.mkey,aggLimit,aggSpent);
+      const unbudgeted=Math.max(0,this.monthStats(this.mkey).spent-aggSpent);
+      const rows=this.budgetsFor(this.mkey).map(b=>{
+        const all=this.isOverall(b),mkey=b.mkey||this.mkey;
+        const limit=all?this.overallLimit(mkey):(b.limit||0);
+        const spent=all?this.aggSpentV(mkey):this.budgetSpent(b);
+        const c=this.budgetCtx(mkey,limit,spent);
+        return {id:b.id,name:b.name,overall:all,limit,spent,status:c.status,expected:c.expected,overage:c.overage,remaining:c.remaining,safeDaily:c.safeDaily,categories:this.budgetCats(b).map(x=>x.name)};
+      });
+      env.data={totals:{limit:aggLimit,spent:aggSpent,remaining:agg.remaining,safeDaily:agg.safeDaily,status:agg.status,unbudgeted},budgets:rows};
+      return env;
+    }
+    if(this.view==="goals"){
+      const gs=this.data.goals||[];
+      const active=gs.filter(g=>!g.completed);
+      const rows=gs.map(g=>{
+        const c=this.goalCalc(g),sources=(g.sources||[]).map(s=>({name:s.name,amount:s.amount||0,date:s.date||null}));
+        return {id:g.id,name:g.name,target:g.target,current:c.current,remaining:c.remaining,pct:+(c.pct).toFixed(1),status:c.status,date:g.date||null,plan:g.plan||0,monthlyRequired:c.required,estimatedMonths:c.est,estimatedDate:c.estDate?c.estDate.toISOString().slice(0,7):null,sources,completed:!!g.completed,actualAmount:g.actualAmount||null};
+      });
+      env.data={aggregates:{totalTarget:gs.reduce((s,g)=>s+(g.target||0),0),totalSaved:gs.reduce((s,g)=>s+this.goalCurrent(g),0),monthlyRequired:active.reduce((s,g)=>s+(this.goalCalc(g).required||0),0),onTrack:active.filter(g=>this.goalCalc(g).status==="on-track").length,needsAttention:active.filter(g=>this.goalCalc(g).status==="needs-attention").length,overdue:active.filter(g=>this.goalCalc(g).status==="overdue").length,completed:gs.filter(g=>g.completed).length},goals:rows};
+      return env;
+    }
+    if(this.view==="accounts"){
+      const accs=d.accounts;
+      const net=accs.reduce((s,a)=>s+(a.kind==="savings"||a.secondary?0:this.accBalance(a.id)),0);
+      env.data={netWorth:net,accounts:accs.map(a=>({id:a.id,name:a.name,kind:a.kind,opening:a.opening,balance:this.accBalance(a.id),icon:a.icon||null,color:a.color,secondary:!!a.secondary,prev:a.prev!=null?a.prev:null}))};
+      return env;
+    }
+    env.data={categories:d.categories,accounts:d.accounts,merchants:d.merchants||[],budgets:d.budgets||[],goals:d.goals||[],shortcuts:d.shortcuts||[],transactions:d.transactions,settings:d.settings,counts:{transactions:d.transactions.length}};
+    return env;
+  },
+  expSheet(){
+    const label=this.expLabel();
+    const env=this.expData();
+    const size=(new TextEncoder().encode(JSON.stringify(env)).length/1024).toFixed(1)+" KB";
+    const dta=env.data||{};
+    let count;
+    if(this.view==="overview"||this.view==="activity"||this.view==="category"||this.view==="merchant")count=(dta.transactions||[]).length;
+    else if(this.view==="summary"||this.view==="analytics")count=(dta.entries||[]).length;
+    else if(this.view==="budget")count=(dta.budgets||[]).length;
+    else if(this.view==="goals")count=(dta.goals||[]).length;
+    else if(this.view==="accounts")count=(dta.accounts||[]).length;
+    else count=dta.transactions.length;
+    return `
+    <div class="sh-grab"></div>
+    <div class="sh-title">Export ${label}</div>
+    <div class="tsub" style="margin:0 2px 14px;color:var(--muted)">Copies a JSON snapshot of everything shown on this screen — names, emojis, totals, counts and percentages resolved. Month: ${esc(env.monthLabel)} · ${count} items · ${size}.</div>
+    <button class="sh-row" data-act="exp-copy"><span class="ccircle" style="--c:rgba(82,229,165,.16)">${IC.share}</span><span class="rname">Copy ${label} JSON</span>${IC.right}</button>`;
   },
 
   /* ============ ADD EXPENSE (spec screen) ============ */
@@ -3391,6 +3528,21 @@ txnSheet(id){
     "mk-next":()=>{const d=parseMk(App.mkey);d.setMonth(d.getMonth()+1);const k=monthKey(d);if(k>monthKey(new Date())&&App.view!=="budget")return;App.mkey=k;App.swapSheet(App.mkeySheet())},
     "mk-pick":(el)=>{App.mkey=el.dataset.key;App.closeSheet();App.render()},
     "mk-today":()=>{App.mkey=monthKey(new Date());App.closeSheet();App.render()},
+    "exp-open":()=>App.openSheet(App.expSheet()),
+    "exp-copy":()=>{
+      const label=App.expLabel();
+      const txt=JSON.stringify(App.expData(),null,2);
+      const done=()=>{App.closeSheet();App.toast("Copied "+label+" JSON")};
+      const fallback=()=>{
+        const ta=document.createElement("textarea");
+        ta.value=txt;ta.style.position="fixed";ta.style.opacity="0";
+        document.body.appendChild(ta);ta.select();
+        try{document.execCommand("copy");done()}catch(e){App.toast("Copy failed")}
+        ta.remove();
+      };
+      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(fallback)}
+      else fallback();
+    },
     "fab-add":()=>{App.prevView=App.view;App._scrollRestore=$("#screen").scrollTop;App.add=App.freshAdd();App.txOpen=null;App.view="add";App.render()},
     "note-pick":(el)=>{App.add.note=el.dataset.n;
       const inp=document.getElementById("note-inline");if(inp)inp.value=el.dataset.n;
