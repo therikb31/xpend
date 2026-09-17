@@ -52,14 +52,10 @@
   --fs: -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
-html{background:var(--bg)}
-body{
-  background:var(--bg);color:var(--text);
-  font-family:var(--fs);
-  font-size:16px;line-height:1.35;
-  -webkit-font-smoothing:antialiased;
-  overflow:hidden;
+html,body{
+  position:fixed;inset:0;width:100%;height:100%;
+  background:var(--bg);
+  margin:0;padding:0;
 }
 button{
   font-family:inherit;color:inherit;background:none;border:0;
@@ -83,7 +79,6 @@ svg{display:block}
    and sheets clear of the home indicator. */
 @media (display-mode: standalone){
   #app{position:fixed;inset:0;height:auto}
-  html,body{position:fixed;inset:0;width:100%;height:100%}
 }
 #screen{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .scr{padding:calc(6px + env(safe-area-inset-top,0px)) 18px calc(180px + env(safe-area-inset-bottom,0px))}
