@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#060809">
+<meta name="theme-color" content="#164C61">
 <meta name="apple-mobile-web-app-title" content="Xpend">
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.webmanifest">
@@ -863,7 +863,7 @@ function shortAmt(p){
   if(r>=1000)return sig(r/1000)+"k";
   return String(Math.round(r));
 }
-const APP_VER="b70";
+const APP_VER="b71";
 function dayLabel(dateStr){
   if(dateStr===todayStr())return "Today";
   const y=new Date();y.setDate(y.getDate()-1);
@@ -1537,7 +1537,14 @@ this.render();
   },
 
   /* ---------- render ---------- */
+  syncThemeColor(){
+    const mt=document.querySelector('meta[name="theme-color"]');
+    if(!mt)return;
+    const tealTop=this.view==="overview"||this.view==="category"||this.view==="merchant";
+    mt.setAttribute("content",tealTop?"#164C61":"#060809");
+  },
   render(){
+    this.syncThemeColor();
     this.renderNav();
     const scr=$("#screen");
     const appEl=document.getElementById("app");
