@@ -5,8 +5,10 @@
 
 import { useEffect } from "react";
 import { BottomNav } from "./components/nav/BottomNav";
+import { useGrocerySync } from "./hooks/useGrocerySync";
 import { useViewportFix } from "./hooks/useViewportFix";
 import { IC } from "./lib/icons";
+import { parseInvite } from "./lib/friends";
 import { AccountsPage } from "./pages/Accounts";
 import { ActivityPage } from "./pages/Activity";
 import { AddPage } from "./pages/Add";
@@ -84,8 +86,33 @@ function Screen() {
 }
 
 function Shell() {
-  const { state, openAdd } = useApp();
+  const { state, openAdd, openSheet } = useApp();
   useViewportFix();
+  useGrocerySync();
+
+  // Invite links (#/f/… add-friend, #/l/… join-list). Consumed once after
+  // boot (fresh launch from a messenger), then cleared so a reload doesn't
+  // re-trigger. A hashchange listener covers the same-tab case, where a
+  // fragment-only navigation doesn't reload the page.
+  useEffect(() => {
+    if (!state.booted) return;
+    const consume = () => {
+      const h = window.location.hash;
+      if (!h || !h.startsWith("#/")) return;
+      const inv = parseInvite(h);
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      if (!inv) return;
+      if (inv.kind === "friend") {
+        openSheet({ name: "friend-add", id: inv.username, id2: inv.name });
+      } else {
+        openSheet({ name: "grocery-join", id: inv.name, id2: inv.username, id3: inv.salt });
+      }
+    };
+    consume();
+    window.addEventListener("hashchange", consume);
+    return () => window.removeEventListener("hashchange", consume);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.booted]);
 
   // Flush pending backup when leaving the page (port of visibilitychange).
   useEffect(() => {

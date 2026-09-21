@@ -131,8 +131,16 @@ export interface GroceryItem {
 }
 
 export interface GroceryShare {
-  gistId: string;
+  gistId: string; // my replica gist id (each member owns their replica)
   role: "owner" | "member";
+  peers: string[]; // GitHub usernames to watch for replicas
+  salt: string; // shared list salt — invite links + key recovery (public metadata)
+}
+
+export interface Friend {
+  githubUsername: string; // login, lowercased — replica discovery key
+  displayName: string; // attribution label ("checked by …")
+  addedAt: number;
 }
 
 export interface GroceryList {
@@ -154,6 +162,7 @@ export interface Settings {
   lastMerchantId: string;
   gist: GistCfg | null;
   deviceName?: string; // identity for grocery attribution + sync tiebreaks
+  friends?: Friend[]; // local contacts for shared grocery lists
   merchHidden?: string[];
   merchPoolV?: number;
   merchV?: number;

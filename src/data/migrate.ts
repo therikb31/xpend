@@ -191,6 +191,16 @@ export function migrateGrocery(d: Doc): boolean {
     s.deviceName = "Device-" + uid().slice(-4).toUpperCase();
     changed = true;
   }
+  if (!Array.isArray(s.friends)) {
+    s.friends = [];
+    changed = true;
+  }
+  for (const l of d.groceryLists) {
+    if (l.share && !Array.isArray(l.share.peers)) {
+      l.share.peers = [];
+      changed = true;
+    }
+  }
   if ((d.schemaVersion as number) < 2) {
     d.schemaVersion = 2;
     changed = true;

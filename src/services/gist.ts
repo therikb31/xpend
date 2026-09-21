@@ -134,6 +134,13 @@ export const Gist = {
     });
   },
 
+  /** Authenticated GitHub login for the stored PAT (used for friend links). */
+  async whoami(): Promise<string> {
+    const u = (await this.api("GET", "/user")) as { login?: string };
+    if (!u || !u.login) throw new Error("No login");
+    return u.login;
+  },
+
   envelope(d: Doc, salt: string): Promise<Record<string, unknown>> {
     return C.enc(this.key!, JSON.stringify(d)).then((e) => ({
       v: 1,

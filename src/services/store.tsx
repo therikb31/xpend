@@ -38,14 +38,17 @@ export type SheetName =
   | "account-add" | "account-edit" | "account-icon"
   | "gist-setup" | "gist-unlock" | "gist-restore"
   | "export" | "pwa-help" | "budget-form" | "budget-detail"
-  | "grocery-item" | "grocery-list";
+  | "grocery-item" | "grocery-list" | "grocery-share" | "grocery-join"
+  | "friend-add";
 
 export interface SheetSpec {
   name: SheetName;
   /** entity id (txn / merchant / goal / budget / account / grocery list) */
   id?: string;
-  /** second entity id (grocery item id for grocery-item edit) */
+  /** second entity id (grocery item id for grocery-item edit, sender for grocery-join) */
   id2?: string;
+  /** third param (list salt for grocery-join links) */
+  id3?: string;
 }
 
 interface AppState {

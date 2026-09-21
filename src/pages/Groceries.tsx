@@ -142,6 +142,19 @@ export function GroceriesPage() {
             <span style={{ flex: 1 }}>
               {list.name} · {active.length} to buy{dueCount ? ` · ${dueCount} overdue` : ""}
             </span>
+            {list.share && (
+              <span className="pill on" style={{ flex: "none" }}>
+                Shared
+              </span>
+            )}
+            <button
+              type="button"
+              className="row-btn"
+              onClick={() => openSheet({ name: "grocery-share", id: list.id })}
+              aria-label="Share list"
+            >
+              {IC.share}
+            </button>
             <button
               type="button"
               className="row-btn"

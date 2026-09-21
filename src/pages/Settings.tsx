@@ -1,8 +1,9 @@
 // Settings — port of App.settings + prefs/backup/data actions.
 
 import { useEffect, useState } from "react";
-import { APP_VER } from "../lib/format";
+import { APP_VER, init } from "../lib/format";
 import { monthKey } from "../lib/format";
+import { friendLink } from "../lib/friends";
 import { IC } from "../lib/icons";
 import { defaultDoc } from "../data/defaults";
 import { sampleData } from "../data/sample";
@@ -82,6 +83,8 @@ export function SettingsPage() {
   const { state, openSheet, mutate, setMkey, setFilter, toast } = useApp();
   const doc = state.doc!;
   const s = doc.settings;
+  const friends = s.friends || [];
+  const [myLink, setMyLink] = useState<string | null>(null);
 
   const pushNow = async () => {
     if (!gistUnlocked()) {
@@ -122,6 +125,49 @@ export function SettingsPage() {
     if (!window.confirm("Stop using this gist for backup?")) return;
     Gist.disconnect();
     toast("Backup disconnected");
+  };
+
+  const makeMyLink = async () => {
+    if (!gistUnlocked()) {
+      openSheet({ name: "gist-unlock" });
+      return;
+    }
+    try {
+      const login = await Gist.whoami();
+      setMyLink(friendLink(login, (s.deviceName || "").trim() || login));
+    } catch {
+      toast("Could not read GitHub login");
+    }
+  };
+
+  const copyLink = async (link: string, what: string) => {
+    try {
+      await navigator.clipboard.writeText(link);
+      toast(what + " copied — send it to your friend");
+    } catch {
+      toast("Copy failed — long-press the link");
+    }
+  };
+
+  const shareLink = async (link: string) => {
+    const nav = navigator as Navigator & { share?: (d: { title?: string; text?: string; url?: string }) => Promise<void> };
+    if (nav.share) {
+      try {
+        await nav.share({ title: "Add me on Xpend", url: link });
+        return;
+      } catch {
+        /* dismissed — fall through to copy */
+      }
+    }
+    copyLink(link, "Invite link");
+  };
+
+  const removeFriend = (username: string) => {
+    if (!window.confirm("Remove " + username + " from friends?")) return;
+    mutate((d) => {
+      d.settings.friends = (d.settings.friends || []).filter((f) => f.githubUsername !== username);
+    });
+    toast("Friend removed");
   };
 
   return (
@@ -196,6 +242,72 @@ export function SettingsPage() {
             </span>
           </span>
         </div>
+      </div>
+
+      <div className="sec-label">Friends</div>
+      <div className="card">
+        <div className="slab">
+          <span className="set" style={{ cursor: "default" }}>
+            <span className="s-label">
+              My device name<div className="s-sub">Shown on shared lists</div>
+            </span>
+            <input
+              type="text"
+              value={s.deviceName || ""}
+              onChange={(e) => mutate((d) => void (d.settings.deviceName = e.target.value))}
+              placeholder="My device"
+              style={{ marginTop: 0, maxWidth: 150, textAlign: "right" }}
+              maxLength={24}
+            />
+          </span>
+        </div>
+        {friends.length ? (
+          friends.map((f) => (
+            <div className="slab" key={f.githubUsername}>
+              <span className="set" style={{ cursor: "default" }}>
+                <span className="ccircle">{init(f.displayName)}</span>
+                <span className="s-label">
+                  {f.displayName}
+                  <div className="s-sub">@{f.githubUsername}</div>
+                </span>
+              </span>
+              <button
+                type="button"
+                className="row-btn"
+                onClick={() => removeFriend(f.githubUsername)}
+                aria-label={"Remove " + f.displayName}
+              >
+                {IC.x}
+              </button>
+            </div>
+          ))
+        ) : (
+          <div className="tsub" style={{ padding: "2px 2px 8px", color: "var(--muted)" }}>
+            No friends yet — add one to share grocery lists.
+          </div>
+        )}
+        <button className="set" onClick={() => openSheet({ name: "friend-add" })}>
+          <span className="s-label">
+            Add friend<div className="s-sub">Paste their invite link</div>
+          </span>
+          {IC.plus}
+        </button>
+        <button className="set" onClick={makeMyLink}>
+          <span className="s-label">
+            My invite link<div className="s-sub">Share it so a friend can add you</div>
+          </span>
+          {IC.share}
+        </button>
+        {myLink && (
+          <div className="slab">
+            <span className="s-label" style={{ overflowWrap: "anywhere", fontWeight: 400, fontSize: 13 }}>
+              {myLink}
+            </span>
+            <button type="button" className="btn mini" onClick={() => shareLink(myLink)}>
+              Share
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="sec-label">Manage</div>

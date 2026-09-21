@@ -87,6 +87,7 @@ export function defaultDoc(): Doc {
       lastMerchantId: "",
       gist: null,
       deviceName: "My device",
+      friends: [],
       catV: 2,
       goalV: 1,
       merchV: 2,

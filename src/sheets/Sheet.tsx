@@ -7,8 +7,10 @@ import { useApp } from "../services/store";
 import type { SheetSpec } from "../services/store";
 import { AccountAddSheet, AccountEditSheet } from "./accounts";
 import { BudgetDetailSheet, BudgetFormSheet } from "./budget";
+import { FriendAddSheet } from "./friends";
 import { GoalCompleteSheet, GoalDetailSheet, GoalFormSheet } from "./goals";
 import { GroceryItemSheet, GroceryListSheet } from "./grocery";
+import { GroceryJoinSheet, GroceryShareSheet } from "./groceryshare";
 import { MerchantEditorSheet, MerchantManageSheet } from "./manage";
 import { CategoryManageSheet, ShortcutsSheet } from "./manage";
 import { SavMoveSheet, TransferSheet } from "./money";
@@ -90,6 +92,12 @@ function Content({ sheet }: { sheet: SheetSpec }) {
       return <GroceryItemSheet listId={sheet.id!} itemId={sheet.id2} />;
     case "grocery-list":
       return <GroceryListSheet id={sheet.id} />;
+    case "grocery-share":
+      return <GroceryShareSheet listId={sheet.id!} />;
+    case "grocery-join":
+      return <GroceryJoinSheet listId={sheet.id!} from={sheet.id2 || ""} salt={sheet.id3} />;
+    case "friend-add":
+      return <FriendAddSheet username={sheet.id} name={sheet.id2} />;
     case "budget-detail":
       return <BudgetDetailSheet id={sheet.id!} />;
     default:
