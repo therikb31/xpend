@@ -3,3 +3,5 @@ specs
 *.md
 opencode.json
 xpendo logo.png
+node_modules
+dist
