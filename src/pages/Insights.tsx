@@ -1,8 +1,10 @@
-// Analytics — port of App.analytics: merchant donut + breakdown cards.
-// Mirrors Summary, grouped by merchant instead of category.
+// Insights — merged Summary + Analytics: one tab with a Category/Merchant
+// grouping slider. Shell (DonutHero + chips + sum cards) is shared; only the
+// aggregation key and card component switch with `grp`.
 
+import { useState } from "react";
 import { DonutHero } from "../components/charts";
-import { Empty, MerchSumCard, TrendIcon } from "../components/ui";
+import { CatSumCard, Empty, MerchSumCard, TrendIcon } from "../components/ui";
 import { PAL, accById, monthStats } from "../data/finance";
 import { monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
@@ -10,12 +12,13 @@ import { useApp } from "../services/store";
 import type { ExpenseTxn } from "../types";
 import type { CSSProperties } from "react";
 
-export function AnalyticsPage() {
+export function InsightsPage() {
   const { state, openSheet, setFilter, go } = useApp();
   const doc = state.doc!;
   const mkey = state.mkey;
   const flt = state.flt;
   const hide = !!doc.settings.hideBalances;
+  const [grp, setGrp] = useState<"cat" | "merch">("cat");
 
   const mk = parseMk(mkey);
   const prev = new Date(mk);
@@ -32,12 +35,12 @@ export function AnalyticsPage() {
     (t): t is ExpenseTxn =>
       t.dir === "expense" && t.date.slice(0, 7) === mkey && (flt.acc === "all" || t.accountId === flt.acc)
   );
-  const mercMap: Record<string, number> = {};
+  const agg: Record<string, number> = {};
   for (const t of txs) {
-    const k = t.merchantId || "__none";
-    mercMap[k] = (mercMap[k] || 0) + t.amount;
+    const k = grp === "cat" ? t.categoryId : t.merchantId || "__none";
+    agg[k] = (agg[k] || 0) + t.amount;
   }
-  const entries = Object.entries(mercMap).sort((a, b) => b[1] - a[1]);
+  const entries = Object.entries(agg).sort((a, b) => b[1] - a[1]);
   const total = entries.reduce((s, e) => s + e[1], 0);
   const pct = prevSt.spent > 0 ? Math.round(((prevSt.spent - total) / prevSt.spent) * 100) : null;
   const down = pct != null && pct >= 0;
@@ -49,10 +52,15 @@ export function AnalyticsPage() {
 
   const acc = flt.acc !== "all" ? accById(doc, flt.acc) : null;
   const accTxt = acc ? (acc.name.length > 11 ? acc.name.slice(0, 11) + "…" : acc.name) : "All accounts";
-  const openMerch = (id: string) => {
-    setFilter({ merch: id });
-    go("merchant", state.view);
+  const openEntry = (id: string) => {
+    if (grp === "cat") setFilter({ cat: id });
+    else setFilter({ merch: id });
+    go(grp === "cat" ? "category" : "merchant", state.view);
   };
+  const countFor = (id: string) =>
+    grp === "cat"
+      ? txs.filter((t) => t.categoryId === id).length
+      : txs.filter((t) => (t.merchantId || "__none") === id).length;
 
   return (
     <div className="scr sum">
@@ -62,6 +70,26 @@ export function AnalyticsPage() {
         </button>
         <button className="ov-gear" onClick={() => openSheet({ name: "export" })} aria-label="Export data">
           {IC.dots}
+        </button>
+      </div>
+      <div className="chip-row" style={{ marginTop: 0 }} role="tablist" aria-label="Group spending by">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={grp === "cat"}
+          className={"chip " + (grp === "cat" ? "on" : "")}
+          onClick={() => setGrp("cat")}
+        >
+          Category
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={grp === "merch"}
+          className={"chip " + (grp === "merch" ? "on" : "")}
+          onClick={() => setGrp("merch")}
+        >
+          Merchant
         </button>
       </div>
       <DonutHero
@@ -108,21 +136,42 @@ export function AnalyticsPage() {
       </div>
       <div className="sum-list">
         {entries.length ? (
-          entries.map(([mid, amt]) => (
-            <MerchSumCard
-              key={mid}
-              doc={doc}
-              mid={mid}
-              amt={amt}
-              total={total}
-              count={txs.filter((t) => (t.merchantId || "__none") === mid).length}
-              color={colors[mid]}
-              onOpen={openMerch}
-            />
-          ))
+          entries.map(([id, amt]) =>
+            grp === "cat" ? (
+              <CatSumCard
+                key={id}
+                doc={doc}
+                cid={id}
+                amt={amt}
+                total={total}
+                count={countFor(id)}
+                color={colors[id]}
+                onOpen={openEntry}
+              />
+            ) : (
+              <MerchSumCard
+                key={id}
+                doc={doc}
+                mid={id}
+                amt={amt}
+                total={total}
+                count={countFor(id)}
+                color={colors[id]}
+                onOpen={openEntry}
+              />
+            )
+          )
         ) : (
           <div className="card">
-            <Empty icon={IC.empty} title="No spending yet" sub="Tag a merchant when adding an expense" />
+            <Empty
+              icon={IC.empty}
+              title="No spending yet"
+              sub={
+                grp === "cat"
+                  ? "Tap + to add your first expense"
+                  : "Tag a merchant when adding an expense"
+              }
+            />
           </div>
         )}
       </div>

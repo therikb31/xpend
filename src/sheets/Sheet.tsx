@@ -8,6 +8,7 @@ import type { SheetSpec } from "../services/store";
 import { AccountAddSheet, AccountEditSheet } from "./accounts";
 import { BudgetDetailSheet, BudgetFormSheet } from "./budget";
 import { GoalCompleteSheet, GoalDetailSheet, GoalFormSheet } from "./goals";
+import { GroceryItemSheet, GroceryListSheet } from "./grocery";
 import { MerchantEditorSheet, MerchantManageSheet } from "./manage";
 import { CategoryManageSheet, ShortcutsSheet } from "./manage";
 import { SavMoveSheet, TransferSheet } from "./money";
@@ -85,6 +86,10 @@ function Content({ sheet }: { sheet: SheetSpec }) {
       return <PwaHelpSheet />;
     case "budget-form":
       return <BudgetFormSheet id={sheet.id} />;
+    case "grocery-item":
+      return <GroceryItemSheet listId={sheet.id!} itemId={sheet.id2} />;
+    case "grocery-list":
+      return <GroceryListSheet id={sheet.id} />;
     case "budget-detail":
       return <BudgetDetailSheet id={sheet.id!} />;
     default:

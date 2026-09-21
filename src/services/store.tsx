@@ -18,6 +18,7 @@ import {
   migrateBud,
   migrateCats,
   migrateGoals,
+  migrateGrocery,
   migrateMerch,
   migrateSav,
 } from "../data/migrate";
@@ -26,7 +27,7 @@ import { savSync } from "../data/finance";
 import { attachGist, Gist, gistConnected, gistDirty } from "./gist";
 import { Store } from "./storage";
 
-export type TabId = "activity" | "summary" | "budget" | "goals" | "analytics" | "accounts";
+export type TabId = "activity" | "summary" | "budget" | "goals" | "groceries" | "accounts";
 
 export type SheetName =
   | "month" | "date" | "category" | "account" | "merchant"
@@ -36,12 +37,15 @@ export type SheetName =
   | "goal-form" | "goal-detail" | "goal-sources" | "source-entry" | "goal-complete"
   | "account-add" | "account-edit" | "account-icon"
   | "gist-setup" | "gist-unlock" | "gist-restore"
-  | "export" | "pwa-help" | "budget-form" | "budget-detail";
+  | "export" | "pwa-help" | "budget-form" | "budget-detail"
+  | "grocery-item" | "grocery-list";
 
 export interface SheetSpec {
   name: SheetName;
-  /** entity id (txn / merchant / goal / budget / account) */
+  /** entity id (txn / merchant / goal / budget / account / grocery list) */
   id?: string;
+  /** second entity id (grocery item id for grocery-item edit) */
+  id2?: string;
 }
 
 interface AppState {
@@ -364,6 +368,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       d.goals = d.goals || [];
       d.shortcuts = d.shortcuts || [];
       d.transactions = d.transactions || [];
+      if (migrateGrocery(d)) dirty = true;
       if (!Array.isArray(d.merchants) || !d.merchants.length) {
         if (!migrateMerch(d)) {
           d.merchants = [];

@@ -347,9 +347,10 @@ export function expLabel(view: View): string {
   return (
     (
       {
-        overview: "Overview", summary: "Summary", analytics: "Analytics",
+        overview: "Overview", summary: "Insights",
         category: "Category", merchant: "Merchant", activity: "Activity",
-        budget: "Budget", goals: "Goals", accounts: "Accounts", settings: "Settings",
+        budget: "Budget", goals: "Goals", groceries: "Groceries",
+        accounts: "Accounts", settings: "Settings",
       } as Record<string, string>
     )[view] || "Data"
   );
@@ -398,27 +399,22 @@ export function expData(doc: Doc, view: View, mkey: string, flt: Filters): Recor
     env.data = { transactions: resolvedTxs(doc, list) };
     return env;
   }
-  if (view === "summary" || view === "analytics") {
-    const byMerch = view === "analytics";
+  if (view === "summary") {
     const txs = doc.transactions.filter(
       (t): t is ExpenseTxn =>
         t.dir === "expense" && t.date.slice(0, 7) === mkey && (flt.acc === "all" || t.accountId === flt.acc)
     );
     const map: Record<string, number> = {};
     for (const t of txs) {
-      const k = byMerch ? t.merchantId || "__none" : t.categoryId;
+      const k = t.categoryId;
       map[k] = (map[k] || 0) + t.amount;
     }
     const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
     const total = entries.reduce((s, e) => s + e[1], 0);
     const prevSt = monthStats(doc, prevKey);
     const rows = entries.map(([k, amt], i) => {
-      const n = txs.filter((t) => (byMerch ? t.merchantId || "__none" : t.categoryId) === k).length;
+      const n = txs.filter((t) => t.categoryId === k).length;
       const base = { amount: amt, count: n, pct: total > 0 ? +(amt / total * 100).toFixed(2) : 0, color: PAL[i % PAL.length] };
-      if (byMerch) {
-        const m = k === "__none" ? null : merchById(doc, k);
-        return { id: k, merchantId: k, name: m ? m.name : "Unassigned", icon: m ? m.icon || null : null, iconUrl: m ? m.iconUrl || null : null, logoScale: m ? m.logoScale || 100 : null, ...base };
-      }
       const c = catById(doc, k);
       return { id: k, categoryId: k, name: c ? c.name : "Unknown", emoji: c?.emoji, ...base };
     });
@@ -512,6 +508,7 @@ export function expData(doc: Doc, view: View, mkey: string, flt: Filters): Recor
   env.data = {
     categories: doc.categories, accounts: doc.accounts, merchants: doc.merchants || [],
     budgets: doc.budgets || [], goals: doc.goals || [], shortcuts: doc.shortcuts || [],
+    groceryLists: doc.groceryLists || [],
     transactions: doc.transactions, settings: doc.settings,
     counts: { transactions: doc.transactions.length },
   };

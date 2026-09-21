@@ -116,6 +116,33 @@ export interface GistCfg {
   lastPushedAt?: string;
 }
 
+export type GroceryStatus = "active" | "purchased";
+
+export interface GroceryItem {
+  id: string;
+  name: string;
+  qty: string;
+  expectDate: string; // YYYY-MM-DD
+  status: GroceryStatus;
+  purchasedAt?: number | null;
+  addedBy: string; // deviceName of the device that added it
+  updatedAt: number;
+  deleted?: boolean; // tombstone for shared-list merges
+}
+
+export interface GroceryShare {
+  gistId: string;
+  role: "owner" | "member";
+}
+
+export interface GroceryList {
+  id: string;
+  name: string;
+  items: GroceryItem[];
+  share?: GroceryShare | null; // set when this list is shared (Phase 2b)
+  updatedAt: number;
+}
+
 export interface Settings {
   currency: "INR";
   monthStartDay: number;
@@ -126,6 +153,7 @@ export interface Settings {
   lastCategoryId: string | null;
   lastMerchantId: string;
   gist: GistCfg | null;
+  deviceName?: string; // identity for grocery attribution + sync tiebreaks
   merchHidden?: string[];
   merchPoolV?: number;
   merchV?: number;
@@ -135,7 +163,7 @@ export interface Settings {
 }
 
 export interface Doc {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   meta: { createdAt: string; updatedAt?: string };
   settings: Settings;
   accounts: Account[];
@@ -145,6 +173,7 @@ export interface Doc {
   budgets: Budget[];
   goals: Goal[];
   shortcuts: Shortcut[];
+  groceryLists: GroceryList[];
 }
 
 // --- UI state (ports of App.view/prevView/mkey/flt/add/tr) ---
@@ -157,7 +186,7 @@ export type View =
   | "category"
   | "merchant"
   | "goals"
-  | "analytics"
+  | "groceries"
   | "accounts"
   | "settings"
   | "add";

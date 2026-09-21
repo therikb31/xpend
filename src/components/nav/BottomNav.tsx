@@ -9,10 +9,10 @@ import type { View } from "../../types";
 
 const TABS: Array<{ id: TabId; label: string; icon: keyof typeof IC }> = [
   { id: "activity", label: "Activity", icon: "list" },
-  { id: "summary", label: "Summary", icon: "pie" },
+  { id: "summary", label: "Insights", icon: "pie" },
   { id: "budget", label: "Budget", icon: "trend" },
   { id: "goals", label: "Goals", icon: "target" },
-  { id: "analytics", label: "Analytics", icon: "bars" },
+  { id: "groceries", label: "Groceries", icon: "cart" },
   { id: "accounts", label: "Accounts", icon: "wallet" },
 ];
 

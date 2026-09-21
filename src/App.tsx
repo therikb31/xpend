@@ -10,14 +10,14 @@ import { IC } from "./lib/icons";
 import { AccountsPage } from "./pages/Accounts";
 import { ActivityPage } from "./pages/Activity";
 import { AddPage } from "./pages/Add";
-import { AnalyticsPage } from "./pages/Analytics";
 import { BudgetPage } from "./pages/Budget";
 import { CategoryPage } from "./pages/Category";
 import { GoalsPage } from "./pages/Goals";
+import { GroceriesPage } from "./pages/Groceries";
+import { InsightsPage } from "./pages/Insights";
 import { MerchantPage } from "./pages/Merchant";
 import { OverviewPage } from "./pages/Overview";
 import { SettingsPage } from "./pages/Settings";
-import { SummaryPage } from "./pages/Summary";
 import { Gist } from "./services/gist";
 import { AppProvider, scrollMem, useApp } from "./services/store";
 import { SheetRoot } from "./sheets/Sheet";
@@ -42,7 +42,7 @@ function Page() {
     case "activity":
       return <ActivityPage />;
     case "summary":
-      return <SummaryPage />;
+      return <InsightsPage />;
     case "budget":
       return <BudgetPage />;
     case "category":
@@ -51,8 +51,8 @@ function Page() {
       return <MerchantPage />;
     case "goals":
       return <GoalsPage />;
-    case "analytics":
-      return <AnalyticsPage />;
+    case "groceries":
+      return <GroceriesPage />;
     case "accounts":
       return <AccountsPage />;
     case "settings":

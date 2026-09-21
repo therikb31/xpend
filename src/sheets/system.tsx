@@ -26,7 +26,7 @@ export function ExportSheet() {
   let count: number;
   if (state.view === "overview" || state.view === "activity" || state.view === "category" || state.view === "merchant")
     count = (dta.transactions || []).length;
-  else if (state.view === "summary" || state.view === "analytics") count = (dta.entries || []).length;
+  else if (state.view === "summary") count = (dta.entries || []).length;
   else if (state.view === "budget") count = (dta.budgets || []).length;
   else if (state.view === "goals") count = (dta.goals || []).length;
   else if (state.view === "accounts") count = (dta.accounts || []).length;

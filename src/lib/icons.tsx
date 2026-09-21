@@ -112,6 +112,9 @@ export const IC: Record<string, ReactNode> = {
   plusB: (
     <Svg><path d="M12 5v14M5 12h14" /></Svg>
   ),
+  cart: (
+    <Svg><path d="M4 7.5h16l-1.4 8.2a1.5 1.5 0 0 1-1.5 1.3H6.9a1.5 1.5 0 0 1-1.5-1.3z" /><path d="M8.5 7.5 12 3.5l3.5 4" /><path d="M10 11v3.5M14 11v3.5" /></Svg>
+  ),
 };
 
 export interface LogoRec {

@@ -146,6 +146,58 @@ export function migrateMerch(d: Doc): boolean {
   return false;
 }
 
+/* v2: grocery lists + device identity. Normalizes legacy shapes and stamps
+   schemaVersion 2. Item tombstones (deleted) are preserved for shared merges. */
+export function migrateGrocery(d: Doc): boolean {
+  let changed = false;
+  if (!Array.isArray(d.groceryLists)) {
+    d.groceryLists = [];
+    changed = true;
+  }
+  for (const l of d.groceryLists) {
+    if (!Array.isArray(l.items)) {
+      l.items = [];
+      changed = true;
+    }
+    for (const it of l.items) {
+      if (it.status !== "purchased" && it.status !== "active") {
+        it.status = "active";
+        changed = true;
+      }
+      if (typeof it.qty !== "string") {
+        it.qty = it.qty == null ? "" : String(it.qty);
+        changed = true;
+      }
+      if (!it.expectDate) {
+        it.expectDate = new Date().toISOString().slice(0, 10);
+        changed = true;
+      }
+      if (!it.addedBy) {
+        it.addedBy = "";
+        changed = true;
+      }
+      if (typeof it.updatedAt !== "number") {
+        it.updatedAt = Date.now();
+        changed = true;
+      }
+    }
+    if (typeof l.updatedAt !== "number") {
+      l.updatedAt = Date.now();
+      changed = true;
+    }
+  }
+  const s = (d.settings = d.settings || ({} as Doc["settings"]));
+  if (!s.deviceName) {
+    s.deviceName = "Device-" + uid().slice(-4).toUpperCase();
+    changed = true;
+  }
+  if ((d.schemaVersion as number) < 2) {
+    d.schemaVersion = 2;
+    changed = true;
+  }
+  return changed;
+}
+
 /* Merge the shared merchant pool into a user's list on every boot.
    Per-user deletions live in settings.merchHidden (lowercased names). */
 export function mergePool(d: Doc): boolean {

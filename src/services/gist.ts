@@ -218,7 +218,7 @@ export const Gist = {
           if (!env || env.v !== 1 || !env.kdf || !env.kdf.salt || !env.iv || !env.ct) continue;
           const key = await C.der(pass, env.kdf.salt);
           const restored = JSON.parse(await C.dec(key, env.iv, env.ct)) as Doc;
-          if (!restored || restored.schemaVersion !== 1 || !Array.isArray(restored.transactions)) continue;
+          if (!restored || restored.schemaVersion !== 1 && restored.schemaVersion !== 2 || !Array.isArray(restored.transactions)) continue;
           this.key = key;
           await this.kStore();
           const prev = restored.settings && restored.settings.gist;
@@ -276,7 +276,7 @@ export const Gist = {
       };
       if (!env || env.v !== 1 || !env.kdf || !env.kdf.salt || !env.iv || !env.ct) return false;
       const restored = JSON.parse(await C.dec(this.key, env.iv, env.ct)) as Doc;
-      if (!restored || restored.schemaVersion !== 1 || !Array.isArray(restored.transactions)) return false;
+      if (!restored || restored.schemaVersion !== 1 && restored.schemaVersion !== 2 || !Array.isArray(restored.transactions)) return false;
       restored.settings = restored.settings || ({} as Doc["settings"]);
       if (!restored.settings.gist || !restored.settings.gist.gistId) restored.settings.gist = c;
       migrateCats(restored);
@@ -314,7 +314,7 @@ export const Gist = {
     this.key = key;
     await this.kStore();
     const restored = JSON.parse(await C.dec(key, env.iv, env.ct)) as Doc;
-    if (!restored || restored.schemaVersion !== 1 || !Array.isArray(restored.transactions))
+    if (!restored || restored.schemaVersion !== 1 && restored.schemaVersion !== 2 || !Array.isArray(restored.transactions))
       throw new Error("Not a Xpend backup");
     const prev = restored.settings && restored.settings.gist;
     restored.settings = restored.settings || ({} as Doc["settings"]);

@@ -74,7 +74,7 @@ export const MERCH_POOL: Array<Partial<Merchant> & { name: string }> = [
 
 export function defaultDoc(): Doc {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     meta: { createdAt: new Date().toISOString() },
     settings: {
       currency: "INR",
@@ -86,6 +86,7 @@ export function defaultDoc(): Doc {
       lastCategoryId: null,
       lastMerchantId: "",
       gist: null,
+      deviceName: "My device",
       catV: 2,
       goalV: 1,
       merchV: 2,
@@ -97,5 +98,6 @@ export function defaultDoc(): Doc {
     goals: [],
     budgets: [],
     shortcuts: [],
+    groceryLists: [],
   };
 }
