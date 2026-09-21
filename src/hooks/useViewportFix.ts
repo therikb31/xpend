@@ -37,9 +37,21 @@ export function useViewportFix(): void {
     }
     window.addEventListener("resize", onResize);
     document.addEventListener("focusout", onFocusOut);
+    // Launch re-assert (standalone only): iOS sometimes reports a short
+    // viewport right after a standalone launch (black bands top/bottom).
+    // Nudge the layout viewport again shortly after boot, same kbFix as the
+    // keyboard path.
+    let t1: ReturnType<typeof setTimeout> | undefined;
+    let t2: ReturnType<typeof setTimeout> | undefined;
+    if (window.matchMedia("(display-mode: standalone)").matches) {
+      t1 = setTimeout(() => kbFix(), 350);
+      t2 = setTimeout(() => kbFix(), 1500);
+    }
     return () => {
       window.removeEventListener("resize", onResize);
       document.removeEventListener("focusout", onFocusOut);
+      if (t1) clearTimeout(t1);
+      if (t2) clearTimeout(t2);
       if (cleanupVV) cleanupVV();
     };
   }, []);

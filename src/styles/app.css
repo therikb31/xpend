@@ -59,14 +59,18 @@ svg{display:block}
   height:100vh;height:100svh;height:100dvh;
   background:var(--bg);
 }
-/* Standalone (home-screen) iOS: pin the app shell to the real screen edges with
-   position:fixed + inset:0. This avoids the intermittent iOS bug where 100dvh is
-   reported too short right after launch, which left a black strip at the bottom
-   until the app was removed from RAM. env() safe-area insets keep the nav, FABs
-   and sheets clear of the home indicator. */
+/* Standalone (home-screen) iOS: pin the app shell to the real screen edges so
+   the app paints behind the notch and home indicator (no black bands).
+   position:fixed + explicit edges tracks the visual viewport even when iOS
+   intermittently misreports 100dvh right after launch. Explicit top/right/
+   bottom/left + -webkit-fill-available cover engines that quirk on the
+   `inset` shorthand. No hardcoded dimensions: interactive content stays
+   clear via env() padding on content (see .scr), not by shrinking #app. */
 @media (display-mode: standalone){
-  #app{position:fixed;inset:0;height:auto}
-  html,body{height:100%}
+  html{height:100%;height:-webkit-fill-available}
+  body{min-height:100%;min-height:-webkit-fill-available}
+  #root{height:100%}
+  #app{position:fixed;top:0;right:0;bottom:0;left:0;width:100%;height:100%;height:-webkit-fill-available}
 }
 #screen{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .scr{padding:calc(6px + env(safe-area-inset-top,0px)) 18px calc(180px + env(safe-area-inset-bottom,0px))}
@@ -77,8 +81,11 @@ svg{display:block}
 #nav{
   z-index:40;
   position:fixed;left:14px;right:14px;
+  /* Sink into the bottom safe area: fixed gap from the physical edge, so the
+     pill overlaps the home-indicator zone instead of floating above it.
+     (The old env()-22px formula lifted the pill out of the safe area.)
+     Content clearance comes from .scr bottom padding, not from nav offset. */
   bottom:8px;
-  bottom:max(8px, calc(env(safe-area-inset-bottom,0px) - 22px));
   height:70px;border-radius:35px;
   display:flex;align-items:stretch;padding:5px;gap:1px;
   background:rgba(18,20,22,.94);

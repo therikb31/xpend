@@ -1,7 +1,6 @@
 // Settings — port of App.settings + prefs/backup/data actions.
 
 import { APP_VER } from "../lib/format";
-import { C } from "../lib/crypto";
 import { monthKey } from "../lib/format";
 import { IC } from "../lib/icons";
 import { defaultDoc } from "../data/defaults";
