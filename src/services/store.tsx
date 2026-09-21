@@ -25,6 +25,7 @@ import {
 import { monthKey, parseMk, rupees, todayStr, uid } from "../lib/format";
 import { savSync } from "../data/finance";
 import { attachGist, Gist, gistConnected, gistDirty } from "./gist";
+import { ghLoadToken } from "./githubAuth";
 import { Store } from "./storage";
 
 export type TabId = "activity" | "summary" | "budget" | "goals" | "groceries" | "accounts";
@@ -39,7 +40,7 @@ export type SheetName =
   | "gist-setup" | "gist-unlock" | "gist-restore"
   | "export" | "pwa-help" | "budget-form" | "budget-detail"
   | "grocery-item" | "grocery-list" | "grocery-share" | "grocery-join"
-  | "friend-add";
+  | "friend-add" | "github-link" | "import-merge";
 
 export interface SheetSpec {
   name: SheetName;
@@ -47,8 +48,10 @@ export interface SheetSpec {
   id?: string;
   /** second entity id (grocery item id for grocery-item edit, sender for grocery-join) */
   id2?: string;
-  /** third param (list salt for grocery-join links) */
+  /** third param (list salt for legacy #/l/ grocery-join links) */
   id3?: string;
+  /** fourth param (list key for #/s/ grocery-join links) */
+  id4?: string;
 }
 
 interface AppState {
@@ -179,6 +182,7 @@ interface Ctx {
   state: AppState;
   toast: (msg: string) => void;
   mutate: (fn: (d: Doc) => void) => void;
+  loadDoc: (d: Doc) => void;
   goTab: (t: TabId) => void;
   go: (view: View, prev?: View) => void;
   back: () => void;
@@ -218,6 +222,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const ctx = useMemo<Ctx>(() => {
     const s = () => ref.current;
     const mutate = (fn: (d: Doc) => void) => dispatch({ t: "MUTATE", fn });
+    const loadDoc = (doc: Doc) => dispatch({ t: "LOAD_DOC", doc });
     const openSheet = (sheet: SheetSpec) => dispatch({ t: "OPEN_SHEET", sheet });
     const closeSheet = () => dispatch({ t: "OPEN_SHEET", sheet: null });
     const goTab = (tab: TabId) => {
@@ -340,7 +345,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       dispatch({ t: "SET_MKEY", mkey: k });
     };
     return {
-      state, toast, mutate, goTab, go, back, openAdd, closeAdd,
+      state, toast, mutate, loadDoc, goTab, go, back, openAdd, closeAdd,
       startEdit, keyInput, saveAdd, setMkey, setFilter, setAdd, shiftMonth, openSheet, closeSheet,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -384,6 +389,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (dirty) Store.set("doc", d).catch(() => undefined);
       if (dead) return;
       dispatch({ t: "BOOT", doc: d });
+      ghLoadToken();
 
       attachGist({
         getDoc: () => ref.current.doc,

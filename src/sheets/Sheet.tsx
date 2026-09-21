@@ -13,6 +13,7 @@ import { GroceryItemSheet, GroceryListSheet } from "./grocery";
 import { GroceryJoinSheet, GroceryShareSheet } from "./groceryshare";
 import { MerchantEditorSheet, MerchantManageSheet } from "./manage";
 import { CategoryManageSheet, ShortcutsSheet } from "./manage";
+import { GithubLinkSheet, ImportMergeSheet } from "./oauth";
 import { SavMoveSheet, TransferSheet } from "./money";
 import {
   AccountFilterSheet,
@@ -95,9 +96,13 @@ function Content({ sheet }: { sheet: SheetSpec }) {
     case "grocery-share":
       return <GroceryShareSheet listId={sheet.id!} />;
     case "grocery-join":
-      return <GroceryJoinSheet listId={sheet.id!} from={sheet.id2 || ""} salt={sheet.id3} />;
+      return <GroceryJoinSheet listId={sheet.id!} from={sheet.id2 || ""} salt={sheet.id3} keyB64={sheet.id4} />;
     case "friend-add":
       return <FriendAddSheet username={sheet.id} name={sheet.id2} />;
+    case "github-link":
+      return <GithubLinkSheet />;
+    case "import-merge":
+      return <ImportMergeSheet />;
     case "budget-detail":
       return <BudgetDetailSheet id={sheet.id!} />;
     default:

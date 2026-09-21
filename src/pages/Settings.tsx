@@ -9,6 +9,8 @@ import { defaultDoc } from "../data/defaults";
 import { sampleData } from "../data/sample";
 import type { Doc } from "../types";
 import { Gist, gistConnected, gistDirty, gistUnlocked } from "../services/gist";
+import { keyFingerprint } from "../services/escrow";
+import { ghLinked, ghWhoami } from "../services/githubAuth";
 import { useApp } from "../services/store";
 
 function shortT(iso: string | undefined, dirty: boolean): string {
@@ -85,6 +87,21 @@ export function SettingsPage() {
   const s = doc.settings;
   const friends = s.friends || [];
   const [myLink, setMyLink] = useState<string | null>(null);
+  const [fp, setFp] = useState<string | null>(null);
+  const [linked, setLinked] = useState(ghLinked());
+  const [ghLogin, setGhLogin] = useState<string | null>(null);
+  useEffect(() => {
+    if (gistUnlocked() && Gist.key) keyFingerprint(Gist.key).then(setFp).catch(() => undefined);
+    else setFp(null);
+    if (ghLinked()) ghWhoami().then((l) => {
+      setLinked(true);
+      setGhLogin(l);
+    }).catch(() => undefined);
+    else {
+      setLinked(false);
+      setGhLogin(null);
+    }
+  }, [state.gistVersion, state.booted]);
 
   const pushNow = async () => {
     if (!gistUnlocked()) {
@@ -358,6 +375,12 @@ export function SettingsPage() {
           </span>
           {IC.right}
         </button>
+        <button className="set" onClick={() => openSheet({ name: "import-merge" })}>
+          <span className="s-label">
+            Merge another device<div className="s-sub">Union an export file into this device</div>
+          </span>
+          {IC.right}
+        </button>
       </div>
 
       <div className="sec-label">Backup</div>
@@ -411,6 +434,31 @@ export function SettingsPage() {
               </span>
             </button>
           </>
+        )}
+        <button className="set" onClick={() => openSheet({ name: "github-link" })}>
+          <span className="s-label">
+            {linked ? "GitHub linked" : "Link GitHub account"}
+            <div className="s-sub">
+              {linked
+                ? (ghLogin ? "@" + ghLogin + " · " : "") + "passphrase-free login — tap to manage"
+                : "Approve once — no more passphrases or tokens"}
+            </div>
+          </span>
+          {IC.shield}
+        </button>
+        {fp && (
+          <button
+            className="set"
+            style={{ cursor: "default" }}
+            onClick={() => openSheet({ name: "github-link" })}
+          >
+            <span className="s-label">
+              Device key<div className="s-sub">Compare across devices before migrating</div>
+            </span>
+            <span className="tsub" style={{ fontSize: 14, color: "var(--text-2)" }}>
+              {fp}
+            </span>
+          </button>
         )}
       </div>
       <div className="tsub" style={{ textAlign: "center", padding: "8px 0 12px", color: "var(--muted)" }}>

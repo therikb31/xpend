@@ -105,7 +105,7 @@ function Shell() {
       if (inv.kind === "friend") {
         openSheet({ name: "friend-add", id: inv.username, id2: inv.name });
       } else {
-        openSheet({ name: "grocery-join", id: inv.name, id2: inv.username, id3: inv.salt });
+        openSheet({ name: "grocery-join", id: inv.name, id2: inv.username, id3: inv.salt, id4: inv.keyB64 });
       }
     };
     consume();

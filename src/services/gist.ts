@@ -7,6 +7,7 @@
 import { C } from "../lib/crypto";
 import type { Doc } from "../types";
 import { migrateBud, migrateCats, migrateMerch, migrateSav } from "../data/migrate";
+import { ghToken } from "./githubAuth";
 import { Store } from "./storage";
 
 interface Hooks {
@@ -115,6 +116,23 @@ export const Gist = {
   },
 
   api(method: string, path: string, body?: unknown): Promise<unknown> {
+    const oauth = ghToken();
+    if (oauth) {
+      return fetch("https://api.github.com" + path, {
+        method,
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: "Bearer " + oauth,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      }).then((r) => {
+        if (!r.ok)
+          return r.json().then((j: { message?: string }) => {
+            throw new Error((j && j.message) || "HTTP " + r.status);
+          });
+        return r.status === 204 ? null : r.json();
+      });
+    }
     return this.pat().then((pat) => {
       const h: Record<string, string> = {
         Accept: "application/vnd.github+json",

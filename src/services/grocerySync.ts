@@ -152,6 +152,31 @@ export async function createReplica(list: GroceryList, pass: string, salt: strin
   return g.id;
 }
 
+/** Create MY replica gist with an explicit key (OAuth-era random keys or
+    keys imported from a #/s/ invite link). The salt is envelope metadata. */
+export async function createReplicaWithKey(
+  list: GroceryList,
+  salt: string,
+  key: CryptoKey
+): Promise<string> {
+  if (!salt) throw new Error("No salt");
+  await listKeySave(list.id, salt, key);
+  const env = await seal(list, { salt, key });
+  const g = (await Gist.api("POST", "/gists", {
+    description: replicaMarker(list.id),
+    public: true,
+    files: { [FILE]: { content: JSON.stringify(env) } },
+  })) as { id: string };
+  if (!g || !g.id) throw new Error("No gist id");
+  return g.id;
+}
+
+/** Random 256-bit list key (no passphrase involved). */
+export async function randomListKey(): Promise<CryptoKey> {
+  const raw = crypto.getRandomValues(new Uint8Array(32));
+  return crypto.subtle.importKey("raw", raw, "AES-GCM", true, ["encrypt", "decrypt"]);
+}
+
 /** Find a member's replica gist id by username + list id (cached). */
 export async function findReplica(username: string, listId: string): Promise<string | null> {
   const ck = username.toLowerCase() + " " + listId;

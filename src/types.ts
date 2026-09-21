@@ -135,6 +135,7 @@ export interface GroceryShare {
   role: "owner" | "member";
   peers: string[]; // GitHub usernames to watch for replicas
   salt: string; // shared list salt — invite links + key recovery (public metadata)
+  keyMode?: boolean; // true: random key carried in #/s/ links (no passphrase)
 }
 
 export interface Friend {
