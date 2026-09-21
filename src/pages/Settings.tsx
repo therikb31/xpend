@@ -35,9 +35,12 @@ function ViewportDiagnostics() {
   const [v, setV] = useState({ vh: 0, vv: 0, top: 0, bottom: 0, dm: false, ios: false });
   useEffect(() => {
     const probe = document.createElement("div");
+    // NOTE: top+bottom with height:auto lets the probe stretch so its rect
+    // reveals both insets. Do NOT set an explicit height here — it
+    // over-constrains the box, bottom is dropped, and the reading is garbage.
     probe.style.cssText =
       "position:fixed;top:env(safe-area-inset-top,0px);bottom:env(safe-area-inset-bottom,0px);" +
-      "left:0;width:0;height:0;pointer-events:none;visibility:hidden";
+      "left:0;width:1px;pointer-events:none;visibility:hidden";
     document.body.appendChild(probe);
     const read = () => {
       const r = probe.getBoundingClientRect();
