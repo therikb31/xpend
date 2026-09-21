@@ -252,7 +252,7 @@ export function SettingsPage() {
         )}
       </div>
       <div className="tsub" style={{ textAlign: "center", padding: "8px 0 12px", color: "var(--muted)" }}>
-        Xpend · build {APP_VER} · local-first · {C.sup() ? "" : "no-crypto"}
+        Xpend · v0.{APP_VER}
       </div>
     </div>
   );
