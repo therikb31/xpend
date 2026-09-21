@@ -816,9 +816,3 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
   #toast{bottom:34px}
 }
 @media (min-width:768px) and (display-mode: standalone){}
-
-/* DIAGNOSTIC v69 ONLY — proves shell/pill reach the physical edges.
-   Paints #app shell magenta and the nav pill cyan. REVERT AFTER the
-   screenshot round; never ship to a release tag. */
-#app,#app.ov{background:#FF00FF !important}
-#nav{background:#00FFFF !important;border-color:#00FFFF !important}
