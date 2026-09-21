@@ -271,6 +271,8 @@ svg{display:block}
 .ov-card .amt.sav{color:var(--neg)}
 .see-all{display:block;text-align:center;padding:12px 0 4px;color:var(--muted);font-size:14.5px;font-weight:600}
 .see-all:active{color:var(--text)}
+/* faint build stamp centered in the activity header */
+.app-ver-top{align-self:center;color:var(--muted);font-size:11.5px;font-weight:500;opacity:.7;white-space:nowrap}
 
 /* floating action buttons (+ mic, + add) */
 .fab-stack{

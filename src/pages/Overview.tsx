@@ -8,7 +8,7 @@ import {
   monthStats,
   sortedTxs,
 } from "../data/finance";
-import { dayLabel, monthKey, parseMk, rupees } from "../lib/format";
+import { APP_VER, dayLabel, monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { Txn } from "../types";
@@ -56,6 +56,7 @@ export function OverviewPage() {
         <button className="ov-gear" onClick={() => go("settings", "overview")} aria-label="Settings">
           {IC.gear}
         </button>
+        <span className="app-ver-top">Xpend v0.{APP_VER}</span>
         <button className="ov-gear" onClick={() => openSheet({ name: "export" })} aria-label="Export data">
           {IC.dots}
         </button>
