@@ -29,10 +29,12 @@ function shortT(iso: string | undefined, dirty: boolean): string {
 }
 
 /* Muted viewport/safe-area readout for diagnosing edge-to-edge issues on
-   device (viewport px, visual viewport px, top/bottom insets px, standalone
-   media match, iOS standalone flag). Measured live via an env() probe. */
+   device (viewport px, visual viewport px, top/bottom insets px, #app rect,
+   nav gap px, standalone media match, iOS standalone flag). Inset probe:
+   top+bottom with height:auto lets it stretch so its rect reveals both
+   insets (never set an explicit height — it over-constrains the box). */
 function ViewportDiagnostics() {
-  const [v, setV] = useState({ vh: 0, vv: 0, top: 0, bottom: 0, dm: false, ios: false });
+  const [v, setV] = useState({ vh: 0, vv: 0, top: 0, bottom: 0, app: "", nav: -1, dm: false, ios: false });
   useEffect(() => {
     const probe = document.createElement("div");
     // NOTE: top+bottom with height:auto lets the probe stretch so its rect
@@ -44,11 +46,16 @@ function ViewportDiagnostics() {
     document.body.appendChild(probe);
     const read = () => {
       const r = probe.getBoundingClientRect();
+      const ar = document.getElementById("app")?.getBoundingClientRect();
+      const nr = document.getElementById("nav")?.getBoundingClientRect();
+      const vh = window.innerHeight;
       setV({
-        vh: window.innerHeight,
+        vh,
         vv: window.visualViewport ? Math.round(window.visualViewport.height) : 0,
         top: Math.round(r.top),
-        bottom: Math.round(window.innerHeight - r.bottom),
+        bottom: Math.round(vh - r.bottom),
+        app: ar ? `${Math.round(ar.top)}/${Math.round(ar.height)}` : "?",
+        nav: nr ? Math.round(vh - nr.bottom) : -1,
         dm: window.matchMedia("(display-mode: standalone)").matches,
         ios: (navigator as Navigator & { standalone?: boolean }).standalone === true,
       });
@@ -65,8 +72,8 @@ function ViewportDiagnostics() {
       className="tsub"
       style={{ textAlign: "center", padding: "2px 12px 8px", color: "var(--muted)", fontSize: 11 }}
     >
-      viewport {v.vh} · visual {v.vv} · safe {v.top}/{v.bottom} · standalone {v.dm ? "yes" : "no"} ·
-      ios {v.ios ? "yes" : "no"}
+      viewport {v.vh} · visual {v.vv} · safe {v.top}/{v.bottom} · app {v.app} · nav {v.nav} ·
+      standalone {v.dm ? "yes" : "no"} · ios {v.ios ? "yes" : "no"}
     </div>
   );
 }
