@@ -72,6 +72,19 @@ svg{display:block}
   #root{height:100%}
   #app{position:fixed;top:0;right:0;bottom:0;left:0;width:100%;height:100%;height:-webkit-fill-available}
 }
+/* Touch devices: pin the shell to the viewport WITHOUT relying on
+   display-mode matching (seen failing in the wild — the PWA then falls back
+   to 100dvh, which iOS intermittently misreports short, producing the black
+   top/bottom bands). Desktop keeps normal flow. The fixed shell is exactly
+   viewport-sized, so per-tab backgrounds (#app.ov teal, --bg elsewhere)
+   always reach the physical edges; content clearance still comes from
+   env() padding on .scr, never from shrinking #app. */
+@media (pointer:coarse){
+  html{height:100%;height:-webkit-fill-available}
+  body{min-height:100%;min-height:-webkit-fill-available}
+  #root{height:100%}
+  #app{position:fixed;top:0;right:0;bottom:0;left:0;width:100%;height:100%;height:-webkit-fill-available}
+}
 #screen{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .scr{padding:calc(6px + env(safe-area-inset-top,0px)) 18px calc(180px + env(safe-area-inset-bottom,0px))}
 .scr.ov{padding:0 0 calc(200px + env(safe-area-inset-bottom,0px))}

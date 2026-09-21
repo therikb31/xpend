@@ -1,5 +1,6 @@
 // Settings — port of App.settings + prefs/backup/data actions.
 
+import { useEffect, useState } from "react";
 import { APP_VER } from "../lib/format";
 import { monthKey } from "../lib/format";
 import { IC } from "../lib/icons";
@@ -25,6 +26,46 @@ function shortT(iso: string | undefined, dirty: boolean): string {
   } catch {
     return "Synced";
   }
+}
+
+/* Muted viewport/safe-area readout for diagnosing edge-to-edge issues on
+   device (viewport px, visual viewport px, top/bottom insets px, standalone
+   media match, iOS standalone flag). Measured live via an env() probe. */
+function ViewportDiagnostics() {
+  const [v, setV] = useState({ vh: 0, vv: 0, top: 0, bottom: 0, dm: false, ios: false });
+  useEffect(() => {
+    const probe = document.createElement("div");
+    probe.style.cssText =
+      "position:fixed;top:env(safe-area-inset-top,0px);bottom:env(safe-area-inset-bottom,0px);" +
+      "left:0;width:0;height:0;pointer-events:none;visibility:hidden";
+    document.body.appendChild(probe);
+    const read = () => {
+      const r = probe.getBoundingClientRect();
+      setV({
+        vh: window.innerHeight,
+        vv: window.visualViewport ? Math.round(window.visualViewport.height) : 0,
+        top: Math.round(r.top),
+        bottom: Math.round(window.innerHeight - r.bottom),
+        dm: window.matchMedia("(display-mode: standalone)").matches,
+        ios: (navigator as Navigator & { standalone?: boolean }).standalone === true,
+      });
+    };
+    read();
+    window.addEventListener("resize", read);
+    return () => {
+      window.removeEventListener("resize", read);
+      probe.remove();
+    };
+  }, []);
+  return (
+    <div
+      className="tsub"
+      style={{ textAlign: "center", padding: "2px 12px 8px", color: "var(--muted)", fontSize: 11 }}
+    >
+      viewport {v.vh} · visual {v.vv} · safe {v.top}/{v.bottom} · standalone {v.dm ? "yes" : "no"} ·
+      ios {v.ios ? "yes" : "no"}
+    </div>
+  );
 }
 
 export function SettingsPage() {
@@ -253,6 +294,7 @@ export function SettingsPage() {
       <div className="tsub" style={{ textAlign: "center", padding: "8px 0 12px", color: "var(--muted)" }}>
         Xpend · v0.{APP_VER}
       </div>
+      <ViewportDiagnostics />
     </div>
   );
 }
