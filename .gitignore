@@ -3,6 +3,3 @@ specs
 *.md
 opencode.json
 xpendo logo.png
-*.ps1
-*.cs
-*.py
