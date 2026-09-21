@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#060809">
+<meta name="theme-color" content="#164C61">
 <meta name="apple-mobile-web-app-title" content="Xpend">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -52,10 +52,12 @@
   --fs: -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
-html{background:var(--bg)}
+html{
+  height:100%;background:var(--teal-hi);margin:0;
+  -webkit-tap-highlight-color:transparent;
+}
 body{
-  background:var(--bg);color:var(--text);
+  height:100%;background:transparent;margin:0;
   font-family:var(--fs);
   font-size:16px;line-height:1.35;
   -webkit-font-smoothing:antialiased;
@@ -73,18 +75,18 @@ svg{display:block}
 /* ============================ APP SHELL ============================ */
 #app{
   display:flex;flex-direction:column;
-  height:100vh;height:100svh;height:100dvh;
-  background:var(--bg);
+  position:fixed;inset:0;width:100vw;height:100lvh;  /* 100lvh = includes safe areas */
+  background:transparent;
+  overflow:hidden;
 }
-/* Standalone (home-screen) iOS: pin the app shell to the real screen edges with
-   position:fixed + inset:0. This avoids the intermittent iOS bug where 100dvh is
-   reported too short right after launch, which left a black strip at the bottom
-   until the app was removed from RAM. env() safe-area insets keep the nav, FABs
-   and sheets clear of the home indicator. */
-@media (display-mode: standalone){
-  #app{position:fixed;inset:0;height:auto}
-  html,body{height:100%}
-}
+/* Standalone (home-screen) iOS: the app shell is already pinned end-to-end via
+   #app{position:fixed;inset:0;width:100vw;height:100lvh}. 100lvh (== 100 large
+   viewport height) equals the full available viewport including the areas under
+   the notch and home indicator, so by pinning the gradient to #app it stretches
+   into the top and bottom safe regions automatically. No extra rules needed here;
+   adding any removed the radial overlay. All TODOs below are relics:
+   FIXME_SAFE: use env(safe-area-inset-*) padding so interactive elements stay
+   clear of the home indicator; the shell background covers the insets. */
 #screen{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .scr{padding:calc(6px + env(safe-area-inset-top,0px)) 18px calc(180px + env(safe-area-inset-bottom,0px))}
 .scr.ov{padding:0 0 calc(200px + env(safe-area-inset-bottom,0px))}
@@ -93,17 +95,44 @@ svg{display:block}
 /* ============================ NAV (floating pill / desktop rail) ============================ */
 #nav{
   z-index:40;
-  position:fixed;left:14px;right:14px;
-  bottom:8px;
-  bottom:max(8px, calc(env(safe-area-inset-bottom,0px) - 22px));
-  height:70px;border-radius:35px;
-  display:flex;align-items:stretch;padding:5px;gap:1px;
-  background:rgba(18,20,22,.94);
-  border:.5px solid rgba(255,255,255,.12);
-  box-shadow:0 12px 36px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.08) inset;
-  -webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
+  position:fixed;left:0;right:0;
+  bottom:0;
+  min-height:64px;
+  width:100%;
+  display:flex;align-items:center;justify-content:space-around;
+  background:var(--bg);
+  padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));
+  padding-left:env(safe-area-inset-left,0px);
+  padding-right:env(safe-area-inset-right,0px);
+  z-index:9999;
+  border-top:1px solid rgba(255,255,255,0.1);
 }
 .nav-item{
+  flex:1;
+  height:48px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  color:var(--muted);
+  font-size:11px;font-weight:600;letter-spacing:.01em;
+  text-decoration:none;
+}
+.nav-item .ni-ic{width:28px;height:28px}
+.nav-item span:last-child{font-size:10px;letter-spacing:0;display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav-item:active{background:var(--nav-act)}
+.nav-item.on{background:var(--nav-act);color:var(--text);box-shadow:0 1px 0 rgba(255,255,255,.1) inset}
+
+/* Desktop rail override - higher breakpoint to avoid tablet issues */
+@media (min-width:1024px){
+  #nav{
+    position:static;order:1;flex:none;width:var(--rail-w);
+    height:auto;min-height:calc(100svh - 0px);flex-direction:column;align-items:stretch;justify-content:flex-start;
+    padding:calc(env(safe-area-inset-top,0px) + 18px) 10px 18px;gap:6px;
+    background:rgba(13,17,19,.86);border:0;border-right:.5px solid rgba(255,255,255,.06);
+    border-radius:0;box-shadow:none;
+    -webkit-backdrop-filter:none;backdrop-filter:none;
+  }
+  .nav-item{flex:none;padding:12px 6px;gap:5px}
+  .nav-item .ni-ic{width:25px;height:25px}
+}.nav-item{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
   color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.01em;
   border-radius:33px;
@@ -115,7 +144,7 @@ svg{display:block}
 
 /* the add-expense screen is an overlay modal — drop the floating nav so it never covers the keypad */
 #app.add #nav{display:none}
-#app.add{background:var(--bg)}
+#app.add{background:transparent}
 
 /* overview upper background glow (static, sits behind scrolling content) */
 #app.ov{
