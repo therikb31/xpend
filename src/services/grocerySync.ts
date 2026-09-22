@@ -7,7 +7,7 @@
 // cached in localStorage ({salt, key}) exactly like the backup key cache.
 
 import { C } from "../lib/crypto";
-import type { GroceryList } from "../types";
+import type { Friend, GroceryList } from "../types";
 import { importRawKey } from "./escrow";
 import { Gist } from "./gist";
 
@@ -373,4 +373,60 @@ export function mergeLists(local: GroceryList, remote: GroceryList): MergeResult
     if (out.updatedAt !== local.updatedAt) changed = true;
   }
   return { list: out, changed };
+}
+
+// ---------------- reciprocal roster (mutual visibility) ----------------
+
+export const LAST_SEEN_INTERVAL = 3600 * 1000;
+
+/** Best-effort GitHub avatar for a username (null when unknown/offline). */
+export async function fetchAvatar(username: string): Promise<string | null> {
+  try {
+    const u = (await Gist.api("GET", "/users/" + encodeURIComponent(username))) as {
+      login?: string;
+      avatar_url?: string | null;
+    };
+    return u && u.login ? u.avatar_url || null : null;
+  } catch {
+    return null;
+  }
+}
+
+export interface RosterTouch {
+  friends: Friend[];
+  changed: boolean;
+}
+
+/**
+ * Ensure a roster entry for a peer whose live replica we just read (proof
+ * they are actively sharing). Never overwrites displayName/pairSecret —
+ * only fills gaps. Pure (testable); caller persists when changed.
+ */
+export function ensurePeerRoster(friends: Friend[], username: string, avatar: string | null): RosterTouch {
+  const u = (username || "").toLowerCase();
+  if (!u) return { friends, changed: false };
+  const list = friends.map((f) => ({ ...f }));
+  const ex = list.find((f) => f.githubUsername === u);
+  if (!ex) {
+    list.push({ githubUsername: u, displayName: u, avatarUrl: avatar, addedAt: Date.now() });
+    return { friends: list, changed: true };
+  }
+  if (avatar && !ex.avatarUrl) {
+    ex.avatarUrl = avatar;
+    return { friends: list, changed: true };
+  }
+  return { friends: list, changed: false };
+}
+
+/** Stamp lastSeenAt, throttled to LAST_SEEN_INTERVAL (bounds backup pushes). */
+export function touchLastSeen(friends: Friend[], username: string, now: number): RosterTouch {
+  const u = (username || "").toLowerCase();
+  const list = friends.map((f) => ({ ...f }));
+  const ex = list.find((f) => f.githubUsername === u);
+  if (!ex) return { friends: list, changed: false };
+  if (!ex.lastSeenAt || now - ex.lastSeenAt > LAST_SEEN_INTERVAL) {
+    ex.lastSeenAt = now;
+    return { friends: list, changed: true };
+  }
+  return { friends: list, changed: false };
 }

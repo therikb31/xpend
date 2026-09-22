@@ -12,9 +12,11 @@ import { useApp } from "../services/store";
 import { gistUnlocked } from "../services/gist";
 import { ghLinked, ghWhoami } from "../services/githubAuth";
 import { exportRawKey, importRawKey } from "../services/escrow";
-import type { Friend, GroceryList } from "../types";
+import type { Doc, Friend, GroceryList } from "../types";
 import {
   createReplicaWithKey,
+  ensurePeerRoster,
+  fetchAvatar,
   findReplica,
   friendGists,
   listKeyLoad,
@@ -25,6 +27,8 @@ import {
   pullReplica,
   pushReplica,
   setMyUsername,
+  touchLastSeen,
+  LAST_SEEN_INTERVAL,
   LIST_MARKER_PREFIX,
 } from "../services/grocerySync";
 import { C } from "../lib/crypto";
@@ -36,6 +40,29 @@ function payload(l: GroceryList): GroceryList {
 
 function canApi(): boolean {
   return gistUnlocked() || ghLinked();
+}
+
+/** Reciprocal roster touch after reading a peer's live replica. Gated so
+    untouched peers cost zero writes; avatar fetched only when missing. */
+async function notePeerActive(
+  doc: Doc | null,
+  mutate: (fn: (d: Doc) => void) => void,
+  peer: string
+): Promise<void> {
+  if (!doc) return;
+  const u = (peer || "").toLowerCase();
+  if (!u) return;
+  const ex = (doc.settings.friends || []).find((f) => f.githubUsername === u);
+  const now = Date.now();
+  const needAvatar = !ex || !ex.avatarUrl;
+  const needTouch = !ex || !ex.lastSeenAt || now - ex.lastSeenAt > LAST_SEEN_INTERVAL;
+  if (!needAvatar && !needTouch) return;
+  const av = needAvatar ? await fetchAvatar(u) : null;
+  mutate((d) => {
+    const r1 = ensurePeerRoster(d.settings.friends || [], u, av);
+    const r2 = touchLastSeen(r1.friends, u, Date.now());
+    if (r1.changed || r2.changed) d.settings.friends = r2.friends;
+  });
 }
 
 export function useGrocerySync() {
@@ -88,8 +115,7 @@ export function useGrocerySync() {
       if (!cur) return;
       const shared = (cur.groceryLists || []).filter((l) => l.share && (l.share.peers || []).length);
       if (!shared.length) return;
-      busyRef.current = true;
-      try {
+      busyRef.current = true;      try {
         for (const l of shared) {
           if (dead) break;
           const lk = await listKeyLoad(l.id);
@@ -109,6 +135,13 @@ export function useGrocerySync() {
               const r = mergeLists(merged, remote);
               merged = r.list;
               changed = changed || r.changed;
+              // Reciprocal roster: a live replica proves they share with us —
+              // ensure they show up (never overwrites name/secret), throttled.
+              try {
+                await notePeerActive(docRef.current, mutateRef.current, peer);
+              } catch {
+                /* best-effort only */
+              }
             } catch {
               /* one bad peer must not block the rest */
             }
@@ -293,6 +326,11 @@ export function useGrocerySync() {
         });
       });
       toastRef.current("Joined “" + remote.name + "” from @" + fr);
+      try {
+        await notePeerActive(docRef.current, mutateRef.current, fr);
+      } catch {
+        /* best-effort only */
+      }
     };
 
     run();

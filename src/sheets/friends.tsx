@@ -161,6 +161,9 @@ export function FriendAddSheet({ username, name }: { username?: string; name?: s
       <button className="btn" style={{ marginTop: 16 }} onClick={save} disabled={busy}>
         {IC.check} {busy ? "Checking…" : "Add friend"}
       </button>
+      <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
+        Friend links only add the name — sharing switches on with the first shared list.
+      </div>
     </>
   );
 }

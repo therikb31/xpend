@@ -143,6 +143,7 @@ export interface Friend {
   displayName: string; // attribution label ("checked by …")
   avatarUrl?: string | null; // GitHub profile avatar
   pairSecret?: string | null; // per-pair secret (base64 key): wraps group keys, enables auto-join
+  lastSeenAt?: number | null; // last time their live replica was read (throttled writes)
   addedAt: number;
 }
 

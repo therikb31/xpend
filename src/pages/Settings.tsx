@@ -12,6 +12,16 @@ import { Gist, gistConnected, gistDirty, gistUnlocked } from "../services/gist";
 import { keyFingerprint } from "../services/escrow";
 import { ghLinked, ghWhoami } from "../services/githubAuth";
 import { useApp } from "../services/store";
+import type { Friend } from "../types";
+
+/** Roster sharing state: secret present + recently seen = fully mutual. */
+function sharingSub(f: Friend): string {
+  if (!f.pairSecret) return " · sharing off — share a list to activate";
+  if (!f.lastSeenAt) return " · sharing on · not seen yet";
+  const mins = Math.max(0, Math.round((Date.now() - f.lastSeenAt) / 60000));
+  const ago = mins < 1 ? "just now" : mins < 60 ? mins + "m ago" : mins < 1440 ? Math.round(mins / 60) + "h ago" : Math.round(mins / 1440) + "d ago";
+  return " · sharing on · active " + ago;
+}
 
 function shortT(iso: string | undefined, dirty: boolean): string {
   if (dirty) return "Pending changes…";
@@ -299,7 +309,7 @@ export function SettingsPage() {
                 )}
                 <span className="s-label">
                   {f.displayName}
-                  <div className="s-sub">@{f.githubUsername}{f.pairSecret ? " · sharing on" : ""}</div>
+                  <div className="s-sub">@{f.githubUsername}{sharingSub(f)}</div>
                 </span>
               </span>
               <button
