@@ -9,7 +9,7 @@
 
 import { useEffect, useRef } from "react";
 import { useApp } from "../services/store";
-import { gistUnlocked } from "../services/gist";
+import { Gist, gistUnlocked } from "../services/gist";
 import { ghLinked, ghWhoami } from "../services/githubAuth";
 import { exportRawKey, importRawKey } from "../services/escrow";
 import type { Doc, Friend, GroceryList } from "../types";
@@ -18,12 +18,14 @@ import {
   ensurePeerRoster,
   fetchAvatar,
   findReplica,
+  followerNeedsCheck,
   friendGists,
   listKeyLoad,
   listKeySave,
   mergeLists,
   myUsername,
   openEnvelope,
+  parseAckMarker,
   pullReplica,
   pushReplica,
   setMyUsername,
@@ -41,6 +43,9 @@ function payload(l: GroceryList): GroceryList {
 function canApi(): boolean {
   return gistUnlocked() || ghLinked();
 }
+
+/** Session-dismissed follower logins (organic follows re-checked next launch). */
+const dismissedFollowers = new Set<string>();
 
 /** Reciprocal roster touch after reading a peer's live replica. Gated so
     untouched peers cost zero writes; avatar fetched only when missing. */
@@ -252,8 +257,69 @@ export function useGrocerySync() {
             }
           }
         }
+        // Doorbell check: followers signaling friendship via ack markers.
+        try {
+          await doorbellCheck();
+        } catch {
+          /* best-effort only */
+        }
       } finally {
         discoverRef.current = false;
+      }
+    };
+
+    /** A's side of the doorbell: own followers + ack markers → auto-add. */
+    const doorbellCheck = async (): Promise<void> => {
+      const cur = docRef.current;
+      if (!cur || dead) return;
+      let me = myUsername();
+      if (!me) {
+        try {
+          me = await ghWhoami();
+        } catch {
+          try {
+            me = await Gist.whoami();
+          } catch {
+            me = null;
+          }
+        }
+        if (me) setMyUsername(me);
+      }
+      if (!me) return;
+      const self = me.toLowerCase();
+      let followers: Array<{ login?: string; avatar_url?: string | null }> = [];
+      try {
+        followers = (await Gist.api("GET", "/users/" + encodeURIComponent(self) + "/followers?per_page=100")) as Array<{
+          login?: string;
+          avatar_url?: string | null;
+        }>;
+      } catch {
+        return;
+      }
+      if (dead) return;
+      const roster = (docRef.current && docRef.current.settings.friends) || [];
+      for (const f of followers || []) {
+        if (dead) break;
+        const login = (f.login || "").toLowerCase();
+        if (!login || !followerNeedsCheck(roster, dismissedFollowers, login)) continue;
+        let acked = false;
+        try {
+          const gists = await friendGists(login);
+          acked = gists.some((g) => parseAckMarker(g.description, self));
+        } catch {
+          continue;
+        }
+        if (dead) break;
+        if (!acked) {
+          if (dismissedFollowers.size > 500) dismissedFollowers.clear();
+          dismissedFollowers.add(login);
+          continue;
+        }
+        mutateRef.current((d) => {
+          const r = ensurePeerRoster(d.settings.friends || [], login, f.avatar_url || null);
+          if (r.changed) d.settings.friends = r.friends;
+        });
+        toastRef.current("@" + login + " added you back");
       }
     };
 

@@ -9,6 +9,7 @@ import { useGrocerySync } from "./hooks/useGrocerySync";
 import { useViewportFix } from "./hooks/useViewportFix";
 import { IC } from "./lib/icons";
 import { cleanUsername, parseInvite, validUsername } from "./lib/friends";
+import { followUser, publishAck } from "./services/grocerySync";
 import { AccountsPage } from "./pages/Accounts";
 import { ActivityPage } from "./pages/Activity";
 import { AddPage } from "./pages/Add";
@@ -118,6 +119,8 @@ function Shell() {
       if (inv.kind === "friend") {
         // No-approval friend-add: opening the link saves the sender straight
         // to the roster (harmless — a roster entry shares nothing by itself).
+        // Then ring their doorbell (follow + ack marker) so they see us back
+        // with zero taps on their side. Best-effort: failures keep local-only.
         const u = cleanUsername(inv.username);
         const d = docRef.current;
         if (validUsername(u) && d) {
@@ -128,10 +131,17 @@ function Shell() {
               if (!Array.isArray(draft.settings.friends)) draft.settings.friends = [];
               draft.settings.friends.push({ githubUsername: u, displayName: name, addedAt: Date.now() });
             });
-            toast(name + " added to friends");
-          } else {
-            toast("@" + u + " is already a friend");
           }
+          toast(exists ? "@" + u + " is already a friend" : name + " added to friends");
+          (async () => {
+            try {
+              await followUser(u);
+              await publishAck(u);
+              if (!exists) toast("@" + u + " will see you back shortly");
+            } catch {
+              /* local-only: they won't see us until we link GitHub */
+            }
+          })();
         } else {
           openSheet({ name: "friend-add", id: inv.username, id2: inv.name });
         }

@@ -430,3 +430,59 @@ export function touchLastSeen(friends: Friend[], username: string, now: number):
   }
   return { friends: list, changed: false };
 }
+
+// ---------------- doorbell: follow-as-signal + ack marker ----------------
+
+export const ackMarker = (username: string): string =>
+  `xpend-friend-ack ${(username || "").toLowerCase()}`;
+
+/** True when a gist description is B's ack addressed to me. */
+export function parseAckMarker(desc: string | null | undefined, me: string): boolean {
+  if (!desc || !me) return false;
+  return desc === ackMarker(me);
+}
+
+/** Should this follower be checked (not rostered, not dismissed)? Pure. */
+export function followerNeedsCheck(
+  friends: Friend[],
+  dismissed: Set<string> | string[],
+  login: string
+): boolean {
+  const u = (login || "").toLowerCase();
+  if (!u) return false;
+  const has = (friends || []).some((f) => f.githubUsername === u);
+  if (has) return false;
+  if (dismissed instanceof Set) return !dismissed.has(u);
+  return !dismissed.includes(u);
+}
+
+/** Follow a user (doorbell ring). Idempotent; throws on API failure. */
+export async function followUser(username: string): Promise<void> {
+  await Gist.api("PUT", "/user/following/" + encodeURIComponent(username), undefined);
+}
+
+/** My own gists (authed) — used to dedupe the ack marker. */
+export async function myGists(): Promise<FriendGist[]> {
+  try {
+    const gs = (await Gist.api("GET", "/user/gists?per_page=100")) as FriendGist[];
+    return gs || [];
+  } catch {
+    return [];
+  }
+}
+
+/** Publish my ack for `me` (idempotent via pre-check). */
+export async function publishAck(me: string): Promise<void> {
+  const want = ackMarker(me);
+  const mine = await myGists();
+  if (mine.some((g) => (g.description || "") === want)) return;
+  await Gist.api("POST", "/gists", {
+    description: want,
+    public: true,
+    files: {
+      "friend-ack.json": {
+        content: JSON.stringify({ v: 1, ack: me.toLowerCase(), at: new Date().toISOString() }),
+      },
+    },
+  });
+}
