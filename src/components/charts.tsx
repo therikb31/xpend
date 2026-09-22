@@ -6,8 +6,10 @@ import { parseMk, shortAmt } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useSwipe } from "../hooks/useSwipe";
 import { useApp } from "../services/store";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import type { Doc } from "../types";
+import { ApexDonut } from "./ApexDonut";
 
 /* ---------------- daily bar chart (overview / category / merchant) ---------------- */
 
@@ -91,7 +93,13 @@ export function BarChart({
   );
 }
 
-/* ---------------- donut hero (summary / analytics) ---------------- */
+/* ---------------- donut hero (insights: apex rounded donut) ---------------- */
+
+export interface DonutDetail {
+  title: ReactNode;
+  amount: ReactNode;
+  sub?: ReactNode;
+}
 
 export function DonutHero({
   entries,
@@ -101,6 +109,7 @@ export function DonutHero({
   monthLabel,
   trend,
   onMonth,
+  details,
 }: {
   entries: Array<[string, number]>;
   colors: Record<string, string>;
@@ -109,56 +118,60 @@ export function DonutHero({
   monthLabel: string;
   trend: ReactNode;
   onMonth: () => void;
+  details?: Record<string, DonutDetail>;
 }) {
   const { shiftMonth } = useApp();
   const { handlers, tapped } = useSwipe(
     () => shiftMonth(-1),
     () => shiftMonth(1)
   );
-  const totalAmt = entries.reduce((s, e) => s + e[1], 0);
-  const R = 110;
-  const W = 20;
-  const C = 2 * Math.PI * R;
-  let acc = 0;
-  const arcs = entries.map(([k, amt]) => {
-    const seg = totalAmt > 0 ? (amt / totalAmt) * C : 0;
-    const el = (
-      <circle
-        key={k}
-        cx="150"
-        cy="150"
-        r={R}
-        fill="none"
-        stroke={colors[k]}
-        strokeWidth={W}
-        strokeLinecap="round"
-        strokeDasharray={`${seg.toFixed(2)} ${(C - seg).toFixed(2)}`}
-        strokeDashoffset={(-acc).toFixed(2)}
-        transform="rotate(-90 150 150)"
-      />
-    );
-    acc += seg;
-    return el;
-  });
+  const [sel, setSel] = useState<string | null>(null);
+  const ids = entries.map(([k]) => k);
+  // Selection follows the data: drop it when its entry disappears.
+  const selId = sel != null && ids.includes(sel) ? sel : null;
+  const selDetail = selId && details ? details[selId] : null;
   return (
     <div className="sum-chart">
       <div className="donut-wrap big">
-        <svg viewBox="0 0 300 300" className="donut-svg">
-          <g transform="rotate(-90 150 150)">{arcs}</g>
-        </svg>
-        <div className="donut-center swipe-mk" {...handlers}>
-          <button
-            className="dc-month"
-            onClick={() => {
-              if (!tapped()) onMonth();
-            }}
-            aria-label="Select month"
-          >
-            {monthLabel} {IC.chev}
-          </button>
-          <div className="dc-main">{total}</div>
-          {totalLabel}
-          {trend}
+        <ApexDonut
+          series={entries.map(([, amt]) => amt)}
+          labels={ids}
+          colors={ids.map((k) => colors[k])}
+          onSelect={(idx) => {
+            const id = ids[idx];
+            if (id == null) return;
+            setSel((prev) => (prev === id ? null : id));
+          }}
+        />
+        <div
+          className="donut-center swipe-mk"
+          {...handlers}
+          onClick={() => {
+            if (selId) setSel(null);
+          }}
+        >
+          {selDetail ? (
+            <>
+              <div className="dc-sel">{selDetail.title}</div>
+              <div className="dc-main">{selDetail.amount}</div>
+              {selDetail.sub}
+            </>
+          ) : (
+            <>
+              <button
+                className="dc-month"
+                onClick={() => {
+                  if (!tapped()) onMonth();
+                }}
+                aria-label="Select month"
+              >
+                {monthLabel} {IC.chev}
+              </button>
+              <div className="dc-main">{total}</div>
+              {totalLabel}
+              {trend}
+            </>
+          )}
         </div>
       </div>
     </div>

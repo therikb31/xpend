@@ -4,9 +4,10 @@
 
 import { useState } from "react";
 import { DonutHero } from "../components/charts";
-import { CatSumCard, Empty, MerchSumCard, TrendIcon } from "../components/ui";
-import { PAL, accById, monthStats } from "../data/finance";
-import { monthKey, parseMk, rupees } from "../lib/format";
+import type { DonutDetail } from "../components/charts";
+import { CatSumCard, Empty, MerchSumCard, MerchantLogoImg, TrendIcon } from "../components/ui";
+import { PAL, accById, catById, merchById, monthStats } from "../data/finance";
+import { catEmoji, monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { ExpenseTxn } from "../types";
@@ -52,6 +53,33 @@ export function InsightsPage() {
 
   const acc = flt.acc !== "all" ? accById(doc, flt.acc) : null;
   const accTxt = acc ? (acc.name.length > 11 ? acc.name.slice(0, 11) + "…" : acc.name) : "All accounts";
+  const details: Record<string, DonutDetail> = {};
+  for (const [id, amt] of entries) {
+    const p = total > 0 ? ((amt / total) * 100).toFixed(1) : "0.0";
+    if (grp === "cat") {
+      const c = catById(doc, id);
+      details[id] = {
+        title: (
+          <>
+            <span>{catEmoji(c)}</span> {c ? c.name : "Unknown"}
+          </>
+        ),
+        amount: rupees(amt, hide),
+        sub: <span className="dc-trend">{p}% of total</span>,
+      };
+    } else {
+      const m = id === "__none" ? null : merchById(doc, id);
+      details[id] = {
+        title: (
+          <>
+            <span className="dc-sel-logo">{m ? <MerchantLogoImg m={m} /> : "🧾"}</span> {m ? m.name : "Unassigned"}
+          </>
+        ),
+        amount: rupees(amt, hide),
+        sub: <span className="dc-trend">{p}% of total</span>,
+      };
+    }
+  }
   const openEntry = (id: string) => {
     if (grp === "cat") setFilter({ cat: id });
     else setFilter({ merch: id });
@@ -72,7 +100,7 @@ export function InsightsPage() {
           {IC.dots}
         </button>
       </div>
-      <div className="chip-row" style={{ marginTop: 0 }} role="tablist" aria-label="Group spending by">
+      <div className="chip-row center" style={{ marginTop: 0 }} role="tablist" aria-label="Group spending by">
         <button
           type="button"
           role="tab"
@@ -98,6 +126,7 @@ export function InsightsPage() {
         total={rupees(total, hide)}
         monthLabel={monthLabel}
         onMonth={() => openSheet({ name: "month" })}
+        details={details}
         trend={
           pct == null ? (
             <span className="dc-trend mute">

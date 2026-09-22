@@ -60,12 +60,13 @@ export function AccountAvatar({ a }: { a: Account }) {
 export function MerchantLogoImg({ m }: { m: Merchant }) {
   const [err, setErr] = useState(false);
   const ls = m.logoScale ?? 100;
+  const scale = { ["--ls" as string]: ls } as CSSProperties;
   if (err) return <span className="acc-ico no-img">{init(m.name)}</span>;
   if (m.iconUrl)
     return (
       <img
         className="acc-ico"
-        style={cssVar(String(ls))}
+        style={scale}
         src={m.iconUrl}
         alt={m.name}
         loading="lazy"
@@ -77,6 +78,7 @@ export function MerchantLogoImg({ m }: { m: Merchant }) {
   return (
     <img
       className="acc-ico"
+      style={scale}
       src={rec.src}
       alt={rec.name}
       loading="lazy"
@@ -191,12 +193,14 @@ export function CatSumCard({
   const p = total > 0 ? ((amt / total) * 100).toFixed(2) : "0.00";
   return (
     <button className="sum-card" onClick={() => onOpen(cid)}>
-      <span className="sum-ic" style={cssVar(color)}>
+      <span className="sum-ic logo ring" style={cssVar(color)}>
         {catEmoji(c)}
       </span>
       <span className="sum-cc">
-        <span className="nm">{c.name}</span>
-        <span className="sum-count">{count}</span>
+        <span className="sum-name">
+          <span className="nm">{c.name}</span>
+          <span className="sum-count">{count}</span>
+        </span>
       </span>
       <span className="sums-right">
         <span className="sum-amt">{rupees(amt, hide)}</span>
