@@ -24,7 +24,9 @@ import {
   publishEnvelope,
   pullReplica,
   randomListKey,
+  ReplicaError,
   setMyUsername,
+  syncState,
 } from "../services/grocerySync";
 import { IC } from "../lib/icons";
 import type { GroceryList } from "../types";
@@ -77,6 +79,48 @@ function MissingList({ what }: { what: string }) {
 
 function payloadOf(l: GroceryList): GroceryList {
   return { ...l, share: null, items: (l.items || []).map((i) => ({ ...i })) };
+}
+
+function ago(ts: number | null): string {
+  if (!ts) return "never";
+  const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  if (s < 10) return "just now";
+  if (s < 60) return s + "s ago";
+  const m = Math.round(s / 60);
+  if (m < 60) return m + "m ago";
+  return Math.round(m / 60) + "h ago";
+}
+
+const ISSUE_HELP: Record<string, string> = {
+  "missing-key": "No list key on this device — re-open your invite link.",
+  "not-found": "Friend's copy not found — they may have re-shared; ask for a fresh link.",
+  decrypt: "Can't decrypt their copy — keys diverged; ask for a fresh invite link.",
+  invalid: "Their copy looks corrupt — ask them to check the list.",
+  network: "Network/API hiccup — will retry automatically.",
+  "push-failed": "Last push failed — will retry on the next change.",
+};
+
+/** Live sync readout for a shared list (pushed/pulled/error). Refreshes on
+    a short timer while the sheet is open; state lives in the sync module. */
+export function SyncStatusLine({ listId }: { listId: string }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((x) => x + 1), 3000);
+    return () => clearInterval(t);
+  }, []);
+  const st = syncState(listId);
+  if (!st.pushedAt && !st.pulledAt && !st.issue) return null;
+  return (
+    <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
+      {st.issue ? (
+        <>Sync problem: {ISSUE_HELP[st.issue] || st.issue}</>
+      ) : (
+        <>
+          Pushed {ago(st.pushedAt)} · Pulled {ago(st.pulledAt)}
+        </>
+      )}
+    </div>
+  );
 }
 
 export function GroceryShareSheet({ listId }: { listId: string }) {
@@ -279,6 +323,7 @@ export function GroceryShareSheet({ listId }: { listId: string }) {
     <>
       <Grab />
       <div className="sh-title">Share “{list.name}”</div>
+      {list.share && <SyncStatusLine listId={list.id} />}
       {peers.length > 0 && (
         <div className="tsub" style={{ margin: "8px 2px 4px" }}>
           Shared with {peers.map((p) => "@" + p).join(", ")}
@@ -421,11 +466,22 @@ export function GroceryJoinSheet({
     try {
       // Keyed path (#/s/): the secret doubles as this pair's secret.
       if (effKey) {
-        const key = await importRawKey(effKey);
+        let key: CryptoKey;
+        try {
+          key = await importRawKey(effKey);
+        } catch {
+          throw new ReplicaError("invalid");
+        }
         const saltMeta = C.b64(C.rand(16));
         await listKeySave(effListId, saltMeta, key);
         // 1. direct decrypt (pair-shared list), 2. key envelope (group list).
-        let remote = await pullWithKey(effFrom, effListId, saltMeta, key);
+        let remote: GroceryList | null = null;
+        try {
+          remote = await pullWithKey(effFrom, effListId, saltMeta, key);
+        } catch (e) {
+          if (!(e instanceof ReplicaError) || (e.kind !== "not-found" && e.kind !== "decrypt")) throw e;
+          remote = null;
+        }
         if (!remote) {
           const g = await friendGists(effFrom);
           const hits = g.filter((x) => (x.description || "").startsWith(envelopeMarker(effListId, "")));
@@ -436,14 +492,17 @@ export function GroceryJoinSheet({
             groupB64 = await openEnvelope(h.id, effKey);
             if (groupB64) break;
           }
-          if (!groupB64) throw new Error("not-found");
+          if (!groupB64) throw new ReplicaError("not-found");
           const gkey = await importRawKey(groupB64);
           await listKeySave(effListId, saltMeta, gkey);
           const gid = await findReplica(effFrom, effListId);
-          if (!gid) throw new Error("not-found");
-          const r = await pullReplica(gid, effListId);
-          if (!r) throw new Error("bad-link");
-          remote = r;
+          if (!gid) throw new ReplicaError("not-found");
+          try {
+            remote = await pullReplica(gid, effListId);
+          } catch {
+            // Keyed path has no passphrase: undecryptable means stale link.
+            throw new ReplicaError("invalid");
+          }
         }
         await finishJoin(remote, effFrom, effKey, saltMeta, key, true);
         return;
@@ -457,15 +516,14 @@ export function GroceryJoinSheet({
       const key = await C.der(pass, effSalt!);
       await listKeySave(effListId, effSalt!, key);
       const gid = await findReplica(effFrom, effListId);
-      if (!gid) throw new Error("not-found");
+      if (!gid) throw new ReplicaError("not-found");
       const remote = await pullReplica(gid, effListId);
-      if (!remote) throw new Error("wrong-pass");
       await finishJoin(remote, effFrom, null, effSalt!, key, false);
     } catch (e) {
-      const m = (e as Error).message || "";
+      const m = e instanceof ReplicaError ? e.kind : (e as Error).message || "";
       if (m === "not-found") toast("List not found — ask your friend to re-share");
-      else if (m === "wrong-pass") toast("Wrong passphrase — try again");
-      else if (m === "bad-link") toast("Invite link invalid — ask for a fresh one");
+      else if (m === "decrypt") toast("Wrong passphrase — try again");
+      else if (m === "invalid") toast("Invite link invalid — ask for a fresh one");
       else toast("Join failed: " + m);
     } finally {
       setBusy(false);
@@ -477,10 +535,10 @@ export function GroceryJoinSheet({
     lid: string,
     saltMeta: string,
     key: CryptoKey
-  ): Promise<GroceryList | null> => {
+  ): Promise<GroceryList> => {
     await listKeySave(lid, saltMeta, key);
     const gid = await findReplica(username, lid);
-    if (!gid) return null;
+    if (!gid) throw new ReplicaError("not-found");
     return pullReplica(gid, lid);
   };
 

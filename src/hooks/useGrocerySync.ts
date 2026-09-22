@@ -19,15 +19,20 @@ import {
   fetchAvatar,
   findReplica,
   followerNeedsCheck,
+  forgetReplica,
   friendGists,
   listKeyLoad,
   listKeySave,
+  markIssue,
+  markPulled,
+  markPushed,
   mergeLists,
   myUsername,
   openEnvelope,
   parseAckMarker,
   pullReplica,
   pushReplica,
+  ReplicaError,
   setMyUsername,
   touchLastSeen,
   LAST_SEEN_INTERVAL,
@@ -42,6 +47,33 @@ function payload(l: GroceryList): GroceryList {
 
 function canApi(): boolean {
   return gistUnlocked() || ghLinked();
+}
+
+/** Last pushed payload per list (module-level: shared by debounce + flush). */
+const pushedBodies = new Map<string, string>();
+
+/** Push my replicas for every shared list with changes. Returns pushed ids. */
+export async function pushSharedLists(doc: Doc): Promise<string[]> {
+  const done: string[] = [];
+  const shared = (doc.groceryLists || []).filter((l) => l.share && l.share.gistId);
+  for (const l of shared) {
+    try {
+      const lk = await listKeyLoad(l.id);
+      if (!lk) {
+        markIssue(l.id, "missing-key");
+        continue;
+      }
+      const body = JSON.stringify(payload(l));
+      if (pushedBodies.get(l.id) === body) continue;
+      await pushReplica(payload(l), l.share!.gistId);
+      pushedBodies.set(l.id, body);
+      markPushed(l.id);
+      done.push(l.id);
+    } catch {
+      markIssue(l.id, "push-failed");
+    }
+  }
+  return done;
 }
 
 /** Session-dismissed follower logins (organic follows re-checked next launch). */
@@ -78,7 +110,6 @@ export function useGrocerySync() {
   mutateRef.current = mutate;
   const toastRef = useRef(toast);
   toastRef.current = toast;
-  const pushedRef = useRef<Record<string, string>>({});
   const busyRef = useRef(false);
   const discoverRef = useRef(false);
 
@@ -89,24 +120,29 @@ export function useGrocerySync() {
     const shared = (doc.groceryLists || []).filter((l) => l.share && l.share.gistId);
     if (!shared.length) return;
     const t = setTimeout(() => {
-      (async () => {
-        for (const l of shared) {
-          try {
-            const lk = await listKeyLoad(l.id);
-            if (!lk) continue;
-            const body = JSON.stringify(payload(l));
-            if (pushedRef.current[l.id] === body) continue;
-            await pushReplica(payload(l), l.share!.gistId);
-            pushedRef.current[l.id] = body;
-          } catch {
-            /* silent — retry on next mutation or poll */
-          }
-        }
-      })();
+      pushSharedLists(doc).catch(() => undefined);
     }, 2500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.doc]);
+
+  // ---- flush replicas when the page hides (add-then-close loses nothing) ----
+  useEffect(() => {
+    const flush = () => {
+      const d = docRef.current;
+      if (d && canApi()) pushSharedLists(d).catch(() => undefined);
+    };
+    const vis = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", vis);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", vis);
+      window.removeEventListener("pagehide", flush);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---- poll peers while Groceries is open ----
   useEffect(() => {
@@ -134,9 +170,23 @@ export function useGrocerySync() {
             if (dead) break;
             try {
               const gid = await findReplica(peer, l.id);
-              if (!gid) continue;
-              const remote = await pullReplica(gid, l.id);
-              if (!remote) continue;
+              if (!gid) {
+                markIssue(l.id, "not-found");
+                continue;
+              }
+              let remote: GroceryList;
+              try {
+                remote = await pullReplica(gid, l.id);
+              } catch (e) {
+                if (e instanceof ReplicaError && e.kind === "not-found") {
+                  // Replica recreated (new gist id): drop the stale cache so
+                  // the next pass rediscovers instead of 404ing forever.
+                  forgetReplica(peer, l.id);
+                }
+                markIssue(l.id, e instanceof ReplicaError ? e.kind : "network");
+                continue;
+              }
+              markPulled(l.id);
               const r = mergeLists(merged, remote);
               merged = r.list;
               changed = changed || r.changed;
@@ -360,10 +410,14 @@ export function useGrocerySync() {
           keyB64 = opened;
           const key = await importRawKey(opened);
           await listKeySave(listId, C.b64(C.rand(16)), key);
-          const gid = await findReplica(from, listId);
-          if (!gid) continue;
-          remote = await pullReplica(gid, listId);
-          if (remote) break;
+          try {
+            const gid = await findReplica(from, listId);
+            if (!gid) continue;
+            remote = await pullReplica(gid, listId);
+            if (remote) break;
+          } catch {
+            continue;
+          }
         }
       }
       if (!remote || !keyB64) return;

@@ -105,24 +105,99 @@ function validList(o: unknown, listId: string): o is GroceryList {
   return !!l && l.id === listId && Array.isArray(l.items);
 }
 
-/** Read a replica gist (any member's) and decrypt with the cached list key. */
-export async function pullReplica(gistId: string, listId: string): Promise<GroceryList | null> {
+export type ReplicaIssue = "missing-key" | "not-found" | "decrypt" | "invalid" | "network";
+
+export class ReplicaError extends Error {
+  kind: ReplicaIssue;
+  constructor(kind: ReplicaIssue, message?: string) {
+    super(message || kind);
+    this.kind = kind;
+  }
+}
+
+function classifyFetchError(e: unknown): ReplicaIssue {
+  const m = (e as Error).message || "";
+  if (/404|not found/i.test(m)) return "not-found";
+  return "network";
+}
+
+/** Read a replica gist (any member's) and decrypt with the cached list key.
+    Throws ReplicaError (never null): missing-key | not-found | decrypt |
+    invalid | network. Callers decide: poll records status, join maps toasts. */
+export async function pullReplica(gistId: string, listId: string): Promise<GroceryList> {
   const lk = await listKeyLoad(listId);
-  if (!lk) return null;
+  if (!lk) throw new ReplicaError("missing-key");
+  let content: string | null;
   try {
     const g = (await Gist.api("GET", "/gists/" + gistId)) as {
       files?: Record<string, { content?: string }>;
     };
-    const content = g && g.files && g.files[FILE] && g.files[FILE].content;
-    if (!content) return null;
-    const env = JSON.parse(content) as Envelope;
-    if (!env || env.listId !== listId) return null;
-    const raw = await C.dec(lk.key, env.iv, env.ct);
-    const list = JSON.parse(raw) as GroceryList;
-    return validList(list, listId) ? list : null;
-  } catch {
-    return null;
+    content = (g && g.files && g.files[FILE] && g.files[FILE].content) || null;
+  } catch (e) {
+    throw new ReplicaError(classifyFetchError(e));
   }
+  if (!content) throw new ReplicaError("not-found");
+  let env: Envelope;
+  try {
+    env = JSON.parse(content) as Envelope;
+  } catch {
+    throw new ReplicaError("invalid");
+  }
+  if (!env || env.listId !== listId) throw new ReplicaError("invalid");
+  let raw: string;
+  try {
+    raw = await C.dec(lk.key, env.iv, env.ct);
+  } catch {
+    throw new ReplicaError("decrypt");
+  }
+  try {
+    const list = JSON.parse(raw) as GroceryList;
+    if (!validList(list, listId)) throw new ReplicaError("invalid");
+    return list;
+  } catch (e) {
+    if (e instanceof ReplicaError) throw e;
+    throw new ReplicaError("invalid");
+  }
+}
+
+// ---------------- per-list sync status (diagnostics UI) ----------------
+
+export interface SyncState {
+  pushedAt: number | null;
+  pulledAt: number | null;
+  issue: ReplicaIssue | "push-failed" | null;
+  issueAt: number | null;
+}
+
+const syncStates = new Map<string, SyncState>();
+
+export function syncState(listId: string): SyncState {
+  let s = syncStates.get(listId);
+  if (!s) {
+    s = { pushedAt: null, pulledAt: null, issue: null, issueAt: null };
+    syncStates.set(listId, s);
+  }
+  return s;
+}
+
+export function markPushed(listId: string): void {
+  const s = syncState(listId);
+  s.pushedAt = Date.now();
+  s.issue = null;
+  s.issueAt = null;
+}
+
+export function markPulled(listId: string): void {
+  const s = syncState(listId);
+  s.pulledAt = Date.now();
+  s.issue = null;
+  s.issueAt = null;
+}
+
+export function markIssue(listId: string, issue: SyncState["issue"]): void {
+  const s = syncState(listId);
+  s.issue = issue;
+  s.issueAt = Date.now();
 }
 
 /** Push a list to MY replica gist. */
@@ -326,14 +401,6 @@ export function setMyUsername(u: string | null): void {
   } catch {
     /* ignore */
   }
-}
-
-/** Join via the sender's replica: discover + pull with the cached list key
-    (caller derives it from the invite-link salt + passphrase first). */
-export async function joinVia(username: string, listId: string): Promise<GroceryList | null> {
-  const gistId = await findReplica(username, listId);
-  if (!gistId) return null;
-  return pullReplica(gistId, listId);
 }
 
 // ---------------- merge (shared-branch semantics) ----------------
