@@ -155,6 +155,18 @@ export function SettingsPage() {
   };
 
   const makeMyLink = async () => {
+    // Prefer a fresh lookup: component state can predate an in-app link.
+    if (ghLinked()) {
+      try {
+        const login = await ghWhoami();
+        setLinked(true);
+        setGhLogin(login);
+        setMyLink(friendLink(login, (s.deviceName || "").trim() || login));
+        return;
+      } catch {
+        /* fall through to unlock path */
+      }
+    }
     if (linked && ghLogin) {
       setMyLink(friendLink(ghLogin, (s.deviceName || "").trim() || ghLogin));
       return;

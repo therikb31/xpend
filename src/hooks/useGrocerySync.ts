@@ -217,8 +217,6 @@ export function useGrocerySync() {
       if (discoverRef.current || dead) return;
       const cur = docRef.current;
       if (!cur) return;
-      const friends = (cur.settings.friends || []).filter((f) => f.pairSecret);
-      if (!friends.length) return;
       discoverRef.current = true;
       try {
         try {
@@ -227,37 +225,41 @@ export function useGrocerySync() {
         } catch {
           /* best-effort */
         }
-        const mine = new Set((cur.groceryLists || []).map((l) => l.id));
-        for (const f of friends as Friend[]) {
-          if (dead) break;
-          const secret = f.pairSecret!;
-          let gists: Awaited<ReturnType<typeof friendGists>> = [];
-          try {
-            gists = await friendGists(f.githubUsername);
-          } catch {
-            continue;
-          }
-          if (dead) break;
-          // Unknown list markers from this friend.
-          const unknown = new Map<string, string>();
-          for (const g of gists) {
-            const d = g.description || "";
-            if (d.startsWith(LIST_MARKER_PREFIX)) {
-              const id = d.slice(LIST_MARKER_PREFIX.length).trim();
-              if (id && !mine.has(id)) unknown.set(id, g.id);
-            }
-          }
-          for (const [listId] of unknown) {
+        const friends = (cur.settings.friends || []).filter((f) => f.pairSecret);
+        if (friends.length) {
+          const mine = new Set((cur.groceryLists || []).map((l) => l.id));
+          for (const f of friends as Friend[]) {
             if (dead) break;
+            const secret = f.pairSecret!;
+            let gists: Awaited<ReturnType<typeof friendGists>> = [];
             try {
-              await autoJoin(f.githubUsername, listId, secret, gists);
-              mine.add(listId);
+              gists = await friendGists(f.githubUsername);
             } catch {
-              /* skip — retry next pass */
+              continue;
+            }
+            if (dead) break;
+            // Unknown list markers from this friend.
+            const unknown = new Map<string, string>();
+            for (const g of gists) {
+              const d = g.description || "";
+              if (d.startsWith(LIST_MARKER_PREFIX)) {
+                const id = d.slice(LIST_MARKER_PREFIX.length).trim();
+                if (id && !mine.has(id)) unknown.set(id, g.id);
+              }
+            }
+            for (const [listId] of unknown) {
+              if (dead) break;
+              try {
+                await autoJoin(f.githubUsername, listId, secret, gists);
+                mine.add(listId);
+              } catch {
+                /* skip — retry next pass */
+              }
             }
           }
         }
-        // Doorbell check: followers signaling friendship via ack markers.
+        // Doorbell check runs independently: newcomers have no pair secret
+        // yet, which is exactly when they need to be discovered.
         try {
           await doorbellCheck();
         } catch {

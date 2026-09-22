@@ -106,14 +106,8 @@ export function GroceriesPage() {
       <header className="scrhdr">
         <div className="hdr-title">Groceries</div>
         <div className="hdr-left">
-          <button className="cbtn small" onClick={() => openSheet({ name: "export" })} aria-label="Export data">
+          <button className="cbtn small" onClick={() => openSheet({ name: "grocery-more" })} aria-label="More options">
             {IC.dots}
-          </button>
-          <button className="btn mini" onClick={() => openSheet({ name: "grocery-join", id: "", id2: "" })}>
-            {IC.open} Join
-          </button>
-          <button className="btn mini" onClick={() => openSheet({ name: "grocery-list" })}>
-            {IC.plus} New list
           </button>
         </div>
       </header>

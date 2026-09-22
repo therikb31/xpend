@@ -31,7 +31,7 @@ import { Grab } from "./Sheet";
 type LinkStep = "start" | "done";
 
 export function GithubLinkSheet() {
-  const { toast, openSheet } = useApp();
+  const { toast, openSheet, bumpGist } = useApp();
   const [step, setStep] = useState<LinkStep>(ghLinked() ? "done" : "start");
   const [pat, setPat] = useState("");
   const [login, setLogin] = useState<string | null>(null);
@@ -53,6 +53,7 @@ export function GithubLinkSheet() {
       setPat("");
       setLogin(l);
       setStep("done");
+      bumpGist();
       toast("Linked as @" + l);
     } catch (e) {
       const m = (e as Error).message || "";
@@ -67,6 +68,7 @@ export function GithubLinkSheet() {
     ghUnlink();
     setLogin(null);
     setStep("start");
+    bumpGist();
     toast("GitHub unlinked");
   };
 

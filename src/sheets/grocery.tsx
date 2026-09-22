@@ -8,7 +8,6 @@ import { todayStr, uid } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import { Grab } from "./Sheet";
-
 const DAY_CHIPS: Array<{ label: string; days: number }> = [
   { label: "Today", days: 0 },
   { label: "Tomorrow", days: 1 },
@@ -216,6 +215,35 @@ export function GroceryListSheet({ id }: { id?: string }) {
           {IC.trash}
         </button>
       )}
+    </>
+  );
+}
+
+export function GroceryMoreSheet() {
+  const { openSheet, closeSheet } = useApp();
+  return (
+    <>
+      <Grab />
+      <button className="sh-row" onClick={() => openSheet({ name: "grocery-list" })}>
+        <span className="ccircle">{IC.plus}</span>
+        <span className="rname">New list</span>
+        {IC.right}
+      </button>
+      <button className="sh-row" onClick={() => openSheet({ name: "grocery-join", id: "", id2: "" })}>
+        <span className="ccircle">{IC.open}</span>
+        <span className="rname">Join shared list</span>
+        {IC.right}
+      </button>
+      <button className="sh-row" onClick={() => openSheet({ name: "export" })}>
+        <span className="ccircle">{IC.share}</span>
+        <span className="rname">Export data</span>
+        {IC.right}
+      </button>
+      <button className="sh-row" onClick={closeSheet} style={{ color: "var(--neg)" }}>
+        <span className="ccircle">{IC.x}</span>
+        <span className="rname">Close</span>
+        {IC.right}
+      </button>
     </>
   );
 }

@@ -39,7 +39,7 @@ export type SheetName =
   | "account-add" | "account-edit" | "account-icon"
   | "gist-setup" | "gist-unlock" | "gist-restore"
   | "export" | "pwa-help" | "budget-form" | "budget-detail"
-  | "grocery-item" | "grocery-list" | "grocery-share" | "grocery-join"
+  | "grocery-item" | "grocery-list" | "grocery-share" | "grocery-join" | "grocery-more"
   | "friend-add" | "github-link" | "import-merge" | "open-in-app";
 
 export interface SheetSpec {
@@ -197,6 +197,7 @@ interface Ctx {
   shiftMonth: (delta: number) => void;
   openSheet: (sheet: SheetSpec) => void;
   closeSheet: () => void;
+  bumpGist: () => void;
 }
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -225,6 +226,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const loadDoc = (doc: Doc) => dispatch({ t: "LOAD_DOC", doc });
     const openSheet = (sheet: SheetSpec) => dispatch({ t: "OPEN_SHEET", sheet });
     const closeSheet = () => dispatch({ t: "OPEN_SHEET", sheet: null });
+    const bumpGist = () => dispatch({ t: "BUMP_GIST" });
     const goTab = (tab: TabId) => {
       scrollMem.v = null;
       const cur = s();
@@ -346,7 +348,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     return {
       state, toast, mutate, loadDoc, goTab, go, back, openAdd, closeAdd,
-      startEdit, keyInput, saveAdd, setMkey, setFilter, setAdd, shiftMonth, openSheet, closeSheet,
+      startEdit, keyInput, saveAdd, setMkey, setFilter, setAdd, shiftMonth, openSheet, closeSheet, bumpGist,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);

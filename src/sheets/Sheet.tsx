@@ -9,7 +9,7 @@ import { AccountAddSheet, AccountEditSheet } from "./accounts";
 import { BudgetDetailSheet, BudgetFormSheet } from "./budget";
 import { FriendAddSheet, OpenInAppSheet } from "./friends";
 import { GoalCompleteSheet, GoalDetailSheet, GoalFormSheet } from "./goals";
-import { GroceryItemSheet, GroceryListSheet } from "./grocery";
+import { GroceryItemSheet, GroceryListSheet, GroceryMoreSheet } from "./grocery";
 import { GroceryJoinSheet, GroceryShareSheet } from "./groceryshare";
 import { MerchantEditorSheet, MerchantManageSheet } from "./manage";
 import { CategoryManageSheet, ShortcutsSheet } from "./manage";
@@ -93,6 +93,8 @@ function Content({ sheet }: { sheet: SheetSpec }) {
       return <GroceryItemSheet listId={sheet.id!} itemId={sheet.id2} />;
     case "grocery-list":
       return <GroceryListSheet id={sheet.id} />;
+    case "grocery-more":
+      return <GroceryMoreSheet />;
     case "grocery-share":
       return <GroceryShareSheet listId={sheet.id!} />;
     case "grocery-join":
