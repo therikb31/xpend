@@ -7,7 +7,7 @@ import { useApp } from "../services/store";
 import type { SheetSpec } from "../services/store";
 import { AccountAddSheet, AccountEditSheet } from "./accounts";
 import { BudgetDetailSheet, BudgetFormSheet } from "./budget";
-import { FriendAddSheet } from "./friends";
+import { FriendAddSheet, OpenInAppSheet } from "./friends";
 import { GoalCompleteSheet, GoalDetailSheet, GoalFormSheet } from "./goals";
 import { GroceryItemSheet, GroceryListSheet } from "./grocery";
 import { GroceryJoinSheet, GroceryShareSheet } from "./groceryshare";
@@ -99,6 +99,8 @@ function Content({ sheet }: { sheet: SheetSpec }) {
       return <GroceryJoinSheet listId={sheet.id!} from={sheet.id2 || ""} salt={sheet.id3} keyB64={sheet.id4} />;
     case "friend-add":
       return <FriendAddSheet username={sheet.id} name={sheet.id2} />;
+    case "open-in-app":
+      return <OpenInAppSheet link={sheet.id || ""} kind={sheet.id2 || ""} />;
     case "github-link":
       return <GithubLinkSheet />;
     case "import-merge":

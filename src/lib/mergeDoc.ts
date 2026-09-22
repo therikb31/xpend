@@ -97,6 +97,13 @@ export function mergeDocs(base: Doc, incoming: Doc): Doc {
     }
     const items = unionById(ex.items || [], il.items || []);
     ex.items = items.out;
+    const mhave = new Set(ex.members || []);
+    for (const m of il.members || []) {
+      if (m && !mhave.has(m)) {
+        mhave.add(m);
+        ex.members = [...(ex.members || []), m];
+      }
+    }
     if ((il.updatedAt || 0) > (ex.updatedAt || 0)) {
       ex.name = il.name;
       ex.updatedAt = il.updatedAt;

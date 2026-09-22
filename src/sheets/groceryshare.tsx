@@ -1,27 +1,33 @@
-// Shared-list sheets — share a list with a friend (creates my encrypted
-// replica + invite link) and join a list from an invite link (pulls the
-// sender's replica, creates my own). Two eras:
-// - linked (OAuth): random list key carried in #/s/ links — no passphrase.
-// - legacy: passphrase-derived key, salt in #/l/ links.
-// API access needs backup unlocked OR GitHub linked.
+// Shared-list sheets — multi-member group lists.
+// Key tiers: pair secret per friend (delivery) + group key per list (data).
+// New shares: random group key, key envelope per pair-ready member,
+// bootstrap #/s/ link (carries the pair secret) per pending member.
+// Join (#/s/): stores the pair secret, then direct-decrypt, else the key
+// envelope addressed to me. Legacy #/l/ salt links unchanged.
 
 import { useEffect, useState } from "react";
 import { C } from "../lib/crypto";
 import { listLink, parseInvite, shareLink } from "../lib/friends";
 import { useApp } from "../services/store";
 import { Gist, gistUnlocked } from "../services/gist";
-import { ghLinked } from "../services/githubAuth";
+import { ghLinked, ghWhoami } from "../services/githubAuth";
 import { exportRawKey, importRawKey } from "../services/escrow";
 import {
   createReplica,
   createReplicaWithKey,
+  envelopeMarker,
   findReplica,
+  friendGists,
   listKeyLoad,
   listKeySave,
+  openEnvelope,
+  publishEnvelope,
   pullReplica,
   randomListKey,
+  setMyUsername,
 } from "../services/grocerySync";
 import { IC } from "../lib/icons";
+import type { GroceryList } from "../types";
 import { Grab } from "./Sheet";
 
 async function copyText(text: string): Promise<boolean> {
@@ -69,6 +75,10 @@ function MissingList({ what }: { what: string }) {
   );
 }
 
+function payloadOf(l: GroceryList): GroceryList {
+  return { ...l, share: null, items: (l.items || []).map((i) => ({ ...i })) };
+}
+
 export function GroceryShareSheet({ listId }: { listId: string }) {
   const { state, mutate, openSheet, closeSheet, toast } = useApp();
   const doc = state.doc!;
@@ -76,34 +86,23 @@ export function GroceryShareSheet({ listId }: { listId: string }) {
   const friends = doc.settings.friends || [];
   const linked = ghLinked();
   const canApi = gistUnlocked() || linked;
-  const [peer, setPeer] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
   const [pass, setPass] = useState("");
   const [busy, setBusy] = useState(false);
   const [login, setLogin] = useState<string | null>(null);
-  const [hasKey, setHasKey] = useState<boolean | null>(null);
-  const [inviteKey, setInviteKey] = useState<string | null>(null);
+  const [links, setLinks] = useState<Array<{ user: string; link: string }>>([]);
 
   useEffect(() => {
-    if (canApi) Gist.whoami().then(setLogin).catch(() => undefined);
+    if (!canApi) return;
+    const who = linked ? ghWhoami() : Gist.whoami().catch(() => null);
+    who.then((l) => {
+      if (l) {
+        setLogin(l);
+        setMyUsername(l);
+      }
+    }).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => {
-    if (!list || !list.share) return;
-    let dead = false;
-    listKeyLoad(list.id).then(async (lk) => {
-      if (dead) return;
-      setHasKey(!!lk);
-      if (lk && list.share && list.share.keyMode === true) {
-        try {
-          const raw = await exportRawKey(lk.key);
-          if (!dead) setInviteKey(raw);
-        } catch {
-          /* ignore */
-        }
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [list && list.share ? list.id : ""]);
 
   if (!list) return <MissingList what="Share list" />;
   if (!canApi) {
@@ -117,83 +116,150 @@ export function GroceryShareSheet({ listId }: { listId: string }) {
   }
 
   const peers = (list.share && list.share.peers) || [];
+  const members = list.members || [];
   const candidates = friends.filter((f) => !peers.includes(f.githubUsername));
+  const toggle = (u: string) =>
+    setPicked((p) => (p.includes(u) ? p.filter((x) => x !== u) : [...p, u]));
 
-  const payloadOf = (l: typeof list) => ({
-    ...l,
-    share: null,
-    items: (l.items || []).map((i) => ({ ...i })),
-  });
-
-  /** Legacy share: passphrase-derived key, salt in the link. */
-  const doShareLegacy = async () => {
-    if (!peer) {
-      toast("Pick a friend to share with");
-      return;
-    }
-    if (!pass) {
-      toast("Enter your app passphrase");
-      return;
-    }
-    setBusy(true);
-    try {
-      const s = C.b64(C.rand(16));
-      const gistId = await createReplica(payloadOf(list), pass, s);
-      const me = login || (await Gist.whoami());
-      setLogin(me);
-      mutate((d) => {
-        const l = (d.groceryLists || []).find((x) => x.id === listId);
-        if (!l) return;
-        l.share = { gistId, role: "owner", peers: [peer], salt: s };
-        l.updatedAt = Date.now();
-      });
-      toast("Shared with @" + peer);
-    } catch (e) {
-      toast("Share failed: " + ((e as Error).message || e));
-    } finally {
-      setBusy(false);
-    }
+  const ensurePair = async (username: string): Promise<{ secret: string; fresh: boolean }> => {
+    const ex = (doc.settings.friends || []).find((f) => f.githubUsername === username);
+    if (ex && ex.pairSecret) return { secret: ex.pairSecret, fresh: false };
+    const raw = await randomListKey();
+    const secret = await exportRawKey(raw);
+    mutate((d) => {
+      if (!Array.isArray(d.settings.friends)) d.settings.friends = [];
+      const f = d.settings.friends.find((x) => x.githubUsername === username);
+      if (f) f.pairSecret = secret;
+      else
+        d.settings.friends.push({
+          githubUsername: username,
+          displayName: username,
+          addedAt: Date.now(),
+          pairSecret: secret,
+        });
+    });
+    return { secret, fresh: true };
   };
 
-  /** Linked share: random key carried in the link — no passphrase. */
-  const doShareKeyed = async () => {
-    if (!peer) {
-      toast("Pick a friend to share with");
-      return;
-    }
-    setBusy(true);
-    try {
-      const s = C.b64(C.rand(16));
-      const key = await randomListKey();
-      const gistId = await createReplicaWithKey(payloadOf(list), s, key);
-      const me = login || (await Gist.whoami());
+  const shareWith = async (
+    usernames: string[],
+    groupKeyB64: string,
+    groupSalt: string,
+    keep: { gistId: string; role: "owner" | "member" } | null
+  ) => {
+    const me = login || (await Gist.whoami().catch(() => null));
+    if (me) {
       setLogin(me);
-      setInviteKey(await exportRawKey(key));
-      mutate((d) => {
-        const l = (d.groceryLists || []).find((x) => x.id === listId);
-        if (!l) return;
-        l.share = { gistId, role: "owner", peers: [peer], salt: s, keyMode: true };
-        l.updatedAt = Date.now();
-      });
-      toast("Shared with @" + peer);
-    } catch (e) {
-      toast("Share failed: " + ((e as Error).message || e));
-    } finally {
-      setBusy(false);
+      setMyUsername(me);
     }
-  };
-
-  const addPeer = (username: string) => {
+    let gid = keep ? keep.gistId : null;
+    let role: "owner" | "member" = keep ? keep.role : "owner";
+    if (!gid) {
+      const key = await importRawKey(groupKeyB64);
+      gid = await createReplicaWithKey(
+        payloadOf({ ...list, members: me ? [me.toLowerCase(), ...usernames] : usernames }),
+        groupSalt,
+        key
+      );
+      role = "owner";
+    }
+    const freshLinks: Array<{ user: string; link: string }> = [];
+    const auto: string[] = [];
+    for (const u of usernames) {
+      const { secret, fresh } = await ensurePair(u);
+      await publishEnvelope(list.id, u, me || "a-friend", groupKeyB64, secret);
+      if (fresh && me) freshLinks.push({ user: u, link: shareLink(list.id, me, secret) });
+      else auto.push(u);
+    }
+    const allPeers = [...new Set([...peers, ...usernames])];
+    const allMembers = [...new Set([...members, ...(me ? [me.toLowerCase()] : []), ...usernames])];
     mutate((d) => {
       const l = (d.groceryLists || []).find((x) => x.id === listId);
-      if (!l || !l.share) return;
-      if (!l.share.peers.includes(username)) {
-        l.share.peers = [...l.share.peers, username];
-        l.updatedAt = Date.now();
-      }
+      if (!l) return;
+      l.share = { gistId: gid!, role, peers: allPeers, salt: groupSalt, keyMode: true };
+      l.members = allMembers;
+      l.updatedAt = Date.now();
     });
-    setPeer("");
-    toast("Added @" + username);
+    setLinks(freshLinks);
+    setPicked([]);
+    if (auto.length) toast("Added @" + auto.join(", @") + " — they'll see it shortly");
+    if (freshLinks.length && !auto.length) toast("Send the invite link to join them up");
+  };
+
+  /** First share: group key + own replica + member setup. */
+  const doShare = async () => {
+    if (!picked.length) {
+      toast("Pick at least one friend");
+      return;
+    }
+    if (!linked && !gistUnlocked()) {
+      toast("Unlock backup first");
+      return;
+    }
+    // Legacy path (passphrase era): single member, salt link.
+    if (!linked) {
+      if (picked.length > 1) {
+        toast("Link GitHub for multi-member sharing");
+        return;
+      }
+      if (!pass) {
+        toast("Enter your app passphrase");
+        return;
+      }
+      setBusy(true);
+      try {
+        const s = C.b64(C.rand(16));
+        const me = login || (await Gist.whoami().catch(() => null));
+        const gid = await createReplica(payloadOf(list), pass, s);
+        mutate((d) => {
+          const l = (d.groceryLists || []).find((x) => x.id === listId);
+          if (!l) return;
+          l.share = { gistId: gid, role: "owner", peers: picked, salt: s };
+          l.members = [...new Set([...(l.members || []), ...picked])];
+          l.updatedAt = Date.now();
+        });
+        setLinks(me ? [{ user: picked[0], link: listLink(list.id, me, s) }] : []);
+        setPicked([]);
+        toast("Shared with @" + picked[0]);
+      } catch (e) {
+        toast("Share failed: " + ((e as Error).message || e));
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    setBusy(true);
+    try {
+      const saltMeta = C.b64(C.rand(16));
+      const raw = await randomListKey();
+      const groupKeyB64 = await exportRawKey(raw);
+      await listKeySave(list.id, saltMeta, raw);
+      await shareWith(picked, groupKeyB64, saltMeta, null);
+    } catch (e) {
+      toast("Share failed: " + ((e as Error).message || e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Add members to an already-shared list. */
+  const addMembers = async () => {
+    if (!picked.length || !list.share) return;
+    setBusy(true);
+    try {
+      const lk = await listKeyLoad(list.id);
+      if (!lk) {
+        toast("This device lost the list key — re-open your invite link");
+        setBusy(false);
+        return;
+      }
+      const groupKeyB64 = await exportRawKey(lk.key);
+      await shareWith(picked, groupKeyB64, lk.salt, { gistId: list.share.gistId, role: list.share.role });
+    } catch (e) {
+      toast("Add failed: " + ((e as Error).message || e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const leave = () => {
@@ -209,173 +275,105 @@ export function GroceryShareSheet({ listId }: { listId: string }) {
     toast("Sharing off");
   };
 
-  const invite =
-    list.share && login
-      ? list.share.keyMode === true
-        ? inviteKey
-          ? shareLink(list.id, login, inviteKey)
-          : null
-        : list.share.salt
-          ? listLink(list.id, login, list.share.salt)
-          : null
-      : null;
-
-  const reconnectLegacy = async () => {
-    if (!list.share || !pass) {
-      toast("Enter the shared app passphrase");
-      return;
-    }
-    setBusy(true);
-    try {
-      const key = await C.der(pass, list.share.salt);
-      await listKeySave(list.id, list.share.salt, key);
-      setHasKey(true);
-      setInviteKey(null);
-      toast("List reconnected");
-    } catch {
-      toast("Wrong passphrase — try again");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <>
       <Grab />
       <div className="sh-title">Share “{list.name}”</div>
-      {!list.share ? (
-        <>
-          {friends.length ? (
-            <>
-              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-                Share with
-              </div>
-              <div className="chip-row" style={{ marginTop: 0 }}>
-                {friends.map((f) => (
-                  <button
-                    key={f.githubUsername}
-                    type="button"
-                    className={"chip " + (peer === f.githubUsername ? "on" : "")}
-                    onClick={() => setPeer(f.githubUsername)}
-                  >
-                    {f.displayName}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
-              No friends yet — add one in Settings → Friends first.
-            </div>
-          )}
-          {!linked && (
-            <>
-              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-                App passphrase (same as backup)
-              </div>
-              <input
-                type="password"
-                placeholder="Your passphrase"
-                value={pass}
-                onChange={(e) => setPass(e.target.value)}
-                style={{ marginTop: 0 }}
-                autoCapitalize="none"
-                autoCorrect="off"
-              />
-            </>
-          )}
-          <button
-            className="btn"
-            style={{ marginTop: 16 }}
-            onClick={linked ? doShareKeyed : doShareLegacy}
-            disabled={busy}
-          >
-            {IC.share} {busy ? "Sharing…" : "Create invite link"}
-          </button>
-          {linked && (
-            <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
-              The invite carries the list key — your friend needs no passphrase.
-            </div>
-          )}
-        </>
-      ) : (
+      {peers.length > 0 && (
+        <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+          Shared with {peers.map((p) => "@" + p).join(", ")}
+        </div>
+      )}
+      {links.length > 0 && (
         <>
           <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-            Shared with {peers.length ? peers.map((p) => "@" + p).join(", ") : "nobody yet"}
+            Send {links.length > 1 ? "these links once" : "this link once"} — everything after is automatic:
           </div>
-          {invite ? (
-            <>
-              <div className="tsub" style={{ margin: "8px 2px 4px", overflowWrap: "anywhere", fontSize: 13 }}>
-                {invite}
-              </div>
+          {links.map((l) => (
+            <div key={l.user} className="slab">
+              <span className="s-label" style={{ overflowWrap: "anywhere", fontWeight: 400, fontSize: 13 }}>
+                @{l.user}: {l.link}
+              </span>
               <button
-                className="btn"
-                style={{ marginTop: 8 }}
+                type="button"
+                className="btn mini"
                 onClick={async () => {
-                  if (await copyText(invite)) toast("Invite link copied — send it to your friend");
+                  if (await copyText(l.link)) toast("Invite copied — send it to @" + l.user);
                   else toast("Copy failed — long-press the link");
                 }}
               >
-                {IC.share} Copy invite link
+                Copy
               </button>
-            </>
-          ) : (
-            <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
-              {hasKey === false
-                ? "This device lost the list key."
-                : "Preparing invite link…"}
             </div>
-          )}
-          {hasKey === false &&
-            (list.share.keyMode === false ? (
-              <>
-                <input
-                  type="password"
-                  placeholder="Shared app passphrase"
-                  value={pass}
-                  onChange={(e) => setPass(e.target.value)}
-                  style={{ marginTop: 8 }}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                />
-                <button className="btn" style={{ marginTop: 8 }} onClick={reconnectLegacy} disabled={busy}>
-                  {IC.check} {busy ? "Reconnecting…" : "Reconnect"}
-                </button>
-              </>
-            ) : (
-              <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
-                Re-open your invite link to reconnect this device.
-              </div>
-            ))}
-          {candidates.length > 0 && (
-            <>
-              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-                Add another friend
-              </div>
-              <div className="chip-row" style={{ marginTop: 0 }}>
-                {candidates.map((f) => (
-                  <button key={f.githubUsername} type="button" className="chip" onClick={() => addPeer(f.githubUsername)}>
-                    {f.displayName}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-          {!friends.length && (
-            <button className="set" style={{ marginTop: 8 }} onClick={() => openSheet({ name: "friend-add" })}>
-              <span className="s-label">
-                Add friend<div className="s-sub">Paste their invite link</div>
-              </span>
-              {IC.plus}
-            </button>
-          )}
-          <button className="set" style={{ marginTop: 8 }} onClick={leave}>
-            <span className="s-label">
-              Stop sharing<div className="s-sub">Your copy stays on this device</div>
-            </span>
-            {IC.x}
-          </button>
+          ))}
         </>
+      )}
+      {candidates.length > 0 && (
+        <>
+          <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+            {list.share ? "Add members" : "Share with"}
+          </div>
+          <div className="chip-row" style={{ marginTop: 0 }}>
+            {candidates.map((f) => (
+              <button
+                key={f.githubUsername}
+                type="button"
+                className={"chip " + (picked.includes(f.githubUsername) ? "on" : "")}
+                onClick={() => toggle(f.githubUsername)}
+              >
+                {f.displayName}
+                {f.pairSecret ? " ✓" : ""}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {!friends.length && (
+        <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
+          No friends yet — add one in Settings → Friends first.
+        </div>
+      )}
+      {!linked && !list.share && (
+        <>
+          <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+            App passphrase (same as backup)
+          </div>
+          <input
+            type="password"
+            placeholder="Your passphrase"
+            value={pass}
+            onChange={(e) => setPass(e.target.value)}
+            style={{ marginTop: 0 }}
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+        </>
+      )}
+      {(picked.length > 0 || !list.share) && candidates.length > 0 && (
+        <button
+          className="btn"
+          style={{ marginTop: 16 }}
+          onClick={list.share ? addMembers : doShare}
+          disabled={busy || (list.share ? !picked.length : !picked.length)}
+        >
+          {IC.share} {busy ? "Working…" : list.share ? "Add to list" : "Share list"}
+        </button>
+      )}
+      {!friends.length && (
+        <button className="set" style={{ marginTop: 8 }} onClick={() => openSheet({ name: "friend-add" })}>
+          <span className="s-label">
+            Add friend<div className="s-sub">Paste their invite link</div>
+          </span>
+          {IC.plus}
+        </button>
+      )}
+      {list.share && (
+        <button className="set" style={{ marginTop: 8 }} onClick={leave}>
+          <span className="s-label">
+            Stop sharing<div className="s-sub">Your copy stays on this device</div>
+          </span>
+          {IC.x}
+        </button>
       )}
     </>
   );
@@ -421,54 +419,48 @@ export function GroceryJoinSheet({
     }
     setBusy(true);
     try {
-      let key: CryptoKey;
-      let saltMeta: string;
-      let keyMode = false;
+      // Keyed path (#/s/): the secret doubles as this pair's secret.
       if (effKey) {
-        key = await importRawKey(effKey);
-        saltMeta = C.b64(C.rand(16));
-        keyMode = true;
-      } else {
-        if (!pass) {
-          toast("Enter the shared app passphrase");
-          setBusy(false);
-          return;
+        const key = await importRawKey(effKey);
+        const saltMeta = C.b64(C.rand(16));
+        await listKeySave(effListId, saltMeta, key);
+        // 1. direct decrypt (pair-shared list), 2. key envelope (group list).
+        let remote = await pullWithKey(effFrom, effListId, saltMeta, key);
+        if (!remote) {
+          const g = await friendGists(effFrom);
+          const hits = g.filter((x) => (x.description || "").startsWith(envelopeMarker(effListId, "")));
+          // Envelope marker ends with the recipient; without a known login,
+          // try unwrapping each candidate with the pair secret.
+          let groupB64: string | null = null;
+          for (const h of hits) {
+            groupB64 = await openEnvelope(h.id, effKey);
+            if (groupB64) break;
+          }
+          if (!groupB64) throw new Error("not-found");
+          const gkey = await importRawKey(groupB64);
+          await listKeySave(effListId, saltMeta, gkey);
+          const gid = await findReplica(effFrom, effListId);
+          if (!gid) throw new Error("not-found");
+          const r = await pullReplica(gid, effListId);
+          if (!r) throw new Error("bad-link");
+          remote = r;
         }
-        saltMeta = effSalt!;
-        key = await C.der(pass, saltMeta);
+        await finishJoin(remote, effFrom, effKey, saltMeta, key, true);
+        return;
       }
-      await listKeySave(effListId, saltMeta, key);
+      // Legacy path (#/l/): passphrase-derived key.
+      if (!pass) {
+        toast("Enter the shared app passphrase");
+        setBusy(false);
+        return;
+      }
+      const key = await C.der(pass, effSalt!);
+      await listKeySave(effListId, effSalt!, key);
       const gid = await findReplica(effFrom, effListId);
       if (!gid) throw new Error("not-found");
       const remote = await pullReplica(gid, effListId);
-      if (!remote) throw new Error(effKey ? "bad-link" : "wrong-pass");
-      const myGistId = await createReplicaWithKey(
-        { ...remote, share: null, items: (remote.items || []).map((i) => ({ ...i })) },
-        saltMeta,
-        key
-      );
-      mutate((d) => {
-        if (!Array.isArray(d.groceryLists)) d.groceryLists = [];
-        if (d.groceryLists.some((x) => x.id === remote.id)) return;
-        d.groceryLists.push({
-          ...remote,
-          items: (remote.items || []).map((i) => ({ ...i })),
-          share: {
-            gistId: myGistId,
-            role: "member",
-            peers: [effFrom.toLowerCase()],
-            salt: saltMeta,
-            keyMode,
-          },
-        });
-        const fr = effFrom.toLowerCase();
-        if (!Array.isArray(d.settings.friends)) d.settings.friends = [];
-        if (!d.settings.friends.some((f) => f.githubUsername === fr)) {
-          d.settings.friends.push({ githubUsername: fr, displayName: fr, addedAt: Date.now() });
-        }
-      });
-      closeSheet();
-      toast("Joined “" + remote.name + "”");
+      if (!remote) throw new Error("wrong-pass");
+      await finishJoin(remote, effFrom, null, effSalt!, key, false);
     } catch (e) {
       const m = (e as Error).message || "";
       if (m === "not-found") toast("List not found — ask your friend to re-share");
@@ -478,6 +470,58 @@ export function GroceryJoinSheet({
     } finally {
       setBusy(false);
     }
+  };
+
+  const pullWithKey = async (
+    username: string,
+    lid: string,
+    saltMeta: string,
+    key: CryptoKey
+  ): Promise<GroceryList | null> => {
+    await listKeySave(lid, saltMeta, key);
+    const gid = await findReplica(username, lid);
+    if (!gid) return null;
+    return pullReplica(gid, lid);
+  };
+
+  const finishJoin = async (
+    remote: GroceryList,
+    sender: string,
+    pairSecret: string | null,
+    saltMeta: string,
+    key: CryptoKey,
+    keyMode: boolean
+  ) => {
+    const myGistId = await createReplicaWithKey(
+      { ...remote, share: null, items: (remote.items || []).map((i) => ({ ...i })) },
+      saltMeta,
+      key
+    );
+    const fr = sender.toLowerCase();
+    mutate((d) => {
+      if (!Array.isArray(d.groceryLists)) d.groceryLists = [];
+      if (d.groceryLists.some((x) => x.id === remote.id)) return;
+      d.groceryLists.push({
+        ...remote,
+        items: (remote.items || []).map((i) => ({ ...i })),
+        members: [...new Set([...(remote.members || []), fr])],
+        share: { gistId: myGistId, role: "member", peers: [...new Set([...(remote.members || []), fr])], salt: saltMeta, keyMode },
+      });
+      if (!Array.isArray(d.settings.friends)) d.settings.friends = [];
+      const f = d.settings.friends.find((x) => x.githubUsername === fr);
+      if (pairSecret) {
+        if (f) {
+          if (f.pairSecret && f.pairSecret !== pairSecret) toast("Sharing key updated for @" + fr);
+          f.pairSecret = pairSecret;
+        } else {
+          d.settings.friends.push({ githubUsername: fr, displayName: fr, addedAt: Date.now(), pairSecret });
+        }
+      } else if (!f) {
+        d.settings.friends.push({ githubUsername: fr, displayName: fr, addedAt: Date.now() });
+      }
+    });
+    closeSheet();
+    toast("Joined “" + remote.name + "”");
   };
 
   if (!canApi) {
@@ -534,7 +578,7 @@ export function GroceryJoinSheet({
           )}
           {effKey && (
             <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
-              This invite carries the list key — just tap Join.
+              This invite sets up sharing with @{effFrom} — just tap Join.
             </div>
           )}
           <button className="btn" style={{ marginTop: 16 }} onClick={join} disabled={busy}>

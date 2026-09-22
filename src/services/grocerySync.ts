@@ -8,6 +8,7 @@
 
 import { C } from "../lib/crypto";
 import type { GroceryList } from "../types";
+import { importRawKey } from "./escrow";
 import { Gist } from "./gist";
 
 const FILE = "grocery-list.json";
@@ -182,25 +183,149 @@ export async function findReplica(username: string, listId: string): Promise<str
   const ck = username.toLowerCase() + " " + listId;
   const hit = replicaCache.get(ck);
   if (hit) return hit;
+  const gists = await friendGists(username);
+  const want = replicaMarker(listId);
+  const found = (gists || []).find((g) => (g.description || "") === want);
+  if (found) {
+    replicaCache.set(ck, found.id);
+    return found.id;
+  }
+  return null;
+}
+
+export function forgetReplica(username: string, listId: string): void {
+  replicaCache.delete(username.toLowerCase() + " " + listId);
+}
+
+// ---------------- pair secrets + key envelopes (multi-member) ----------------
+
+export interface FriendGist {
+  id: string;
+  description?: string | null;
+}
+
+/** One listing call per friend; marker + envelope scans share it. */
+export async function friendGists(username: string): Promise<FriendGist[]> {
   try {
     const gs = (await Gist.api(
       "GET",
       "/users/" + encodeURIComponent(username) + "/gists?per_page=100"
-    )) as Array<{ id: string; description?: string | null }>;
-    const want = replicaMarker(listId);
-    const found = (gs || []).find((g) => (g.description || "") === want);
-    if (found) {
-      replicaCache.set(ck, found.id);
-      return found.id;
-    }
-    return null;
+    )) as FriendGist[];
+    return gs || [];
+  } catch {
+    return [];
+  }
+}
+
+export const LIST_MARKER_PREFIX = "xpend-grocery-list ";
+export const envelopeMarker = (listId: string, forUser: string): string =>
+  `xpend-listkey ${listId} ${forUser.toLowerCase()}`;
+
+/** Wrap a list key for one member using the pair secret. */
+export async function wrapListKey(listKeyB64: string, pairSecretB64: string): Promise<{ iv: string; ct: string }> {
+  const pairKey = await importRawKey(pairSecretB64);
+  return C.enc(pairKey, listKeyB64);
+}
+
+/** Unwrap a list key with the pair secret (null when not ours). */
+export async function unwrapListKey(iv: string, ct: string, pairSecretB64: string): Promise<string | null> {
+  try {
+    const pairKey = await importRawKey(pairSecretB64);
+    const raw = await C.dec(pairKey, iv, ct);
+    await importRawKey(raw); // trial import proves it is a key
+    return raw;
   } catch {
     return null;
   }
 }
 
-export function forgetReplica(username: string, listId: string): void {
-  replicaCache.delete(username.toLowerCase() + " " + listId);
+export interface KeyEnvelope {
+  gistId: string;
+  from: string;
+  listId: string;
+  iv: string;
+  ct: string;
+}
+
+/** Publish a key envelope so one member can unwrap the group key. */
+export async function publishEnvelope(
+  listId: string,
+  forUser: string,
+  fromUser: string,
+  groupKeyB64: string,
+  pairSecretB64: string
+): Promise<string> {
+  const e = await wrapListKey(groupKeyB64, pairSecretB64);
+  const g = (await Gist.api("POST", "/gists", {
+    description: envelopeMarker(listId, forUser),
+    public: true,
+    files: {
+      "list-key.json": {
+        content: JSON.stringify({ v: 1, for: forUser.toLowerCase(), from: fromUser, iv: e.iv, ct: e.ct }),
+      },
+    },
+  })) as { id: string };
+  if (!g || !g.id) throw new Error("No gist id");
+  return g.id;
+}
+
+/** Read + unwrap a key envelope with the pair secret. */
+export async function openEnvelope(gistId: string, pairSecretB64: string): Promise<string | null> {
+  try {
+    const g = (await Gist.api("GET", "/gists/" + gistId)) as {
+      files?: Record<string, { content?: string }>;
+    };
+    const content = g && g.files && g.files["list-key.json"] && g.files["list-key.json"].content;
+    if (!content) return null;
+    const o = JSON.parse(content) as { v?: number; iv?: string; ct?: string };
+    if (!o || o.v !== 1 || !o.iv || !o.ct) return null;
+    return unwrapListKey(o.iv, o.ct, pairSecretB64);
+  } catch {
+    return null;
+  }
+}
+
+/** All key envelopes for me in one friend's listing (caller filters/validates). */
+export function envelopeHits(
+  gists: FriendGist[],
+  myUsername: string | null,
+  pairSecrets: Array<{ username: string; secret: string }>
+): Array<{ gistId: string; listId: string; secret: string }> {
+  const out: Array<{ gistId: string; listId: string; secret: string }> = [];
+  for (const g of gists) {
+    const d = g.description || "";
+    if (!d.startsWith("xpend-listkey ")) continue;
+    const parts = d.split(" ");
+    if (parts.length < 3) continue;
+    const listId = parts[1];
+    const forUser = parts.slice(2).join(" ");
+    // Without a known login we try every pair secret (decrypt-fail = skip).
+    const cands = myUsername
+      ? pairSecrets.filter(() => forUser === myUsername.toLowerCase())
+      : pairSecrets;
+    for (const c of cands) out.push({ gistId: g.id, listId, secret: c.secret });
+  }
+  return out;
+}
+
+/** My GitHub login, cached (best-effort; null when unknown/offline). */
+const LS_ME = "xpend:me";
+
+export function myUsername(): string | null {
+  try {
+    return localStorage.getItem(LS_ME);
+  } catch {
+    return null;
+  }
+}
+
+export function setMyUsername(u: string | null): void {
+  try {
+    if (u) localStorage.setItem(LS_ME, u.toLowerCase());
+    else localStorage.removeItem(LS_ME);
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Join via the sender's replica: discover + pull with the cached list key

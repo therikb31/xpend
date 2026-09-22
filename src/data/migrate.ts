@@ -200,6 +200,21 @@ export function migrateGrocery(d: Doc): boolean {
       l.share.peers = [];
       changed = true;
     }
+    if (!Array.isArray(l.members)) {
+      l.members = [];
+      changed = true;
+    }
+  }
+  if (Array.isArray(s.friends)) {
+    for (const f of s.friends) {
+      if (f && typeof f.githubUsername === "string") {
+        const u = f.githubUsername.trim().toLowerCase();
+        if (u !== f.githubUsername) {
+          f.githubUsername = u;
+          changed = true;
+        }
+      }
+    }
   }
   if ((d.schemaVersion as number) < 2) {
     d.schemaVersion = 2;

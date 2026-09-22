@@ -145,6 +145,10 @@ export function SettingsPage() {
   };
 
   const makeMyLink = async () => {
+    if (linked && ghLogin) {
+      setMyLink(friendLink(ghLogin, (s.deviceName || "").trim() || ghLogin));
+      return;
+    }
     if (!gistUnlocked()) {
       openSheet({ name: "gist-unlock" });
       return;
@@ -282,10 +286,20 @@ export function SettingsPage() {
           friends.map((f) => (
             <div className="slab" key={f.githubUsername}>
               <span className="set" style={{ cursor: "default" }}>
-                <span className="ccircle">{init(f.displayName)}</span>
+                {f.avatarUrl ? (
+                  <img
+                    src={f.avatarUrl}
+                    alt=""
+                    width={32}
+                    height={32}
+                    style={{ borderRadius: "50%", flex: "none" }}
+                  />
+                ) : (
+                  <span className="ccircle">{init(f.displayName)}</span>
+                )}
                 <span className="s-label">
                   {f.displayName}
-                  <div className="s-sub">@{f.githubUsername}</div>
+                  <div className="s-sub">@{f.githubUsername}{f.pairSecret ? " · sharing on" : ""}</div>
                 </span>
               </span>
               <button

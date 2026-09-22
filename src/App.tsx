@@ -3,12 +3,12 @@
 // iOS safe-area + viewport handling is centralized here via useViewportFix
 // and src/styles/app.css (ported verbatim from the legacy <style>).
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { BottomNav } from "./components/nav/BottomNav";
 import { useGrocerySync } from "./hooks/useGrocerySync";
 import { useViewportFix } from "./hooks/useViewportFix";
 import { IC } from "./lib/icons";
-import { parseInvite } from "./lib/friends";
+import { cleanUsername, parseInvite, validUsername } from "./lib/friends";
 import { AccountsPage } from "./pages/Accounts";
 import { ActivityPage } from "./pages/Activity";
 import { AddPage } from "./pages/Add";
@@ -86,9 +86,11 @@ function Screen() {
 }
 
 function Shell() {
-  const { state, openAdd, openSheet } = useApp();
+  const { state, openAdd, openSheet, mutate, toast } = useApp();
   useViewportFix();
   useGrocerySync();
+  const docRef = useRef(state.doc);
+  docRef.current = state.doc;
 
   // Invite links (#/f/… add-friend, #/l/… join-list). Consumed once after
   // boot (fresh launch from a messenger), then cleared so a reload doesn't
@@ -99,11 +101,40 @@ function Shell() {
     const consume = () => {
       const h = window.location.hash;
       if (!h || !h.startsWith("#/")) return;
+      const href = window.location.href;
       const inv = parseInvite(h);
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
       if (!inv) return;
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
+        window.location.search.includes("standalone=1"); // headless coverage of PWA-only paths
+      if (!standalone) {
+        // Wrong container (e.g. iOS Safari — storage is separate from the
+        // installed PWA): don't consume into an empty doc, hand over instead.
+        openSheet({ name: "open-in-app", id: href, id2: inv.kind });
+        return;
+      }
       if (inv.kind === "friend") {
-        openSheet({ name: "friend-add", id: inv.username, id2: inv.name });
+        // No-approval friend-add: opening the link saves the sender straight
+        // to the roster (harmless — a roster entry shares nothing by itself).
+        const u = cleanUsername(inv.username);
+        const d = docRef.current;
+        if (validUsername(u) && d) {
+          const name = (inv.name || "").trim() || u;
+          const exists = (d.settings.friends || []).some((f) => f.githubUsername === u);
+          if (!exists) {
+            mutate((draft) => {
+              if (!Array.isArray(draft.settings.friends)) draft.settings.friends = [];
+              draft.settings.friends.push({ githubUsername: u, displayName: name, addedAt: Date.now() });
+            });
+            toast(name + " added to friends");
+          } else {
+            toast("@" + u + " is already a friend");
+          }
+        } else {
+          openSheet({ name: "friend-add", id: inv.username, id2: inv.name });
+        }
       } else {
         openSheet({ name: "grocery-join", id: inv.name, id2: inv.username, id3: inv.salt, id4: inv.keyB64 });
       }

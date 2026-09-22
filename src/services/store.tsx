@@ -40,7 +40,7 @@ export type SheetName =
   | "gist-setup" | "gist-unlock" | "gist-restore"
   | "export" | "pwa-help" | "budget-form" | "budget-detail"
   | "grocery-item" | "grocery-list" | "grocery-share" | "grocery-join"
-  | "friend-add" | "github-link" | "import-merge";
+  | "friend-add" | "github-link" | "import-merge" | "open-in-app";
 
 export interface SheetSpec {
   name: SheetName;

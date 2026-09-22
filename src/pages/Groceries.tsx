@@ -109,6 +109,9 @@ export function GroceriesPage() {
           <button className="cbtn small" onClick={() => openSheet({ name: "export" })} aria-label="Export data">
             {IC.dots}
           </button>
+          <button className="btn mini" onClick={() => openSheet({ name: "grocery-join", id: "", id2: "" })}>
+            {IC.open} Join
+          </button>
           <button className="btn mini" onClick={() => openSheet({ name: "grocery-list" })}>
             {IC.plus} New list
           </button>

@@ -141,6 +141,8 @@ export interface GroceryShare {
 export interface Friend {
   githubUsername: string; // login, lowercased — replica discovery key
   displayName: string; // attribution label ("checked by …")
+  avatarUrl?: string | null; // GitHub profile avatar
+  pairSecret?: string | null; // per-pair secret (base64 key): wraps group keys, enables auto-join
   addedAt: number;
 }
 
@@ -148,6 +150,7 @@ export interface GroceryList {
   id: string;
   name: string;
   items: GroceryItem[];
+  members?: string[]; // GitHub usernames in this shared list (gossiped, unioned on merge)
   share?: GroceryShare | null; // set when this list is shared (Phase 2b)
   updatedAt: number;
 }
