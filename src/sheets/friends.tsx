@@ -4,28 +4,10 @@
 
 import { useState } from "react";
 import { IC } from "../lib/icons";
-import { cleanUsername, parseInvite, validUsername } from "../lib/friends";
-import { Gist } from "../services/gist";
+import { parseInvite } from "../lib/friends";
+import { useFriendAdd } from "../hooks/useFriendAdd";
 import { useApp } from "../services/store";
 import { Grab } from "./Sheet";
-
-async function fetchProfile(
-  username: string
-): Promise<{ name: string; avatar: string | null } | "missing" | "offline"> {
-  try {
-    const u = (await Gist.api("GET", "/users/" + encodeURIComponent(username))) as {
-      login?: string;
-      name?: string | null;
-      avatar_url?: string | null;
-    };
-    if (!u || !u.login) return "missing";
-    return { name: (u.name || "").trim() || u.login, avatar: u.avatar_url || null };
-  } catch (e) {
-    const m = (e as Error).message || "";
-    if (/not found|404/i.test(m)) return "missing";
-    return "offline";
-  }
-}
 
 /** Browser landing for invite links opened outside the installed app
     (iOS Safari storage is separate from the PWA): copy + guided handoff. */
@@ -69,8 +51,8 @@ export function OpenInAppSheet({ link, kind }: { link: string; kind: string }) {
 }
 
 export function FriendAddSheet({ username, name }: { username?: string; name?: string }) {
-  const { state, mutate, closeSheet, toast } = useApp();
-  const doc = state.doc!;
+  const { closeSheet } = useApp();
+  const addFriend = useFriendAdd();
   const [link, setLink] = useState("");
   const [user, setUser] = useState(username || "");
   const [display, setDisplay] = useState(name || "");
@@ -86,41 +68,11 @@ export function FriendAddSheet({ username, name }: { username?: string; name?: s
   };
 
   const save = async () => {
-    const u = cleanUsername(user);
-    if (!validUsername(u)) {
-      toast("Enter a valid GitHub username");
-      return;
-    }
     setBusy(true);
-    // Verify against the GitHub profile: missing aborts, offline saves raw.
-    const res = await fetchProfile(u);
-    if (res === "missing") {
-      toast("No GitHub user @" + u);
-      setBusy(false);
-      return;
-    }
-    const profile = res === "offline" ? null : res;
-    const verified = res !== "offline";
-    const n = display.trim() || (profile ? profile.name : u);
-    const exists = (doc.settings.friends || []).some((f) => f.githubUsername === u);
-    mutate((d) => {
-      if (!Array.isArray(d.settings.friends)) d.settings.friends = [];
-      const f = d.settings.friends.find((x) => x.githubUsername === u);
-      if (f) {
-        f.displayName = n;
-        if (profile && profile.avatar) f.avatarUrl = profile.avatar;
-      } else {
-        d.settings.friends.push({
-          githubUsername: u,
-          displayName: n,
-          avatarUrl: profile ? profile.avatar : null,
-          addedAt: Date.now(),
-        });
-      }
-    });
+    // Same shared flow as link-click: validate → save → signal.
+    const r = await addFriend(user, display, true);
     setBusy(false);
-    closeSheet();
-    toast(exists ? "Friend updated" : verified ? "Friend added" : "Friend saved (unverified — offline?)");
+    if (r === "added" || r === "updated") closeSheet();
   };
 
   return (
@@ -162,7 +114,7 @@ export function FriendAddSheet({ username, name }: { username?: string; name?: s
         {IC.check} {busy ? "Checking…" : "Add friend"}
       </button>
       <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
-        Friend links only add the name — sharing switches on with the first shared list.
+        Adding follows them on GitHub so they see you back — same as opening their link.
       </div>
     </>
   );

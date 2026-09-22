@@ -3,13 +3,13 @@
 // iOS safe-area + viewport handling is centralized here via useViewportFix
 // and src/styles/app.css (ported verbatim from the legacy <style>).
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { BottomNav } from "./components/nav/BottomNav";
+import { useFriendAdd } from "./hooks/useFriendAdd";
 import { useGrocerySync } from "./hooks/useGrocerySync";
 import { useViewportFix } from "./hooks/useViewportFix";
 import { IC } from "./lib/icons";
-import { cleanUsername, parseInvite, validUsername } from "./lib/friends";
-import { followUser, publishAck } from "./services/grocerySync";
+import { cleanUsername, parseInvite } from "./lib/friends";
 import { AccountsPage } from "./pages/Accounts";
 import { ActivityPage } from "./pages/Activity";
 import { AddPage } from "./pages/Add";
@@ -87,11 +87,10 @@ function Screen() {
 }
 
 function Shell() {
-  const { state, openAdd, openSheet, mutate, toast } = useApp();
+  const { state, openAdd, openSheet } = useApp();
+  const addFriend = useFriendAdd();
   useViewportFix();
   useGrocerySync();
-  const docRef = useRef(state.doc);
-  docRef.current = state.doc;
 
   // Invite links (#/f/… add-friend, #/l/… join-list). Consumed once after
   // boot (fresh launch from a messenger), then cleared so a reload doesn't
@@ -117,34 +116,15 @@ function Shell() {
         return;
       }
       if (inv.kind === "friend") {
-        // No-approval friend-add: opening the link saves the sender straight
-        // to the roster (harmless — a roster entry shares nothing by itself).
-        // Then ring their doorbell (follow + ack marker) so they see us back
-        // with zero taps on their side. Best-effort: failures keep local-only.
-        const u = cleanUsername(inv.username);
-        const d = docRef.current;
-        if (validUsername(u) && d) {
-          const name = (inv.name || "").trim() || u;
-          const exists = (d.settings.friends || []).some((f) => f.githubUsername === u);
-          if (!exists) {
-            mutate((draft) => {
-              if (!Array.isArray(draft.settings.friends)) draft.settings.friends = [];
-              draft.settings.friends.push({ githubUsername: u, displayName: name, addedAt: Date.now() });
-            });
+        // One shared flow for every mode (link-click here; paste + typed in
+        // the friend sheet): validate → save → doorbell signal, best-effort.
+        // Falls back to the sheet only when saving is impossible.
+        const name = (inv.name || "").trim() || cleanUsername(inv.username);
+        addFriend(inv.username, name).then((r) => {
+          if (r === "failed" || r === "invalid") {
+            openSheet({ name: "friend-add", id: inv.username, id2: inv.name });
           }
-          toast(exists ? "@" + u + " is already a friend" : name + " added to friends");
-          (async () => {
-            try {
-              await followUser(u);
-              await publishAck(u);
-              if (!exists) toast("@" + u + " will see you back shortly");
-            } catch {
-              /* local-only: they won't see us until we link GitHub */
-            }
-          })();
-        } else {
-          openSheet({ name: "friend-add", id: inv.username, id2: inv.name });
-        }
+        });
       } else {
         openSheet({ name: "grocery-join", id: inv.name, id2: inv.username, id3: inv.salt, id4: inv.keyB64 });
       }
