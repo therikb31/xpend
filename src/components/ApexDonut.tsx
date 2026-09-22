@@ -40,7 +40,7 @@ export function ApexDonut({
           spacing: 5,
           expandOnClick: true,
           donut: {
-            size: "68%",
+            size: "72%",
             labels: { show: false },
           },
         },

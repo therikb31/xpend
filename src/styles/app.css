@@ -212,8 +212,9 @@ html.is-standalone #app{height:100%}
 .dc-month:active{background:rgba(255,255,255,.07)}
 .dc-month svg{width:12px;height:12px;color:#9BA6AC}
 .donut-wrap.big .dc-main{
-  font-size:36px;font-weight:700;letter-spacing:-.02em;
+  font-size:31px;font-weight:700;letter-spacing:-.02em;
   font-variant-numeric:tabular-nums;color:#fff;
+  white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;
 }
 .dc-trend{
   display:inline-flex;align-items:center;gap:4px;margin-top:4px;

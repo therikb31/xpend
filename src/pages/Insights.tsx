@@ -53,6 +53,8 @@ export function InsightsPage() {
 
   const acc = flt.acc !== "all" ? accById(doc, flt.acc) : null;
   const accTxt = acc ? (acc.name.length > 11 ? acc.name.slice(0, 11) + "…" : acc.name) : "All accounts";
+  // Donut center is an overview figure: whole rupees, no paise (fits the hole).
+  const shortTotal = (p: number) => rupees(Math.round(p / 100) * 100, hide);
   const details: Record<string, DonutDetail> = {};
   for (const [id, amt] of entries) {
     const p = total > 0 ? ((amt / total) * 100).toFixed(1) : "0.0";
@@ -64,7 +66,7 @@ export function InsightsPage() {
             <span>{catEmoji(c)}</span> {c ? c.name : "Unknown"}
           </>
         ),
-        amount: rupees(amt, hide),
+        amount: shortTotal(amt),
         sub: <span className="dc-trend">{p}% of total</span>,
       };
     } else {
@@ -75,7 +77,7 @@ export function InsightsPage() {
             <span className="dc-sel-logo">{m ? <MerchantLogoImg m={m} /> : "🧾"}</span> {m ? m.name : "Unassigned"}
           </>
         ),
-        amount: rupees(amt, hide),
+        amount: shortTotal(amt),
         sub: <span className="dc-trend">{p}% of total</span>,
       };
     }
@@ -123,7 +125,7 @@ export function InsightsPage() {
       <DonutHero
         entries={entries}
         colors={colors}
-        total={rupees(total, hide)}
+        total={shortTotal(total)}
         monthLabel={monthLabel}
         onMonth={() => openSheet({ name: "month" })}
         details={details}
