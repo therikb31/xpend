@@ -1,7 +1,7 @@
 // Overview dashboard — port of App.overview (the default view; the Activity
 // tab renders this). Month hero + bar chart + filter chips + day groups.
 
-import { BarChart, dailyValues } from "../components/charts";
+import { ApexBars, dailyValues } from "../components/charts";
 import { Empty, OvCard, SwipeMk, TrendIcon } from "../components/ui";
 import {
   accById,
@@ -76,7 +76,7 @@ export function OverviewPage() {
           </span>
         )}
       </SwipeMk>
-      <BarChart daily={dailyValues(doc.transactions, mkey)} mkey={mkey} hide={hide} />
+      <ApexBars daily={dailyValues(doc.transactions, mkey)} mkey={mkey} hide={hide} />
       <div className="ov-chips">
         <button className="ov-chip circ" onClick={() => go("activity", state.view)} aria-label="Search">
           {IC.search}

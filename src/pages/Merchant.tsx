@@ -1,6 +1,6 @@
 // Merchant drill-down — port of App.merchant (same shape as Category).
 
-import { BarChart, dailyValues } from "../components/charts";
+import { ApexBars, dailyValues } from "../components/charts";
 import { Empty, MerchantLogoImg, OvCard, SwipeMk, TrendIcon } from "../components/ui";
 import { accById, merchAccent, merchantSpend, sortedTxs } from "../data/finance";
 import { dayLabel, monthKey, parseMk, rupees } from "../lib/format";
@@ -84,7 +84,7 @@ export function MerchantPage() {
         {delta}
       </SwipeMk>
       <div className="cat-chart" style={{ ["--c" as string]: merchAccent(doc, mkey, mercKey) } as CSSProperties}>
-        <BarChart daily={dailyValues(doc.transactions, mkey, null, mercKey)} mkey={mkey} hide={hide} />
+        <ApexBars daily={dailyValues(doc.transactions, mkey, null, mercKey)} mkey={mkey} hide={hide} />
       </div>
       <div className="ov-chips">
         <button className="ov-chip circ" onClick={() => go("activity", state.view)} aria-label="Search">

@@ -1,6 +1,6 @@
 // Category drill-down — port of App.category.
 
-import { BarChart, dailyValues } from "../components/charts";
+import { ApexBars, dailyValues } from "../components/charts";
 import { Empty, OvCard, SwipeMk, TrendIcon } from "../components/ui";
 import { accById, catAccent, catById, catSpend, sortedTxs } from "../data/finance";
 import { dayLabel, monthKey, parseMk, rupees, catEmoji } from "../lib/format";
@@ -81,7 +81,7 @@ export function CategoryPage() {
         {delta}
       </SwipeMk>
       <div className="cat-chart" style={{ ["--c" as string]: catAccent(doc, mkey, flt.cat) } as CSSProperties}>
-        <BarChart daily={dailyValues(doc.transactions, mkey, flt.cat)} mkey={mkey} markMax hide={hide} />
+        <ApexBars daily={dailyValues(doc.transactions, mkey, flt.cat)} mkey={mkey} markMax hide={hide} />
       </div>
       <div className="ov-chips">
         <button className="ov-chip circ" onClick={() => go("activity", state.view)} aria-label="Search">

@@ -2,13 +2,16 @@
 // donut heroes, and App.budPaceSvg (budget pace chart). Pure SVG, no libraries.
 
 import { budgetDailyCum, budgetMonthCtx } from "../data/finance";
-import { parseMk, shortAmt } from "../lib/format";
+import { parseMk, rupees, shortAmt } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useSwipe } from "../hooks/useSwipe";
 import { useApp } from "../services/store";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { Doc } from "../types";
+import Chart from "react-apexcharts/core";
+import "apexcharts/bar";
+import type { ApexOptions } from "apexcharts";
 import { ApexDonut } from "./ApexDonut";
 
 /* ---------------- daily bar chart (overview / category / merchant) ---------------- */
@@ -31,7 +34,12 @@ export function dailyValues(
   return arr;
 }
 
-export function BarChart({
+/* ---------------- apex daily bars (linear/log toggle) ---------------- */
+
+const BAR_BASE = "rgba(124,146,158,.45)";
+const BAR_HI = "#E8EDEF";
+
+export function ApexBars({
   daily,
   mkey,
   markMax,
@@ -42,53 +50,112 @@ export function BarChart({
   markMax?: boolean;
   hide?: boolean;
 }) {
-  const arr = daily;
-  const mx = Math.max.apply(null, arr.length ? arr : [0]) || 100;
-  const yv = Math.max(100, Math.ceil(mx / 0.88 / 50) * 50);
-  const hi = new Set(arr.map((v, i) => (v > 0 ? i : -1)).filter((i) => i >= 0).slice(-6));
-  if (markMax && mx > 0) {
-    arr.forEach((v, i) => {
-      if (v === mx) hi.add(i);
-    });
+  const [log, setLog] = useState(false);
+  const dim = daily.length;
+  const mx = Math.max.apply(null, dim ? daily : [0]);
+  const hi = useMemo(() => {
+    const s = new Set<number>();
+    // Last 6 nonzero days read as "recent".
+    const nz = daily.map((v, i) => (v > 0 ? i : -1)).filter((i) => i >= 0).slice(-6);
+    nz.forEach((i) => s.add(i));
+    if (markMax && mx > 0)
+      daily.forEach((v, i) => {
+        if (v === mx) s.add(i);
+      });
     const t = new Date();
     if (
       t.getFullYear() === parseMk(mkey).getFullYear() &&
       t.getMonth() === parseMk(mkey).getMonth() &&
-      arr[t.getDate() - 1] > 0
+      (daily[t.getDate() - 1] || 0) > 0
     )
-      hi.add(t.getDate() - 1);
-  }
-  const bars = arr.map((v, i) => {
-    const h = v > 0 ? Math.round((v / yv) * 100) : 3;
-    return (
-      <span key={i} className={"bar" + (hi.has(i) ? " on" : "")} style={{ height: Math.max(h, 3) + "%" }}></span>
-    );
-  });
-  const dim = arr.length;
-  const pct = mx > 0 ? 88 : 8;
+      s.add(t.getDate() - 1);
+    return s;
+  }, [daily, mkey, markMax, mx]);
+  const { series, colors } = useMemo(() => {
+    const series: Array<number | null> = daily.map((v) => (v > 0 ? v : log ? null : 0));
+    const colors = daily.map((_, i) => (hi.has(i) ? BAR_HI : BAR_BASE));
+    return { series, colors };
+  }, [daily, hi, log]);
+  const options = useMemo<ApexOptions>(
+    () => ({
+      chart: {
+        type: "bar",
+        background: "transparent",
+        foreColor: "#8A9199",
+        toolbar: { show: false },
+        animations: { enabled: true, speed: 350 },
+        fontFamily: "inherit",
+      },
+      plotOptions: {
+        bar: { borderRadius: 3, columnWidth: "60%", distributed: true },
+      },
+      colors,
+      dataLabels: { enabled: false },
+      tooltip: {
+        enabled: true,
+        theme: "dark",
+        x: {
+          formatter: (_v, opts?: { dataPointIndex?: number }) =>
+            "Day " + ((opts && opts.dataPointIndex != null ? opts.dataPointIndex : 0) + 1),
+        },
+        y: {
+          formatter: (v) => rupees(Math.round(Number(v) || 0), !!hide),
+          title: { formatter: () => "" },
+        },
+      },
+      grid: { show: false },
+      xaxis: {
+        categories: daily.map((_, i) => String(i + 1)),
+        tickAmount: 5,
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+        labels: { rotate: 0, style: { fontSize: "11px" } },
+      },
+      yaxis: log
+        ? {
+            logarithmic: true,
+            logBase: 10,
+            min: 1,
+            tickAmount: 3,
+            labels: {
+              formatter: (v: number) => shortAmt(Math.round(Number(v) || 0), !!hide),
+              style: { fontSize: "11px" },
+            },
+          }
+        : {
+            min: 0,
+            tickAmount: 3,
+            labels: {
+              formatter: (v: number) => shortAmt(Math.round(Number(v) || 0), !!hide),
+              style: { fontSize: "11px" },
+            },
+          },
+      states: {
+        hover: { filter: { type: "none" } },
+        active: { filter: { type: "none" } },
+      },
+    }),
+    [daily.length, colors, hide, log]
+  );
   return (
-    <div className="ov-chart">
-      <div className="chart-plot">
-        <div className="bars">{bars}</div>
-        <span className="dash" style={{ bottom: pct + "%" }}></span>
-        <span className="ref-label" style={{ bottom: pct + "%" }}>
-          {shortAmt(mx, hide)}
-        </span>
-        <div className="yax">
-          <span style={{ top: 0 }}>{shortAmt(yv, hide)}</span>
-          <span className="mid" style={{ top: "calc(50% - 8px)" }}>
-            {shortAmt(Math.round(yv / 2), hide)}
-          </span>
-          <span style={{ bottom: 0 }}>0</span>
-        </div>
-        <div className="xax">
-          <span>1</span>
-          <span>8</span>
-          <span>16</span>
-          <span>23</span>
-          <span>{dim}</span>
-        </div>
-      </div>
+    <div className="apex-bars">
+      <button
+        type="button"
+        className={"chip bars-toggle" + (log ? " on" : "")}
+        onClick={() => setLog((v) => !v)}
+        aria-label="Toggle logarithmic scale"
+        title={log ? "Log scale on" : "Linear scale"}
+      >
+        {log ? "log" : "lin"}
+      </button>
+      <Chart
+        key={log ? "log" : "lin"}
+        options={options}
+        series={[{ data: series }]}
+        type="bar"
+        width="100%"
+        height={212}
+      />
     </div>
   );
 }
