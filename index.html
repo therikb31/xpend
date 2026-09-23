@@ -12,7 +12,53 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="icon" href="./favicon.svg">
 <title>Xpend</title>
-<script>if(window.navigator&&window.navigator.standalone){document.documentElement.classList.add('is-standalone')}</script>
+<script>
+/* Standalone safe-area fallback (notch-path opaque-band bug, WebKit #301994
+   family): when env(safe-area-inset-top) lies (~0) while the system keeps a
+   band above the web layer, substitute the measured gap so header controls
+   clear it. Self-correcting: yields back to env() whenever it reads sanely. */
+(function () {
+  var nav = window.navigator;
+  var isSA =
+    (nav && nav.standalone) ||
+    (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  if (nav && nav.standalone) document.documentElement.classList.add("is-standalone");
+  if (!isSA) return;
+  if (!window.CSS || !CSS.supports || !CSS.supports("top: env(safe-area-inset-top)")) return;
+  var t = null;
+  function measure() {
+    try {
+      var probe = document.createElement("div");
+      probe.style.cssText =
+        "position:fixed;top:env(safe-area-inset-top,0px);left:0;width:1px;height:1px;pointer-events:none;visibility:hidden";
+      document.documentElement.appendChild(probe);
+      var top = probe.getBoundingClientRect().top;
+      probe.remove();
+      var gap = window.screen.height - window.innerHeight;
+      if (top < 8 && gap > 8) {
+        var v = Math.max(0, Math.min(100, Math.round(gap)));
+        document.documentElement.style.setProperty("--sat", v + "px");
+      } else {
+        document.documentElement.style.removeProperty("--sat");
+      }
+    } catch (e) {
+      /* env() fallback in CSS stands */
+    }
+  }
+  function run() {
+    measure();
+  }
+  if (document.readyState === "complete") run();
+  else window.addEventListener("load", run);
+  window.addEventListener(
+    "resize",
+    function () {
+      if (t) clearTimeout(t);
+      t = setTimeout(run, 300);
+    }
+  );
+})();
+</script>
 </head>
 <body>
 <div id="root"></div>

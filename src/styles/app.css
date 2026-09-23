@@ -75,6 +75,9 @@ svg{display:block}
 }
 html.is-standalone,html.is-standalone body,html.is-standalone #root{height:100vh}
 html.is-standalone #app{height:100%}
+/* --sat defaults to the live env() value; the standalone bootstrap overrides
+   it with the measured system-band gap only while env() lies (~0). */
+:root{--sat:env(safe-area-inset-top,0px)}
 #screen{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .scr{padding:calc(6px + env(safe-area-inset-top,0px)) 18px calc(180px + env(safe-area-inset-bottom,0px))}
 .scr.ov{padding:0 0 calc(200px + env(safe-area-inset-bottom,0px))}
@@ -311,7 +314,7 @@ html.is-standalone #app{height:100%}
 .an-v{flex:0 0 52px;text-align:right;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
 
 /* ============================ HEADERS ============================ */
-.scrhdr{display:flex;align-items:center;justify-content:space-between;padding:14px 2px 10px}
+.scrhdr{display:flex;align-items:center;justify-content:space-between;padding:calc(14px + var(--sat, env(safe-area-inset-top,0px))) 2px 10px}
 .hdr-left{display:flex;align-items:center;gap:10px}
 .hdr-title{font-size:30px;font-weight:700;letter-spacing:-.02em}
 .cbtn{
