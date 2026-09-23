@@ -10,6 +10,7 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { Doc } from "../types";
 import Chart from "react-apexcharts/core";
+import "apexcharts/donut";
 import "apexcharts/bar";
 import type { ApexOptions } from "apexcharts";
 import { ApexDonut } from "./ApexDonut";
@@ -38,6 +39,48 @@ export function dailyValues(
 
 const BAR_BASE = "rgba(124,146,158,.45)";
 const BAR_HI = "#E8EDEF";
+const BAR_RADIUS = 5;
+
+type BarPaintedHandler = NonNullable<
+  NonNullable<NonNullable<ApexOptions["chart"]>["events"]>["mounted"]
+>;
+
+/** Repaint hook: round bar tops after every paint (mount/update/animation). */
+function handleBarPaint(chart: Parameters<BarPaintedHandler>[0]): void {
+  const el = (chart as unknown as { el?: ParentNode | null }).el;
+  roundBarTops(el || null);
+}
+
+/**
+ * ApexCharts force-squares bar corners on Safari/WebKit (isSafari UA gate),
+ * so borderRadius never renders on iPhone. Round the tops ourselves by
+ * rewriting each bar path — identical output on every engine. Top corners
+ * only; baseline stays square. Idempotent; re-run after mount/update/
+ * animation end. Skips zero-height (gap) bars.
+ */
+function roundBarTops(root: ParentNode | null): void {
+  if (!root || typeof (root as Document).querySelectorAll !== "function") return;
+  const paths = (root as Document).querySelectorAll("path.apexcharts-bar-area");
+  paths.forEach((p) => {
+    const el = p as unknown as SVGGraphicsElement;
+    if (typeof el.getBBox !== "function") return;
+    let box: { x: number; y: number; width: number; height: number };
+    try {
+      box = el.getBBox();
+    } catch {
+      return;
+    }
+    const { x, y, width: w, height: h } = box;
+    if (!(w > 0) || !(h > 0.5)) return;
+    const r = Math.min(BAR_RADIUS, w / 2, h);
+    const f = (n: number) => (Math.round(n * 100) / 100).toString();
+    const d =
+      `M ${f(x)} ${f(y + h)} L ${f(x)} ${f(y + r)} ` +
+      `Q ${f(x)} ${f(y)} ${f(x + r)} ${f(y)} L ${f(x + w - r)} ${f(y)} ` +
+      `Q ${f(x + w)} ${f(y)} ${f(x + w)} ${f(y + r)} L ${f(x + w)} ${f(y + h)} Z`;
+    p.setAttribute("d", d);
+  });
+}
 
 export function ApexBars({
   daily,
@@ -85,13 +128,16 @@ export function ApexBars({
         toolbar: { show: false },
         animations: { enabled: true, speed: 350 },
         fontFamily: "inherit",
+        events: {
+          mounted: handleBarPaint,
+          updated: handleBarPaint,
+          animationEnd: handleBarPaint,
+        },
       },
       plotOptions: {
-        bar: {
-          borderRadius: 5,
-          columnWidth: "65%",
-          distributed: true,
-        },
+        // Radius left at 0: Apex disables it on Safari anyway; roundBarTops
+        // above draws identical tops on every engine instead.
+        bar: { borderRadius: 0, columnWidth: "65%", distributed: true },
       },
       colors,
       dataLabels: { enabled: false },
