@@ -1,25 +1,36 @@
-// Insights — merged Summary + Analytics: one tab with a Category/Merchant
-// grouping slider. Shell (DonutHero + chips + sum cards) is shared; only the
-// aggregation key and card component switch with `grp`.
+// Insights — Category/Merchant/Items tabs sharing one shell (ApexDonut +
+// chips + sum cards). Items groups expense notes (normalized) with a
+// persisted frequency threshold; tap drills to a pre-searched Activity.
 
 import { useState } from "react";
 import { DonutHero } from "../components/charts";
 import type { DonutDetail } from "../components/charts";
-import { CatSumCard, Empty, MerchSumCard, MerchantLogoImg, TrendIcon } from "../components/ui";
+import { CatSumCard, Empty, ItemSumCard, MerchSumCard, MerchantLogoImg, TrendIcon } from "../components/ui";
 import { PAL, accById, catById, merchById, monthStats } from "../data/finance";
-import { catEmoji, monthKey, parseMk, rupees } from "../lib/format";
+import { catEmoji, fallbackEmoji, monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { ExpenseTxn } from "../types";
 import type { CSSProperties } from "react";
 
+const MIN_OPTS = [1, 2, 3, 5];
+const DONUT_TOP = 10;
+
+interface ItemGroup {
+  key: string;
+  display: string;
+  count: number;
+  amt: number;
+}
+
 export function InsightsPage() {
-  const { state, openSheet, setFilter, go } = useApp();
+  const { state, openSheet, setFilter, go, mutate } = useApp();
   const doc = state.doc!;
   const mkey = state.mkey;
   const flt = state.flt;
   const hide = !!doc.settings.hideBalances;
-  const [grp, setGrp] = useState<"cat" | "merch">("cat");
+  const [grp, setGrp] = useState<"cat" | "merch" | "item">("cat");
+  const minCount = doc.settings.itemMinCount ?? 2;
 
   const mk = parseMk(mkey);
   const prev = new Date(mk);
@@ -36,10 +47,47 @@ export function InsightsPage() {
     (t): t is ExpenseTxn =>
       t.dir === "expense" && t.date.slice(0, 7) === mkey && (flt.acc === "all" || t.accountId === flt.acc)
   );
+
+  // Item groups (note text, normalized). Display = most-frequent raw form.
+  let itemGroups: ItemGroup[] = [];
+  if (grp === "item") {
+    const byKey = new Map<string, { freq: Record<string, number>; count: number; amt: number }>();
+    for (const t of txs) {
+      const raw = (t.note || "").trim();
+      if (!raw) continue;
+      const key = raw.toLowerCase().replace(/\s+/g, " ");
+      let g = byKey.get(key);
+      if (!g) {
+        g = { freq: {}, count: 0, amt: 0 };
+        byKey.set(key, g);
+      }
+      g.freq[raw] = (g.freq[raw] || 0) + 1;
+      g.count += 1;
+      g.amt += t.amount;
+    }
+    itemGroups = [...byKey.entries()]
+      .filter(([, g]) => g.count >= minCount)
+      .map(([key, g]) => ({
+        key,
+        display: Object.entries(g.freq).sort((a, b) => b[1] - a[1])[0][0],
+        count: g.count,
+        amt: g.amt,
+      }))
+      .sort((a, b) => b.amt - a.amt);
+  }
+
   const agg: Record<string, number> = {};
-  for (const t of txs) {
-    const k = grp === "cat" ? t.categoryId : t.merchantId || "__none";
-    agg[k] = (agg[k] || 0) + t.amount;
+  if (grp !== "item") {
+    for (const t of txs) {
+      const k = grp === "cat" ? t.categoryId : t.merchantId || "__none";
+      agg[k] = (agg[k] || 0) + t.amount;
+    }
+  } else {
+    // Donut: top N items + Other bucket (totals stay exact).
+    const top = itemGroups.slice(0, DONUT_TOP);
+    for (const g of top) agg[g.key] = g.amt;
+    const rest = itemGroups.slice(DONUT_TOP).reduce((s, g) => s + g.amt, 0);
+    if (rest > 0) agg.__other = rest;
   }
   const entries = Object.entries(agg).sort((a, b) => b[1] - a[1]);
   const total = entries.reduce((s, e) => s + e[1], 0);
@@ -47,9 +95,17 @@ export function InsightsPage() {
   const down = pct != null && pct >= 0;
   const prevName = parseMk(prevKey).toLocaleDateString("en-IN", { month: "short" });
   const colors: Record<string, string> = {};
-  entries.forEach((e, i) => {
-    colors[e[0]] = PAL[i % PAL.length];
-  });
+  if (grp === "item") {
+    // Every group needs a color for its card, not just donut entries.
+    itemGroups.forEach((g, i) => {
+      colors[g.key] = PAL[i % PAL.length];
+    });
+    if (agg.__other) colors.__other = PAL[itemGroups.length % PAL.length];
+  } else {
+    entries.forEach((e, i) => {
+      colors[e[0]] = PAL[i % PAL.length];
+    });
+  }
 
   const acc = flt.acc !== "all" ? accById(doc, flt.acc) : null;
   const accTxt = acc ? (acc.name.length > 11 ? acc.name.slice(0, 11) + "…" : acc.name) : "All accounts";
@@ -69,7 +125,7 @@ export function InsightsPage() {
         amount: shortTotal(amt),
         sub: <span className="dc-trend">{p}% of total</span>,
       };
-    } else {
+    } else if (grp === "merch") {
       const m = id === "__none" ? null : merchById(doc, id);
       details[id] = {
         title: (
@@ -80,17 +136,94 @@ export function InsightsPage() {
         amount: shortTotal(amt),
         sub: <span className="dc-trend">{p}% of total</span>,
       };
+    } else if (id === "__other") {
+      details[id] = {
+        title: <>Other items</>,
+        amount: shortTotal(amt),
+        sub: <span className="dc-trend">{p}% of total</span>,
+      };
+    } else {
+      const g = itemGroups.find((x) => x.key === id);
+      details[id] = {
+        title: (
+          <>
+            <span className="dc-sel-logo">{fallbackEmoji({ id, name: g ? g.display : id })}</span>{" "}
+            {g ? g.display : id} · {g ? g.count : 0}×
+          </>
+        ),
+        amount: shortTotal(amt),
+        sub: <span className="dc-trend">{p}% of total</span>,
+      };
     }
   }
   const openEntry = (id: string) => {
-    if (grp === "cat") setFilter({ cat: id });
-    else setFilter({ merch: id });
-    go(grp === "cat" ? "category" : "merchant", state.view);
+    if (grp === "cat") {
+      setFilter({ cat: id });
+      go("category", state.view);
+    } else if (grp === "merch") {
+      setFilter({ merch: id });
+      go("merchant", state.view);
+    } else if (id !== "__other") {
+      // Substring match ("Milk" also finds "Milkshake") — accepted v1.
+      const g = itemGroups.find((x) => x.key === id);
+      setFilter({ q: g ? g.display : id });
+      go("activity", state.view);
+    }
   };
   const countFor = (id: string) =>
     grp === "cat"
       ? txs.filter((t) => t.categoryId === id).length
       : txs.filter((t) => (t.merchantId || "__none") === id).length;
+
+  const emptySub =
+    grp === "cat"
+      ? "Tap + to add your first expense"
+      : grp === "merch"
+        ? "Tag a merchant when adding an expense"
+        : txs.some((t) => (t.note || "").trim())
+          ? "Nothing repeats " + minCount + "+ times — lower the filter"
+          : "Add notes to expenses to track items";
+  const listBody =
+    grp === "item"
+      ? itemGroups.map((g) => (
+          <ItemSumCard
+            key={g.key}
+            name={g.display}
+            count={g.count}
+            amt={g.amt}
+            total={total}
+            color={colors[g.key]}
+            hide={hide}
+            onOpen={openEntry}
+            id={g.key}
+          />
+        ))
+      : entries.map(([id, amt]) =>
+          grp === "cat" ? (
+            <CatSumCard
+              key={id}
+              doc={doc}
+              cid={id}
+              amt={amt}
+              total={total}
+              count={countFor(id)}
+              color={colors[id]}
+              onOpen={openEntry}
+            />
+          ) : (
+            <MerchSumCard
+              key={id}
+              doc={doc}
+              mid={id}
+              amt={amt}
+              total={total}
+              count={countFor(id)}
+              color={colors[id]}
+              onOpen={openEntry}
+            />
+          )
+        );
+  const hasRows = grp === "item" ? itemGroups.length > 0 : entries.length > 0;
 
   return (
     <div className="scr sum">
@@ -121,7 +254,30 @@ export function InsightsPage() {
         >
           Merchant
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={grp === "item"}
+          className={"chip " + (grp === "item" ? "on" : "")}
+          onClick={() => setGrp("item")}
+        >
+          Items
+        </button>
       </div>
+      {grp === "item" && (
+        <div className="chip-row center" style={{ marginTop: 0 }} aria-label="Minimum times bought">
+          {MIN_OPTS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              className={"chip " + (minCount === n ? "on" : "")}
+              onClick={() => mutate((d) => void (d.settings.itemMinCount = n))}
+            >
+              {n}+ times
+            </button>
+          ))}
+        </div>
+      )}
       <DonutHero
         entries={entries}
         colors={colors}
@@ -166,43 +322,11 @@ export function InsightsPage() {
         </button>
       </div>
       <div className="sum-list">
-        {entries.length ? (
-          entries.map(([id, amt]) =>
-            grp === "cat" ? (
-              <CatSumCard
-                key={id}
-                doc={doc}
-                cid={id}
-                amt={amt}
-                total={total}
-                count={countFor(id)}
-                color={colors[id]}
-                onOpen={openEntry}
-              />
-            ) : (
-              <MerchSumCard
-                key={id}
-                doc={doc}
-                mid={id}
-                amt={amt}
-                total={total}
-                count={countFor(id)}
-                color={colors[id]}
-                onOpen={openEntry}
-              />
-            )
-          )
+        {hasRows ? (
+          listBody
         ) : (
           <div className="card">
-            <Empty
-              icon={IC.empty}
-              title="No spending yet"
-              sub={
-                grp === "cat"
-                  ? "Tap + to add your first expense"
-                  : "Tag a merchant when adding an expense"
-              }
-            />
+            <Empty icon={IC.empty} title={grp === "item" ? "No repeated items" : "No spending yet"} sub={emptySub} />
           </div>
         )}
       </div>

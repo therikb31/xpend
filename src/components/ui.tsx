@@ -7,7 +7,7 @@ import { useSwipe } from "../hooks/useSwipe";
 import { useApp } from "../services/store";
 import { budgetCtx, budgetSpent, isOverall, overallLimit, aggIdsRaw, aggSpentV, trNames, catById, goalCalc, budgetCats, budgetAccent } from "../data/finance";
 import type { Account, Budget, Doc, Goal, Merchant, Txn } from "../types";
-import { catEmoji, init, rupees } from "../lib/format";
+import { catEmoji, fallbackEmoji, init, rupees } from "../lib/format";
 import { ACC_ICONS, IC, MERCH_ICONS } from "../lib/icons";
 import { PaceSvg } from "./charts";
 
@@ -226,6 +226,31 @@ export function MerchSumCard({
       <span className="sum-cc">
         <span className="sum-name">
           <span className="nm">{m ? m.name : "Unassigned"}</span>
+          <span className="sum-count">{count}</span>
+        </span>
+      </span>
+      <span className="sums-right">
+        <span className="sum-amt">{rupees(amt, hide)}</span>
+        <span className="sum-pct">{p}%</span>
+      </span>
+    </button>
+  );
+}
+
+export function ItemSumCard({
+  id, name, count, amt, total, color, hide, onOpen,
+}: {
+  id: string; name: string; count: number; amt: number; total: number; color: string; hide: boolean; onOpen: (id: string) => void;
+}) {
+  const p = total > 0 ? ((amt / total) * 100).toFixed(2) : "0.00";
+  return (
+    <button className="sum-card" onClick={() => onOpen(id)}>
+      <span className="sum-ic logo ring" style={cssVar(color)}>
+        {fallbackEmoji({ id, name })}
+      </span>
+      <span className="sum-cc">
+        <span className="sum-name">
+          <span className="nm">{name}</span>
           <span className="sum-count">{count}</span>
         </span>
       </span>

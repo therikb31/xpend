@@ -174,6 +174,7 @@ export interface Settings {
   catV?: number;
   goalV?: number;
   savV?: number;
+  itemMinCount?: number; // items-tab frequency threshold (default 2)
 }
 
 export interface Doc {
