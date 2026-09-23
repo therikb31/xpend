@@ -158,7 +158,7 @@ html.is-standalone #app{height:100%}
 .xax{display:flex;justify-content:space-between;padding:9px 36px 0 2px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 
 /* ============================ CATEGORY DASHBOARD ============================ */
-.scr.cat{padding:0 18px calc(200px + env(safe-area-inset-bottom,0px))}
+.scr.cat{padding:0 0 calc(200px + env(safe-area-inset-bottom,0px))}
 .cat-top{display:flex;align-items:center;gap:8px;padding:calc(12px + env(safe-area-inset-top,0px)) 2px 4px}
 .cat-metric{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
 .cat-title{display:inline-flex;align-items:center;gap:6px;font-size:14.5px;font-weight:600;color:#9BA6AC;white-space:nowrap}
@@ -171,8 +171,11 @@ html.is-standalone #app{height:100%}
 .cat-chart .bar{background:rgba(255,255,255,.05)}
 .cat-chart .bar.on{background:var(--c,#8C52FF)}
 /* category screen: edge-to-edge like Activity â€” neutralize the intrinsic insets of the shared dashboard widgets */
-.scr.cat .ov-chart{margin:6px 0 4px}
-.scr.cat .ov-chips{padding:8px 0 4px}
+.scr.cat .ov-chart{margin:6px 18px 4px}
+.scr.cat .ov-chips{padding:8px 18px 4px}
+/* drill shell carries no side padding (matches .scr.ov): header content keeps
+   its 20px inset via longhands so the safe-area top rule above is preserved */
+.scr.cat .scrhdr{padding-left:20px;padding-right:20px}
 .scr.cat .cat-list .dg-head:first-child{padding-top:12px}
 .scr.cat .cat-list .empty{padding:40px 0}
 
