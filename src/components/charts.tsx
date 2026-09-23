@@ -93,7 +93,9 @@ export function ApexBars({
   markMax?: boolean;
   hide?: boolean;
 }) {
-  const [log, setLog] = useState(false);
+  const [mode, setMode] = useState<0 | 1 | 2>(0); // 0 linear, 1 cube-root, 2 log
+  const log = mode === 2;
+  const cbrt = mode === 1;
   const dim = daily.length;
   const mx = Math.max.apply(null, dim ? daily : [0]);
   const hi = useMemo(() => {
@@ -115,10 +117,14 @@ export function ApexBars({
     return s;
   }, [daily, mkey, markMax, mx]);
   const { series, colors } = useMemo(() => {
-    const series: Array<number | null> = daily.map((v) => (v > 0 ? v : log ? null : 0));
+    // Cube root compresses skew yet keeps zero at zero (no gaps needed);
+    // log keeps natives + nulls (Apex transforms the axis itself).
+    const series: Array<number | null> = daily.map((v) =>
+      v > 0 ? (cbrt ? Math.cbrt(v) : v) : log ? null : 0
+    );
     const colors = daily.map((_, i) => (hi.has(i) ? BAR_HI : BAR_BASE));
     return { series, colors };
-  }, [daily, hi, log]);
+  }, [daily, hi, log, cbrt]);
   const options = useMemo<ApexOptions>(
     () => ({
       chart: {
@@ -149,7 +155,11 @@ export function ApexBars({
             "Day " + ((opts && opts.dataPointIndex != null ? opts.dataPointIndex : 0) + 1),
         },
         y: {
-          formatter: (v) => rupees(Math.round(Number(v) || 0), !!hide),
+          // Cube-root mode stores transformed values: cube back for truth.
+          formatter: (v) => {
+            const raw = cbrt ? Math.pow(Number(v) || 0, 3) : Number(v) || 0;
+            return rupees(Math.round(raw), !!hide);
+          },
           title: { formatter: () => "" },
         },
       },
@@ -176,7 +186,9 @@ export function ApexBars({
             min: 0,
             tickAmount: 3,
             labels: {
-              formatter: (v: number) => shortAmt(Math.round(Number(v) || 0), !!hide),
+              // Cube-root ticks live in transformed space: map back to rupees.
+              formatter: (v: number) =>
+                shortAmt(Math.round(cbrt ? Math.pow(Number(v) || 0, 3) : Number(v) || 0), !!hide),
               style: { fontSize: "11px" },
             },
           },
@@ -185,21 +197,28 @@ export function ApexBars({
         active: { filter: { type: "none" } },
       },
     }),
-    [daily.length, colors, hide, log]
+    [daily.length, colors, hide, log, cbrt]
   );
+  const modeLabel = mode === 0 ? "lin" : mode === 1 ? "cbrt" : "log";
   return (
     <div className="apex-bars">
       <button
         type="button"
-        className={"chip bars-toggle" + (log ? " on" : "")}
-        onClick={() => setLog((v) => !v)}
-        aria-label="Toggle logarithmic scale"
-        title={log ? "Log scale on" : "Linear scale"}
+        className={"chip bars-toggle" + (mode === 0 ? "" : " on")}
+        onClick={() => setMode((m) => ((m + 1) % 3) as 0 | 1 | 2)}
+        aria-label="Cycle chart scale: linear, cube-root, logarithmic"
+        title={
+          mode === 0
+            ? "Linear scale — tap for cube-root"
+            : mode === 1
+              ? "Cube-root scale — tap for logarithmic"
+              : "Logarithmic scale — tap for linear"
+        }
       >
-        {log ? "log" : "lin"}
+        {modeLabel}
       </button>
       <Chart
-        key={log ? "log" : "lin"}
+        key={modeLabel}
         options={options}
         series={[{ data: series }]}
         type="bar"
