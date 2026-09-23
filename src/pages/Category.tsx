@@ -48,6 +48,11 @@ export function CategoryPage() {
     (t) => t.dir === "expense" && t.date.slice(0, 7) === mkey && t.categoryId === flt.cat
   );
   if (flt.acc !== "all") list = list.filter((t) => t.dir !== "trans" && t.accountId === flt.acc);
+  if (flt.q)
+    list = list.filter((t) => {
+      const hay = (t.note || "") + " " + (c.name || "") + " " + t.date;
+      return hay.toLowerCase().includes(flt.q.toLowerCase());
+    });
   const groups: Array<{ date: string; items: Txn[] }> = [];
   for (const t of list) {
     const g = groups[groups.length - 1];
@@ -61,41 +66,57 @@ export function CategoryPage() {
 
   return (
     <div className="scr cat">
-      <div className="cat-top">
-        <button className="cbtn" onClick={back} aria-label="Back">
-          {IC.left}
-        </button>
-        <SwipeMk className="cat-metric" onTap={() => openSheet({ name: "month" })}>
-          <span className="cat-title">
-            {catEmoji(c)} {c.name} {IC.chev}
-          </span>
-          <span className="cat-total">{rupees(total, hide)}</span>
-          {delta}
-        </SwipeMk>
-        <button className="cbtn" onClick={() => openSheet({ name: "export" })} aria-label="Export data">
-          {IC.dots}
-        </button>
-      </div>
+      <header className="scrhdr">
+        <div className="hdr-left">
+          <button className="cbtn small" onClick={back} aria-label="Back">
+            {IC.left}
+          </button>
+          <div className="hdr-title">
+            {catEmoji(c)} {c.name}
+          </div>
+        </div>
+        <div className="hdr-left">
+          <button className="cbtn small" onClick={() => openSheet({ name: "export" })} aria-label="Export data">
+            {IC.dots}
+          </button>
+          <button className="cbtn small" onClick={() => go("settings", "overview")} aria-label="Settings">
+            {IC.gear}
+          </button>
+        </div>
+      </header>
+      <SwipeMk className="cat-metric" onTap={() => openSheet({ name: "month" })}>
+        <span className="cat-title">
+          {catEmoji(c)} {c.name} {IC.chev}
+        </span>
+        <span className="cat-total">{rupees(total, hide)}</span>
+        {delta}
+      </SwipeMk>
       <div className="cat-chart" style={{ ["--c" as string]: catAccent(doc, mkey, flt.cat) } as CSSProperties}>
         <BarChart daily={dailyValues(doc.transactions, mkey, flt.cat)} mkey={mkey} markMax hide={hide} />
       </div>
-      <div className="ov-chips">
-        <button className="ov-chip circ" onClick={() => go("activity", state.view)} aria-label="Search">
-          {IC.search}
-        </button>
-        <button className="ov-chip" onClick={() => openSheet({ name: "month" })}>
+      <div className="search">
+        {IC.search}
+        <input
+          type="text"
+          placeholder="Search in this category"
+          value={flt.q}
+          onChange={(e) => setFilter({ q: e.target.value })}
+        />
+      </div>
+      <div className="chip-row">
+        <button className="chip" onClick={() => openSheet({ name: "month" })}>
           {monthName}
         </button>
         <button
-          className={"ov-chip " + (acc ? "on" : "")}
+          className={"chip " + (acc ? "on" : "")}
           onClick={() => openSheet({ name: "account-filter" })}
         >
           {acc && <span className="dot" style={{ ["--c" as string]: acc.color } as CSSProperties} />}
           {accTxt}
         </button>
         <button
-          className="ov-chip"
-          onClick={() => setFilter({ dir: "all", acc: "all", merch: "all" })}
+          className="chip"
+          onClick={() => setFilter({ q: "", dir: "all", acc: "all", merch: "all" })}
         >
           All
         </button>
