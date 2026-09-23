@@ -87,7 +87,12 @@ export function ApexBars({
         fontFamily: "inherit",
       },
       plotOptions: {
-        bar: { borderRadius: 3, columnWidth: "60%", distributed: true },
+        bar: {
+          borderRadius: 5,
+          borderRadiusApplication: "end",
+          columnWidth: "65%",
+          distributed: true,
+        },
       },
       colors,
       dataLabels: { enabled: false },
