@@ -89,7 +89,6 @@ export function ApexBars({
       plotOptions: {
         bar: {
           borderRadius: 5,
-          borderRadiusApplication: "end",
           columnWidth: "65%",
           distributed: true,
         },
