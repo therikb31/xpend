@@ -3,7 +3,7 @@
 import { ApexBars, dailyValues } from "../components/charts";
 import { Empty, MerchantLogoImg, OvCard, SwipeMk, TrendIcon } from "../components/ui";
 import { accById, merchAccent, merchantSpend, sortedTxs } from "../data/finance";
-import { dayLabel, monthKey, parseMk, rupees } from "../lib/format";
+import { dayLabel, dstr, monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { Txn } from "../types";
@@ -84,7 +84,15 @@ export function MerchantPage() {
         {delta}
       </SwipeMk>
       <div className="cat-chart" style={{ ["--c" as string]: merchAccent(doc, mkey, mercKey) } as CSSProperties}>
-        <ApexBars daily={dailyValues(doc.transactions, mkey, null, mercKey)} mkey={mkey} hide={hide} />
+        <ApexBars
+          daily={dailyValues(doc.transactions, mkey, null, mercKey)}
+          mkey={mkey}
+          hide={hide}
+          onDaySelect={(i) => {
+            const d = new Date(mk.getFullYear(), mk.getMonth(), i + 1);
+            openSheet({ name: "day-txns", id: dstr(d) });
+          }}
+        />
       </div>
       <div className="ov-chips">
         <button className="ov-chip circ" onClick={() => go("activity", state.view)} aria-label="Search">

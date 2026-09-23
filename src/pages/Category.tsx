@@ -3,7 +3,7 @@
 import { ApexBars, dailyValues } from "../components/charts";
 import { Empty, OvCard, SwipeMk, TrendIcon } from "../components/ui";
 import { accById, catAccent, catById, catSpend, sortedTxs } from "../data/finance";
-import { dayLabel, monthKey, parseMk, rupees, catEmoji } from "../lib/format";
+import { dayLabel, dstr, monthKey, parseMk, rupees, catEmoji } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { Txn } from "../types";
@@ -81,7 +81,15 @@ export function CategoryPage() {
         {delta}
       </SwipeMk>
       <div className="cat-chart" style={{ ["--c" as string]: catAccent(doc, mkey, flt.cat) } as CSSProperties}>
-        <ApexBars daily={dailyValues(doc.transactions, mkey, flt.cat)} mkey={mkey} hide={hide} />
+        <ApexBars
+          daily={dailyValues(doc.transactions, mkey, flt.cat)}
+          mkey={mkey}
+          hide={hide}
+          onDaySelect={(i) => {
+            const d = new Date(mk.getFullYear(), mk.getMonth(), i + 1);
+            openSheet({ name: "day-txns", id: dstr(d) });
+          }}
+        />
       </div>
       <div className="ov-chips">
         <button className="ov-chip circ" onClick={() => go("activity", state.view)} aria-label="Search">

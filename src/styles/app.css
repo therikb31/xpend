@@ -17,7 +17,7 @@
   --scrim:rgba(0,0,0,.68);
   --inc:#5BB98C;         /* muted income green */
   --neg:#C05B4D;         /* muted over-budget red */
-  --warn:#E2BE54;        /* yellow highlight â€” transaction missing a merchant */
+  --warn:#E2BE54;        /* yellow highlight — transaction missing a merchant */
   --teal:#3A9586;        /* muted accent (star badge) */
   --teal-deep:#12455A;   /* overview hero (upper section) */
   --teal-hi:#164C61;
@@ -108,7 +108,7 @@ html.is-standalone #app{height:100%}
 .nav-item:active{background:var(--nav-act)}
 .nav-item.on{background:var(--nav-act);color:var(--text);box-shadow:0 1px 0 rgba(255,255,255,.1) inset}
 
-/* the add-expense screen is an overlay modal â€” drop the floating nav so it never covers the keypad */
+/* the add-expense screen is an overlay modal — drop the floating nav so it never covers the keypad */
 #app.add #nav{display:none}
 #app.add{background:var(--bg)}
 
@@ -170,7 +170,7 @@ html.is-standalone #app{height:100%}
 .cat-delta.mute{color:var(--muted);font-weight:500}
 .cat-chart .bar{background:rgba(255,255,255,.05)}
 .cat-chart .bar.on{background:var(--c,#8C52FF)}
-/* category screen: edge-to-edge like Activity â€” neutralize the intrinsic insets of the shared dashboard widgets */
+/* category screen: edge-to-edge like Activity — neutralize the intrinsic insets of the shared dashboard widgets */
 .scr.cat .ov-chart{margin:6px 18px 4px}
 .scr.cat .ov-chips{padding:8px 18px 4px}
 /* drill shell carries no side padding (matches .scr.ov): header content keeps
@@ -549,7 +549,7 @@ select.sel{
   -webkit-backdrop-filter:blur(30px) saturate(200%);backdrop-filter:blur(30px) saturate(200%);
 }
 .sheet.up{transform:translateY(0)}
-.sh-grab{width:48px;height:5px;border-radius:99px;background:var(--handle);margin:10px auto 8px;flex:none}
+.sh-grab{width:48px;height:5px;border-radius:99px;background:var(--handle);margin:10px auto 8px;flex:none;touch-action:none;cursor:grab}
 .sh-title{font-size:20px;font-weight:700;padding:8px 2px 12px;letter-spacing:-.01em}
 .sh-row{
   display:flex;align-items:center;gap:13px;width:100%;padding:13px 4px;text-align:left;border-radius:14px;
@@ -560,7 +560,7 @@ select.sel{
 .sh-row > svg{width:18px;height:18px;color:var(--muted-2);flex:none}
 .sh-row.sel .rname{font-weight:700}
 
-/* ---- date picker (spec Â§12) ---- */
+/* ---- date picker (spec §12) ---- */
 .dp-head{display:flex;align-items:center;gap:10px;padding:6px 0 18px}
 .dp-title{font-size:21px;font-weight:700;margin-right:auto;letter-spacing:-.01em}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
@@ -596,7 +596,7 @@ select.sel{
 .cat-chip.sel{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,rgba(255,255,255,.04));
   box-shadow:0 0 0 2.5px color-mix(in srgb,var(--c) 30%,transparent)}
 
-/* ============================ ADD-EXPENSE SCREEN (spec Â§26-30) ============================ */
+/* ============================ ADD-EXPENSE SCREEN (spec §26-30) ============================ */
 #app.add #screen{overflow:hidden}
 #app.add .scr.pad-nav{height:100%;min-height:0}
 .add-top{display:flex;align-items:center;justify-content:space-between;padding:2px 0}

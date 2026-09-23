@@ -8,7 +8,7 @@ import {
   monthStats,
   sortedTxs,
 } from "../data/finance";
-import { APP_VER, dayLabel, monthKey, parseMk, rupees } from "../lib/format";
+import { APP_VER, dayLabel, dstr, monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { Txn } from "../types";
@@ -76,7 +76,15 @@ export function OverviewPage() {
           </span>
         )}
       </SwipeMk>
-      <ApexBars daily={dailyValues(doc.transactions, mkey)} mkey={mkey} hide={hide} />
+      <ApexBars
+        daily={dailyValues(doc.transactions, mkey)}
+        mkey={mkey}
+        hide={hide}
+        onDaySelect={(i) => {
+          const d = new Date(mk.getFullYear(), mk.getMonth(), i + 1);
+          openSheet({ name: "day-txns", id: dstr(d) });
+        }}
+      />
       <div className="ov-chips">
         <button className="ov-chip circ" onClick={() => go("activity", state.view)} aria-label="Search">
           {IC.search}

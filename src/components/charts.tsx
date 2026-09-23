@@ -6,7 +6,7 @@ import { parseMk, rupees, shortAmt } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useSwipe } from "../hooks/useSwipe";
 import { useApp } from "../services/store";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Doc } from "../types";
 import Chart from "react-apexcharts/core";
@@ -85,10 +85,12 @@ export function ApexBars({
   daily,
   mkey,
   hide,
+  onDaySelect,
 }: {
   daily: number[];
   mkey: string;
   hide?: boolean;
+  onDaySelect?: (dayIndex: number) => void;
 }) {
   const { state } = useApp();
   const doc = state.doc!;
@@ -96,6 +98,10 @@ export function ApexBars({
   const log = mode === 2;
   const cbrt = mode === 1;
   const mk = parseMk(mkey);
+  // Ref-mirrored so Apex event options keep a stable identity (no update
+  // churn) while always calling the latest handler (correct month scope).
+  const selectRef = useRef(onDaySelect);
+  selectRef.current = onDaySelect;
   const { series, colors } = useMemo(() => {
     // Cube root compresses skew yet keeps zero at zero (no gaps needed);
     // log keeps natives + nulls (Apex transforms the axis itself).
@@ -119,6 +125,11 @@ export function ApexBars({
           mounted: handleBarPaint,
           updated: handleBarPaint,
           animationEnd: handleBarPaint,
+          dataPointSelection: (_e, _ctx, config?: { dataPointIndex?: number }) => {
+            const fn = selectRef.current;
+            if (fn && config && typeof config.dataPointIndex === "number")
+              fn(config.dataPointIndex);
+          },
         },
       },
       plotOptions: {

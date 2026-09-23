@@ -1,4 +1,4 @@
-﻿// System sheets â€” ports of expSheet (+exp-copy) / gbSetupSheet / gbUnlockSheet /
+﻿// System sheets — ports of expSheet (+exp-copy) / gbSetupSheet / gbUnlockSheet /
 // gbRestoreSheet / moreSheet / pwa-help.
 
 import { useMemo, useState } from "react";
@@ -63,8 +63,8 @@ export function ExportSheet() {
       <Grab />
       <div className="sh-title">Export {label}</div>
       <div className="tsub" style={{ margin: "0 2px 14px", color: "var(--muted)" }}>
-        Copies a JSON snapshot of everything shown on this screen â€” names, emojis, totals, counts
-        and percentages resolved. Month: {String(env.monthLabel)} Â· {count} items Â· {size}.
+        Copies a JSON snapshot of everything shown on this screen — names, emojis, totals, counts
+        and percentages resolved. Month: {String(env.monthLabel)} · {count} items · {size}.
       </div>
       <button className="sh-row" onClick={copy}>
         <span className="ccircle" style={{ ["--c" as string]: "rgba(82,229,165,.16)" } as CSSProperties}>
@@ -94,17 +94,17 @@ export function GistSetupSheet() {
       return;
     }
     if (pat.trim().startsWith("github_pat_")) {
-      toast("Fine-grained tokens don't support gist scope â€” use a classic token (ghp_â€¦)");
+      toast("Fine-grained tokens don't support gist scope — use a classic token (ghp_…)");
       return;
     }
     if (!C.sup()) {
-      toast("Backup needs a secure connection â€” open Xpend over https://");
+      toast("Backup needs a secure connection — open Xpend over https://");
       return;
     }
     closeSheet();
     try {
       const r = await Gist.connect(pass, pat.trim());
-      toast(r.restored ? "Restored backup Â· " + r.gistId.slice(0, 7) : "Backup connected");
+      toast(r.restored ? "Restored backup · " + r.gistId.slice(0, 7) : "Backup connected");
     } catch (e) {
       if (e && (e as Error).name === "OperationError") toast("Wrong passphrase or corrupt backup");
       else toast("Setup failed: " + ((e as Error) && (e as Error).name ? (e as Error).name + ": " : "") + ((e as Error) && (e as Error).message ? (e as Error).message : e));
@@ -117,12 +117,12 @@ export function GistSetupSheet() {
       <div className="sh-title">Encrypted gist backup</div>
       {C.sup() ? null : (
         <div className="tsub" style={{ margin: "0 2px 12px", color: "var(--neg)" }}>
-          Backup needs a secure connection. Open Xpend over its https:// link (or localhost) â€” this
+          Backup needs a secure connection. Open Xpend over its https:// link (or localhost) — this
           http:// address has WebCrypto disabled by iOS.
         </div>
       )}
       <div className="tsub" style={{ margin: "0 2px 6px" }}>
-        1 Â· Generate a token with <b>gist</b> scope (opens github.com)
+        1 · Generate a token with <b>gist</b> scope (opens github.com)
       </div>
       <a
         className="set gh"
@@ -132,16 +132,16 @@ export function GistSetupSheet() {
       >
         {IC.open}
         <span className="s-label">
-          Get a GitHub token<div className="s-sub">gist pre-checked Â· no expiry</div>
+          Get a GitHub token<div className="s-sub">gist pre-checked · no expiry</div>
         </span>
         {IC.right}
       </a>
       <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-        2 Â· Paste the token below
+        2 · Paste the token below
       </div>
-      <input type="password" placeholder="ghp_â€¦" autoComplete="off" value={pat} onChange={(e) => setPat(e.target.value)} />
+      <input type="password" placeholder="ghp_…" autoComplete="off" value={pat} onChange={(e) => setPat(e.target.value)} />
       <div className="tsub" style={{ margin: "10px 2px 4px" }}>
-        3 Â· Set a passphrase (min 8 chars) â€” kept only in memory
+        3 · Set a passphrase (min 8 chars) — kept only in memory
       </div>
       <input type="password" placeholder="Passphrase" autoComplete="off" value={pass} onChange={(e) => setPass(e.target.value)} />
       <div className="tsub" style={{ margin: "6px 2px 10px", color: "var(--muted)" }}>
@@ -166,7 +166,7 @@ export function GistUnlockSheet() {
       return;
     }
     if (!C.sup()) {
-      toast("Backup needs a secure connection â€” open Xpend over https://");
+      toast("Backup needs a secure connection — open Xpend over https://");
       return;
     }
     closeSheet();
@@ -206,7 +206,7 @@ export function GistRestoreSheet() {
       return;
     }
     if (!C.sup()) {
-      toast("Backup needs a secure connection â€” open Xpend over https://");
+      toast("Backup needs a secure connection — open Xpend over https://");
       return;
     }
     closeSheet();
@@ -318,13 +318,13 @@ export function PwaHelpSheet() {
       <Grab />
       <div className="sh-title">Run locally, no server</div>
       <div className="tsub" style={{ margin: "0 2px 8px" }}>
-        1 Â· In Safari, tap Share {IC.share}
+        1 · In Safari, tap Share {IC.share}
       </div>
       <div className="tsub" style={{ margin: "0 2px 8px" }}>
-        2 Â· Tap <b>Add to Home Screen</b> (Add to Dock on iPadOS)
+        2 · Tap <b>Add to Home Screen</b> (Add to Dock on iPadOS)
       </div>
       <div className="tsub" style={{ margin: "0 2px 8px" }}>
-        3 Â· Open Xpend from your Home Screen â€” it runs offline with all data stored on the phone
+        3 · Open Xpend from your Home Screen — it runs offline with all data stored on the phone
       </div>
       <div className="tsub" style={{ margin: "0 2px 10px", color: "var(--muted)" }}>
         The installed app keeps its secure https origin, so gist backup keeps working with no server

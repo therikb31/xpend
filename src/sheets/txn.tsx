@@ -1,4 +1,4 @@
-﻿// Transaction detail sheet â€” port of App.txnSheet (transfer + expense variants).
+﻿// Transaction detail sheet — port of App.txnSheet (transfer + expense variants).
 
 import { useState } from "react";
 import type { CSSProperties } from "react";
@@ -34,12 +34,12 @@ export function TxnSheet({ id }: { id: string }) {
         <Grab />
         <div className="txn-row">
           <span className="ccircle lg" style={{ ["--c" as string]: "#31C4F3" } as CSSProperties}>
-            â‡„
+            ⇄
           </span>
           <span className="txn-meta">
             <span className="txn-name">Transfer</span>
             <span className="txn-sub">
-              {trNames(doc, t)} Â· {pd.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+              {trNames(doc, t)} · {pd.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
             </span>
           </span>
           <span className="txn-amt">{rupees(t.amount, hide)}</span>
@@ -72,7 +72,7 @@ export function TxnSheet({ id }: { id: string }) {
         <span className="txn-meta">
           <span className="txn-name">{t.note || c.name}</span>
           <span className="txn-sub">
-            {c.name} Â· {a ? a.name : ""} Â·{" "}
+            {c.name} · {a ? a.name : ""} ·{" "}
             {pd.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
           </span>
         </span>

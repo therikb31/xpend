@@ -2,11 +2,13 @@
 // One sheet at a time; nested flows are internal step state (see sheets/*).
 // Close animates out (320ms, matching the legacy timer) before unmounting.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useApp } from "../services/store";
 import type { SheetSpec } from "../services/store";
 import { AccountAddSheet, AccountEditSheet } from "./accounts";
 import { BudgetDetailSheet, BudgetFormSheet } from "./budget";
+import { DayTxnsSheet } from "./daytxns";
 import { FriendAddSheet, OpenInAppSheet } from "./friends";
 import { GoalCompleteSheet, GoalDetailSheet, GoalFormSheet } from "./goals";
 import { GroceryItemSheet, GroceryListSheet, GroceryMoreSheet } from "./grocery";
@@ -61,6 +63,8 @@ function Content({ sheet }: { sheet: SheetSpec }) {
       return <AccountFilterSheet />;
     case "txn":
       return <TxnSheet id={sheet.id!} />;
+    case "day-txns":
+      return <DayTxnsSheet date={sheet.id!} />;
     case "more":
       return <MoreSheet />;
     case "shortcuts":
@@ -118,6 +122,8 @@ export function SheetRoot() {
   const { state, closeSheet } = useApp();
   const [visible, setVisible] = useState<SheetSpec | null>(null);
   const [up, setUp] = useState(false);
+  const [dragY, setDragY] = useState<number | null>(null);
+  const dragRef = useRef<{ startY: number; dy: number; t: number } | null>(null);
 
   useEffect(() => {
     if (state.sheet) {
@@ -140,12 +146,52 @@ export function SheetRoot() {
     return () => document.removeEventListener("keydown", h);
   }, [closeSheet]);
 
+  // Swipe-down-to-close, initiated on the grab handle only (Pointer Events
+  // unify mouse/touch). Inner list scrolling never triggers it: gestures
+  // starting elsewhere are untouched, and a sub-threshold release snaps back.
+  const onGrabDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const t = e.target as HTMLElement | null;
+    if (!t || typeof t.closest !== "function" || !t.closest(".sh-grab")) return;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* capture unsupported — moves still tracked while over the sheet */
+    }
+    dragRef.current = { startY: e.clientY, dy: 0, t: Date.now() };
+  };
+  const onGrabMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    d.dy = Math.max(0, e.clientY - d.startY);
+    setDragY(d.dy);
+  };
+  const onGrabUp = () => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (!d) return;
+    const dt = Math.max(1, Date.now() - d.t);
+    if (d.dy > 110 || d.dy / dt > 0.6) closeSheet();
+    setDragY(null);
+  };
+
   return (
     <>
       <div id="scrim" className={state.sheet ? "on" : ""} onClick={closeSheet} data-act="close-sheet" />
       <div id="sheet">
         {visible && (
-          <div className={"sheet" + (up ? " up" : "")} id="sheet-body">
+          <div
+            className={"sheet" + (up ? " up" : "")}
+            id="sheet-body"
+            style={
+              dragY != null && dragY > 0
+                ? { transform: `translateY(${dragY}px)`, transition: "none" }
+                : undefined
+            }
+            onPointerDown={onGrabDown}
+            onPointerMove={onGrabMove}
+            onPointerUp={onGrabUp}
+            onPointerCancel={onGrabUp}
+          >
             <Content sheet={visible} />
           </div>
         )}
