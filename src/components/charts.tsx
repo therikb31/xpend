@@ -102,6 +102,10 @@ export function ApexBars({
   // churn) while always calling the latest handler (correct month scope).
   const selectRef = useRef(onDaySelect);
   selectRef.current = onDaySelect;
+  // Double-tap detection: single taps show the tooltip only (scroll-safe);
+  // a second tap on the same bar within the window opens the day sheet.
+  const tapRef = useRef<{ index: number; at: number } | null>(null);
+  const TAP_WINDOW_MS = 350;
   const { series, colors } = useMemo(() => {
     // Cube root compresses skew yet keeps zero at zero (no gaps needed);
     // log keeps natives + nulls (Apex transforms the axis itself).
@@ -125,10 +129,19 @@ export function ApexBars({
           mounted: handleBarPaint,
           updated: handleBarPaint,
           animationEnd: handleBarPaint,
-          dataPointSelection: (_e, _ctx, config?: { dataPointIndex?: number }) => {
+          // Raw clicks (not dataPointSelection: a re-tap on a selected slice
+          // deselects instead of selecting, so it never fires twice in a row).
+          click: (_e, _ctx, config?: { dataPointIndex?: number }) => {
             const fn = selectRef.current;
-            if (fn && config && typeof config.dataPointIndex === "number")
-              fn(config.dataPointIndex);
+            const idx = config && typeof config.dataPointIndex === "number" ? config.dataPointIndex : -1;
+            if (!fn || idx < 0) return;
+            const now = Date.now();
+            const last = tapRef.current;
+            tapRef.current = { index: idx, at: now };
+            if (last && last.index === idx && now - last.at < TAP_WINDOW_MS) {
+              tapRef.current = null;
+              fn(idx);
+            }
           },
         },
       },
@@ -156,7 +169,7 @@ export function ApexBars({
                   : day % 10 === 3 && day % 100 !== 13
                     ? "rd"
                     : "th";
-            return day + suffix + ", " + wd;
+            return day + suffix + ", " + wd + " · 2×tap";
           },
         },
         y: {
