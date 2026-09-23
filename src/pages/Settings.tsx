@@ -6,7 +6,6 @@ import { monthKey } from "../lib/format";
 import { friendLink } from "../lib/friends";
 import { IC } from "../lib/icons";
 import { defaultDoc } from "../data/defaults";
-import { sampleData } from "../data/sample";
 import type { Doc } from "../types";
 import { Gist, gistConnected, gistDirty, gistUnlocked } from "../services/gist";
 import { keyFingerprint } from "../services/escrow";
@@ -41,62 +40,14 @@ function shortT(iso: string | undefined, dirty: boolean): string {
   }
 }
 
-/* Muted viewport/safe-area readout for diagnosing edge-to-edge issues on
-   device (viewport px, visual viewport px, top/bottom insets px, #app rect,
-   nav gap px, standalone media match, iOS standalone flag). Inset probe:
-   top+bottom with height:auto lets it stretch so its rect reveals both
-   insets (never set an explicit height — it over-constrains the box). */
-function ViewportDiagnostics() {
-  const [v, setV] = useState({ vh: 0, vv: 0, top: 0, bottom: 0, app: "", nav: -1, dm: false, ios: false });
-  useEffect(() => {
-    const probe = document.createElement("div");
-    // NOTE: top+bottom with height:auto lets the probe stretch so its rect
-    // reveals both insets. Do NOT set an explicit height here — it
-    // over-constrains the box, bottom is dropped, and the reading is garbage.
-    probe.style.cssText =
-      "position:fixed;top:env(safe-area-inset-top,0px);bottom:env(safe-area-inset-bottom,0px);" +
-      "left:0;width:1px;pointer-events:none;visibility:hidden";
-    document.body.appendChild(probe);
-    const read = () => {
-      const r = probe.getBoundingClientRect();
-      const ar = document.getElementById("app")?.getBoundingClientRect();
-      const nr = document.getElementById("nav")?.getBoundingClientRect();
-      const vh = window.innerHeight;
-      setV({
-        vh,
-        vv: window.visualViewport ? Math.round(window.visualViewport.height) : 0,
-        top: Math.round(r.top),
-        bottom: Math.round(vh - r.bottom),
-        app: ar ? `${Math.round(ar.top)}/${Math.round(ar.height)}` : "?",
-        nav: nr ? Math.round(vh - nr.bottom) : -1,
-        dm: window.matchMedia("(display-mode: standalone)").matches,
-        ios: (navigator as Navigator & { standalone?: boolean }).standalone === true,
-      });
-    };
-    read();
-    window.addEventListener("resize", read);
-    return () => {
-      window.removeEventListener("resize", read);
-      probe.remove();
-    };
-  }, []);
-  return (
-    <div
-      className="tsub"
-      style={{ textAlign: "center", padding: "2px 12px 8px", color: "var(--muted)", fontSize: 11 }}
-    >
-      viewport {v.vh} · visual {v.vv} · safe {v.top}/{v.bottom} · app {v.app} · nav {v.nav} ·
-      standalone {v.dm ? "yes" : "no"} · ios {v.ios ? "yes" : "no"}
-    </div>
-  );
-}
-
 export function SettingsPage() {
   const { state, openSheet, mutate, setMkey, setFilter, toast } = useApp();
   const doc = state.doc!;
   const s = doc.settings;
   const friends = s.friends || [];
   const [myLink, setMyLink] = useState<string | null>(null);
+  const [armReset, setArmReset] = useState(false);
+  const [resetText, setResetText] = useState("");
   const [fp, setFp] = useState<string | null>(null);
   const [linked, setLinked] = useState(ghLinked());
   const [ghLogin, setGhLogin] = useState<string | null>(null);
@@ -126,16 +77,10 @@ export function SettingsPage() {
     }
   };
 
-  const loadSample = () => {
-    if (doc.transactions.length) {
-      if (!window.confirm("Replace existing data with sample?")) return;
-    }
-    mutate((d) => sampleData(d));
-    toast("Sample data loaded");
-  };
+  const RESET_SENTENCE = "ERASE EVERYTHING";
 
   const resetAll = () => {
-    if (!window.confirm("Erase all data and restore defaults?")) return;
+    if (resetText.trim() !== RESET_SENTENCE) return;
     Gist.disconnect();
     mutate((d) => {
       const f = defaultDoc();
@@ -145,6 +90,8 @@ export function SettingsPage() {
     });
     setMkey(monthKey(new Date()));
     setFilter({ q: "", dir: "all", cat: "all", acc: "all", merch: "all" });
+    setArmReset(false);
+    setResetText("");
     toast("Reset complete");
   };
 
@@ -253,38 +200,6 @@ export function SettingsPage() {
             <span className={"switch " + (s.highlightNoMerchant !== false ? "on" : "")}></span>
           </button>
         </div>
-        <div className="slab">
-          <span className="set" style={{ cursor: "default" }}>
-            <span className="s-label">
-              Month starts on<div className="s-sub">Budget &amp; overview period start</div>
-            </span>
-            <select
-              className="sel"
-              value={s.monthStartDay}
-              onChange={(e) => {
-                const v = parseInt(e.target.value, 10);
-                mutate((d) => void (d.settings.monthStartDay = v));
-                toast("Month starts on day " + v);
-              }}
-            >
-              {Array.from({ length: 28 }, (_, i) => i + 1).map((v) => (
-                <option key={v} value={v}>
-                  Day {v}
-                </option>
-              ))}
-            </select>
-          </span>
-        </div>
-        <div className="slab">
-          <span className="set" style={{ cursor: "default" }}>
-            <span className="s-label">
-              Week starts on<div className="s-sub">Calendar first column</div>
-            </span>
-            <span className="tsub" style={{ fontSize: 14, color: "var(--text-2)" }}>
-              Monday
-            </span>
-          </span>
-        </div>
       </div>
 
       <div className="sec-label">Friends</div>
@@ -371,12 +286,6 @@ export function SettingsPage() {
           </span>
           {IC.right}
         </button>
-        <button className="set" onClick={() => openSheet({ name: "shortcuts" })}>
-          <span className="s-label">
-            Shortcuts<div className="s-sub">Quick-fill common transactions</div>
-          </span>
-          {IC.right}
-        </button>
         <button className="set" onClick={() => openSheet({ name: "account-add" })}>
           <span className="s-label">
             Accounts<div className="s-sub">{doc.accounts.length} accounts</div>
@@ -399,24 +308,42 @@ export function SettingsPage() {
 
       <div className="sec-label">Data</div>
       <div className="card grid2">
-        <button className="set" onClick={loadSample}>
-          <span className="s-label">
-            Load sample data<div className="s-sub">Add demo transactions</div>
-          </span>
-          {IC.right}
-        </button>
-        <button className="set" onClick={resetAll}>
+        <button
+          className="set"
+          onClick={() => {
+            setArmReset((v) => !v);
+            setResetText("");
+          }}
+        >
           <span className="s-label">
             Reset all data<div className="s-sub">Erase everything</div>
           </span>
           {IC.right}
         </button>
-        <button className="set" onClick={() => openSheet({ name: "import-merge" })}>
-          <span className="s-label">
-            Merge another device<div className="s-sub">Union an export file into this device</div>
-          </span>
-          {IC.right}
-        </button>
+        {armReset && (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <div className="tsub" style={{ margin: "4px 2px", color: "var(--muted)" }}>
+              Type ERASE EVERYTHING below to confirm. This cannot be undone.
+            </div>
+            <input
+              type="text"
+              placeholder="ERASE EVERYTHING"
+              value={resetText}
+              onChange={(e) => setResetText(e.target.value)}
+              style={{ marginTop: 0 }}
+              autoCapitalize="characters"
+              autoCorrect="off"
+            />
+            <button
+              className="btn"
+              style={{ marginTop: 8, opacity: resetText.trim() === RESET_SENTENCE ? 1 : 0.45 }}
+              onClick={resetAll}
+              disabled={resetText.trim() !== RESET_SENTENCE}
+            >
+              {IC.trash} Erase everything
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="sec-label">Backup</div>
@@ -500,7 +427,6 @@ export function SettingsPage() {
       <div className="tsub" style={{ textAlign: "center", padding: "8px 0 12px", color: "var(--muted)" }}>
         Xpend · v0.{APP_VER}
       </div>
-      <ViewportDiagnostics />
     </div>
   );
 }
