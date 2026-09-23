@@ -175,6 +175,7 @@ export interface Settings {
   goalV?: number;
   savV?: number;
   itemMinCount?: number; // items-tab frequency threshold (default 2)
+  chartScale?: 0 | 1 | 2; // daily chart scale: 0 linear, 1 cube-root, 2 log (default 1)
 }
 
 export interface Doc {

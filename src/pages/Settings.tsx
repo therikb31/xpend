@@ -200,6 +200,25 @@ export function SettingsPage() {
             <span className={"switch " + (s.highlightNoMerchant !== false ? "on" : "")}></span>
           </button>
         </div>
+        <div className="slab">
+          <span className="set" style={{ cursor: "default" }}>
+            <span className="s-label">
+              Chart scale<div className="s-sub">Daily bars: linear, cube-root, or log</div>
+            </span>
+            <span className="chip-row" style={{ margin: 0, padding: 0 }}>
+              {(["lin", "cbrt", "log"] as const).map((lbl, i) => (
+                <button
+                  key={lbl}
+                  type="button"
+                  className={"chip " + ((s.chartScale ?? 1) === i ? "on" : "")}
+                  onClick={() => mutate((d) => void (d.settings.chartScale = i as 0 | 1 | 2))}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </span>
+          </span>
+        </div>
       </div>
 
       <div className="sec-label">Friends</div>

@@ -93,7 +93,9 @@ export function ApexBars({
   markMax?: boolean;
   hide?: boolean;
 }) {
-  const [mode, setMode] = useState<0 | 1 | 2>(0); // 0 linear, 1 cube-root, 2 log
+  const { state } = useApp();
+  const doc = state.doc!;
+  const mode = doc.settings.chartScale ?? 1; // 0 linear, 1 cube-root, 2 log
   const log = mode === 2;
   const cbrt = mode === 1;
   const dim = daily.length;
@@ -199,26 +201,10 @@ export function ApexBars({
     }),
     [daily.length, colors, hide, log, cbrt]
   );
-  const modeLabel = mode === 0 ? "lin" : mode === 1 ? "cbrt" : "log";
   return (
     <div className="apex-bars">
-      <button
-        type="button"
-        className={"chip bars-toggle" + (mode === 0 ? "" : " on")}
-        onClick={() => setMode((m) => ((m + 1) % 3) as 0 | 1 | 2)}
-        aria-label="Cycle chart scale: linear, cube-root, logarithmic"
-        title={
-          mode === 0
-            ? "Linear scale — tap for cube-root"
-            : mode === 1
-              ? "Cube-root scale — tap for logarithmic"
-              : "Logarithmic scale — tap for linear"
-        }
-      >
-        {modeLabel}
-      </button>
       <Chart
-        key={modeLabel}
+        key={"bars-" + mode}
         options={options}
         series={[{ data: series }]}
         type="bar"
