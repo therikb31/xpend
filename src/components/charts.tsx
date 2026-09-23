@@ -37,7 +37,6 @@ export function dailyValues(
 
 /* ---------------- apex daily bars (linear/log toggle) ---------------- */
 
-const BAR_BASE = "rgba(124,146,158,.45)";
 const BAR_HI = "#E8EDEF";
 const BAR_RADIUS = 5;
 
@@ -85,12 +84,10 @@ function roundBarTops(root: ParentNode | null): void {
 export function ApexBars({
   daily,
   mkey,
-  markMax,
   hide,
 }: {
   daily: number[];
   mkey: string;
-  markMax?: boolean;
   hide?: boolean;
 }) {
   const { state } = useApp();
@@ -98,35 +95,17 @@ export function ApexBars({
   const mode = doc.settings.chartScale ?? 1; // 0 linear, 1 cube-root, 2 log
   const log = mode === 2;
   const cbrt = mode === 1;
-  const dim = daily.length;
-  const mx = Math.max.apply(null, dim ? daily : [0]);
-  const hi = useMemo(() => {
-    const s = new Set<number>();
-    // Last 6 nonzero days read as "recent".
-    const nz = daily.map((v, i) => (v > 0 ? i : -1)).filter((i) => i >= 0).slice(-6);
-    nz.forEach((i) => s.add(i));
-    if (markMax && mx > 0)
-      daily.forEach((v, i) => {
-        if (v === mx) s.add(i);
-      });
-    const t = new Date();
-    if (
-      t.getFullYear() === parseMk(mkey).getFullYear() &&
-      t.getMonth() === parseMk(mkey).getMonth() &&
-      (daily[t.getDate() - 1] || 0) > 0
-    )
-      s.add(t.getDate() - 1);
-    return s;
-  }, [daily, mkey, markMax, mx]);
+  const mk = parseMk(mkey);
   const { series, colors } = useMemo(() => {
     // Cube root compresses skew yet keeps zero at zero (no gaps needed);
     // log keeps natives + nulls (Apex transforms the axis itself).
+    // All bars share the highlight fill — no recency/peak split.
     const series: Array<number | null> = daily.map((v) =>
       v > 0 ? (cbrt ? Math.cbrt(v) : v) : log ? null : 0
     );
-    const colors = daily.map((_, i) => (hi.has(i) ? BAR_HI : BAR_BASE));
+    const colors = daily.map(() => BAR_HI);
     return { series, colors };
-  }, [daily, hi, log, cbrt]);
+  }, [daily, log, cbrt]);
   const options = useMemo<ApexOptions>(
     () => ({
       chart: {
@@ -153,8 +132,21 @@ export function ApexBars({
         enabled: true,
         theme: "dark",
         x: {
-          formatter: (_v, opts?: { dataPointIndex?: number }) =>
-            "Day " + ((opts && opts.dataPointIndex != null ? opts.dataPointIndex : 0) + 1),
+          formatter: (_v, opts?: { dataPointIndex?: number }) => {
+            const day = (opts && opts.dataPointIndex != null ? opts.dataPointIndex : 0) + 1;
+            const wd = new Date(mk.getFullYear(), mk.getMonth(), day).toLocaleDateString("en-IN", {
+              weekday: "short",
+            });
+            const suffix =
+              day % 10 === 1 && day % 100 !== 11
+                ? "st"
+                : day % 10 === 2 && day % 100 !== 12
+                  ? "nd"
+                  : day % 10 === 3 && day % 100 !== 13
+                    ? "rd"
+                    : "th";
+            return day + suffix + ", " + wd;
+          },
         },
         y: {
           // Cube-root mode stores transformed values: cube back for truth.

@@ -81,7 +81,7 @@ export function CategoryPage() {
         {delta}
       </SwipeMk>
       <div className="cat-chart" style={{ ["--c" as string]: catAccent(doc, mkey, flt.cat) } as CSSProperties}>
-        <ApexBars daily={dailyValues(doc.transactions, mkey, flt.cat)} mkey={mkey} markMax hide={hide} />
+        <ApexBars daily={dailyValues(doc.transactions, mkey, flt.cat)} mkey={mkey} hide={hide} />
       </div>
       <div className="ov-chips">
         <button className="ov-chip circ" onClick={() => go("activity", state.view)} aria-label="Search">
