@@ -6,7 +6,7 @@ import { parseMk, rupees, shortAmt } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useSwipe } from "../hooks/useSwipe";
 import { useApp } from "../services/store";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Doc } from "../types";
 import Chart from "react-apexcharts/core";
@@ -102,10 +102,51 @@ export function ApexBars({
   // churn) while always calling the latest handler (correct month scope).
   const selectRef = useRef(onDaySelect);
   selectRef.current = onDaySelect;
-  // Double-tap detection: single taps show the tooltip only (scroll-safe);
-  // a second tap on the same bar within the window opens the day sheet.
+  // Tap bookkeeping: single taps show the tooltip; tapping the tooltip
+  // itself opens the day sheet (double-tap kept as a second route).
+  // tipIdx = last tapped day index + timestamp (10s stale guard).
   const tapRef = useRef<{ index: number; at: number } | null>(null);
+  const tipRef = useRef<{ index: number; at: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
   const TAP_WINDOW_MS = 350;
+  // Generous: tooltip taps only ever mean "show me this day"; refs die
+  // with the component on navigation, so staleness can't leak across views.
+  const TIP_WINDOW_MS = 60000;
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    // Single owner for tap routing (Apex callbacks proved flaky on device):
+    // - tap a bar: arm tooltip-tap route (+ double-tap route as fallback);
+    // - tap the tooltip: open the sheet for the armed day (10s window).
+    // Capture phase: Apex's own bubble listeners may stop propagation on
+    // bar clicks; capture on the wrapper runs before any of that.
+    const h = (e: MouseEvent) => {
+      const t = e.target as Element | null;
+      if (!t || typeof t.closest !== "function") return;
+      const now = Date.now();
+      if (t.closest(".apexcharts-tooltip")) {
+        const tip = tipRef.current;
+        if (tip && now - tip.at < TIP_WINDOW_MS) {
+          tipRef.current = null;
+          selectRef.current?.(tip.index);
+        }
+        return;
+      }
+      const path = t.closest("path.apexcharts-bar-area");
+      if (!path || !el.contains(path)) return;
+      const idx = [...el.querySelectorAll("path.apexcharts-bar-area")].indexOf(path);
+      if (idx < 0) return;
+      const last = tapRef.current;
+      tapRef.current = { index: idx, at: now };
+      tipRef.current = { index: idx, at: now };
+      if (last && last.index === idx && now - last.at < TAP_WINDOW_MS) {
+        tapRef.current = null;
+        selectRef.current?.(idx);
+      }
+    };
+    el.addEventListener("click", h, true);
+    return () => el.removeEventListener("click", h, true);
+  }, []);
   const { series, colors } = useMemo(() => {
     // Cube root compresses skew yet keeps zero at zero (no gaps needed);
     // log keeps natives + nulls (Apex transforms the axis itself).
@@ -129,20 +170,6 @@ export function ApexBars({
           mounted: handleBarPaint,
           updated: handleBarPaint,
           animationEnd: handleBarPaint,
-          // Raw clicks (not dataPointSelection: a re-tap on a selected slice
-          // deselects instead of selecting, so it never fires twice in a row).
-          click: (_e, _ctx, config?: { dataPointIndex?: number }) => {
-            const fn = selectRef.current;
-            const idx = config && typeof config.dataPointIndex === "number" ? config.dataPointIndex : -1;
-            if (!fn || idx < 0) return;
-            const now = Date.now();
-            const last = tapRef.current;
-            tapRef.current = { index: idx, at: now };
-            if (last && last.index === idx && now - last.at < TAP_WINDOW_MS) {
-              tapRef.current = null;
-              fn(idx);
-            }
-          },
         },
       },
       plotOptions: {
@@ -169,7 +196,7 @@ export function ApexBars({
                   : day % 10 === 3 && day % 100 !== 13
                     ? "rd"
                     : "th";
-            return day + suffix + ", " + wd + " · 2×tap";
+            return day + suffix + ", " + wd;
           },
         },
         y: {
@@ -218,7 +245,7 @@ export function ApexBars({
     [daily.length, colors, hide, log, cbrt]
   );
   return (
-    <div className="apex-bars">
+    <div className="apex-bars" ref={wrapRef}>
       <Chart
         key={"bars-" + mode}
         options={options}

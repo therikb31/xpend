@@ -237,6 +237,7 @@ html.is-standalone #app{height:100%}
 .apex-donut .apexcharts-canvas{margin:0 auto}
 .apex-bars{position:relative}
 .apex-bars .apexcharts-canvas{margin:0 auto}
+.apex-bars .apexcharts-tooltip{cursor:pointer}
 .sum-list{padding:8px 18px}
 .sum-card{
   display:flex;align-items:center;gap:11px;width:100%;text-align:left;
