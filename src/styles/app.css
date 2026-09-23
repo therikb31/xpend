@@ -87,7 +87,7 @@ html.is-standalone #app{height:100%}
   /* Sunk flush to the physical bottom edge (gap ≈ 0) so the pill sits fully
      inside the home-indicator zone. Content clearance comes from .scr bottom
      padding, not from nav offset. */
-  bottom:0;
+  bottom: 6px;
   height:70px;border-radius:35px;
   display:flex;align-items:stretch;padding:5px;gap:1px;
   background:rgba(18,20,22,.94);
