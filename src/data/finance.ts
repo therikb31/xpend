@@ -17,6 +17,30 @@ import type {
 
 export const PAL = ["#7B61FF", "#FF5678", "#31C4F3", "#FF9F43", "#52E5A5", "#FFD166", "#9B8CFA", "#4EC49B"];
 
+/* 50-30-20 buckets: stable identities (not PAL-cycled). Rule shares are
+   fractions of month income, matching the classic rule's definition. */
+export const NW_META = {
+  need: { name: "Needs", emoji: "🏠", color: "#5BB98C", rule: 50 },
+  want: { name: "Wants", emoji: "✨", color: "#FF9F43", rule: 30 },
+  saving: { name: "Savings", emoji: "🏦", color: "#8C52FF", rule: 20 },
+} as const;
+
+export type NwKey = keyof typeof NW_META;
+
+/* 50-30-20 drill predicate — single source of truth for the Insights cards,
+   the bucket drill page, and export. Expenses match their category tag
+   (account filter applies); Savings also counts transfers INTO savings
+   accounts that month (gross in; account filter not applied). */
+export function bucketTxns(doc: Doc, key: NwKey, mkey: string, acc: string): Txn[] {
+  const savIds = new Set((doc.accounts || []).filter((a) => a.kind === "savings").map((a) => a.id));
+  return sortedTxs(doc).filter((t) => {
+    if (t.date.slice(0, 7) !== mkey) return false;
+    if (t.dir === "trans") return key === "saving" && !!t.to && savIds.has(t.to);
+    if (acc !== "all" && t.accountId !== acc) return false;
+    return (catById(doc, t.categoryId).need || "need") === key;
+  });
+}
+
 export function catById(doc: Doc, id: string): Category {
   return (
     doc.categories.find((c) => c.id === id) ||
@@ -443,8 +467,21 @@ export function expData(doc: Doc, view: View, mkey: string, flt: Filters): Recor
     };
     return env;
   }
-  if (view === "activity") {
-    let list = sortedTxs(doc);
+  if (view === "bucket") {
+    const key = (flt.bucket === "need" || flt.bucket === "want" || flt.bucket === "saving") ? flt.bucket : "need";
+    const meta = NW_META[key];
+    const list = bucketTxns(doc, key, mkey, flt.acc);
+    const total = list.reduce((s, t) => s + t.amount, 0);
+    const prevTotal = bucketTxns(doc, key, prevKey, flt.acc).reduce((s, t) => s + t.amount, 0);
+    env.data = {
+      scope: { id: key, name: meta.name, emoji: meta.emoji, rule: meta.rule },
+      total, prevTotal,
+      deltaPct: prevTotal > 0 ? Math.round(((prevTotal - total) / prevTotal) * 100) : null,
+      transactions: resolvedTxs(doc, list),
+    };
+    return env;
+  }
+  if (view === "activity") {    let list = sortedTxs(doc);
     if (flt.dir !== "all") list = list.filter((t) => t.dir === flt.dir);
     if (flt.cat !== "all") list = list.filter((t) => t.dir !== "trans" && t.categoryId === flt.cat);
     if (flt.merch !== "all") list = list.filter((t) => t.dir !== "trans" && (t.merchantId || "__none") === flt.merch);

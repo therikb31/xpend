@@ -14,6 +14,7 @@ import { AccountsPage } from "./pages/Accounts";
 import { ActivityPage } from "./pages/Activity";
 import { AddPage } from "./pages/Add";
 import { BudgetPage } from "./pages/Budget";
+import { BucketPage } from "./pages/Bucket";
 import { CategoryPage } from "./pages/Category";
 import { GoalsPage } from "./pages/Goals";
 import { GroceriesPage } from "./pages/Groceries";
@@ -52,6 +53,8 @@ function Page() {
       return <CategoryPage />;
     case "merchant":
       return <MerchantPage />;
+    case "bucket":
+      return <BucketPage />;
     case "goals":
       return <GoalsPage />;
     case "groceries":
@@ -144,7 +147,7 @@ function Shell() {
     return () => document.removeEventListener("visibilitychange", h);
   }, []);
 
-  const ov = state.view === "overview" || state.view === "category" || state.view === "merchant";
+  const ov = state.view === "overview" || state.view === "category" || state.view === "merchant" || state.view === "bucket";
   const add = state.view === "add";
   return (
     <div id="app" className={(ov ? "ov " : "") + (add ? "add" : "")}>

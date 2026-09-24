@@ -118,7 +118,7 @@ const initial: AppState = {
   view: "overview",
   prevView: "overview",
   mkey: monthKey(new Date()),
-  flt: { q: "", dir: "all", cat: "all", acc: "all", merch: "all" },
+  flt: { q: "", dir: "all", cat: "all", acc: "all", merch: "all", bucket: "all" },
   add: { amount: "", dir: "expense", categoryId: "cat-gro", accountId: "", date: todayStr(), note: "", merchantId: "" },
   editingId: null,
   sheet: null,
@@ -155,7 +155,7 @@ function reducer(s: AppState, a: Action): AppState {
     case "SET_FILTER":
       return { ...s, flt: { ...s.flt, ...a.patch } };
     case "CLEAR_FILTERS":
-      return { ...s, flt: { ...s.flt, dir: "all", acc: "all", merch: "all" } };
+      return { ...s, flt: { ...s.flt, dir: "all", acc: "all", merch: "all", bucket: "all" } };
     case "SET_ADD":
       return { ...s, add: { ...s.add, ...a.patch } };
     case "OPEN_SHEET":

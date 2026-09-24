@@ -23,7 +23,7 @@ function isOn(tab: TabId, view: View, prevView: View): boolean {
       view === "activity" ||
       (view === "category" && (prevView === "overview" || prevView === "activity"))
     );
-  return view === tab || (view === "category" && prevView === tab) || (view === "merchant" && prevView === tab);
+  return view === tab || (view === "category" && prevView === tab) || (view === "merchant" && prevView === tab) || (view === "bucket" && prevView === tab);
 }
 
 export function BottomNav() {

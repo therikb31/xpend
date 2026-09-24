@@ -205,6 +205,7 @@ export type View =
   | "budget"
   | "category"
   | "merchant"
+  | "bucket"
   | "goals"
   | "groceries"
   | "accounts"
@@ -217,6 +218,7 @@ export interface Filters {
   cat: string; // category id or "all"
   acc: string; // account id or "all"
   merch: string; // merchant id, "__none", or "all"
+  bucket: string; // 50-30-20 bucket key ("need" | "want" | "saving") or "all"
 }
 
 export interface AddDraft {

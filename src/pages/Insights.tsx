@@ -6,7 +6,8 @@ import { useState } from "react";
 import { DonutHero } from "../components/charts";
 import type { DonutDetail } from "../components/charts";
 import { CatSumCard, Empty, ItemSumCard, MerchSumCard, MerchantLogoImg, TrendIcon } from "../components/ui";
-import { PAL, accById, catById, merchById, monthStats } from "../data/finance";
+import { NW_META, PAL, accById, bucketTxns, catById, merchById, monthStats } from "../data/finance";
+import type { NwKey } from "../data/finance";
 import { catEmoji, fallbackEmoji, monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
@@ -15,16 +16,6 @@ import type { CSSProperties } from "react";
 
 const MIN_OPTS = [1, 2, 3, 5];
 const DONUT_TOP = 10;
-
-/* 50-30-20 buckets: stable identities (not PAL-cycled). Rule shares are
-   fractions of month income, matching the classic rule's definition. */
-const NW_META = {
-  need: { name: "Needs", emoji: "🏠", color: "#5BB98C", rule: 50 },
-  want: { name: "Wants", emoji: "✨", color: "#FF9F43", rule: 30 },
-  saving: { name: "Savings", emoji: "🏦", color: "#8C52FF", rule: 20 },
-} as const;
-
-type NwKey = keyof typeof NW_META;
 
 interface NwBucket {
   key: NwKey;
@@ -98,28 +89,12 @@ export function InsightsPage() {
   let nwBuckets: NwBucket[] = [];
   let nwPrev = 0;
   if (grp === "nws") {
-    const sums: Record<NwKey, { count: number; amt: number }> = {
-      need: { count: 0, amt: 0 },
-      want: { count: 0, amt: 0 },
-      saving: { count: 0, amt: 0 },
-    };
-    for (const t of txs) {
-      const tag = (catById(doc, t.categoryId).need || "need") as NwKey;
-      sums[tag].count += 1;
-      sums[tag].amt += t.amount;
-    }
-    const savIds = new Set(
-      (doc.accounts || []).filter((a) => a.kind === "savings").map((a) => a.id)
-    );
-    for (const t of doc.transactions) {
-      if (t.dir === "trans" && t.date.slice(0, 7) === mkey && savIds.has(t.to)) {
-        sums.saving.count += 1;
-        sums.saving.amt += t.amount;
-      }
-    }
-    nwBuckets = (Object.keys(sums) as NwKey[])
-      .filter((k) => sums[k].amt > 0)
-      .map((k) => ({ key: k, count: sums[k].count, amt: sums[k].amt }));
+    nwBuckets = (Object.keys(NW_META) as NwKey[])
+      .map((k) => {
+        const list = bucketTxns(doc, k, mkey, flt.acc);
+        return { key: k, count: list.length, amt: list.reduce((s, t) => s + t.amount, 0) };
+      })
+      .filter((b) => b.amt > 0);
     nwPrev = (doc.accounts || [])
       .filter((a) => a.kind === "savings")
       .reduce((s, a) => s + (a.prev || 0), 0);
@@ -232,8 +207,10 @@ export function InsightsPage() {
       const g = itemGroups.find((x) => x.key === id);
       setFilter({ q: g ? g.display : id });
       go("activity", state.view);
+    } else if (grp === "nws" && (id === "need" || id === "want" || id === "saving")) {
+      setFilter({ bucket: id });
+      go("bucket", state.view);
     }
-    // Needs mode is intentionally static: no tag view exists to drill to.
   };
   const countFor = (id: string) =>
     grp === "cat"
