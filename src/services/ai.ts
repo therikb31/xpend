@@ -8,6 +8,8 @@ import { monthKey, todayStr } from "../lib/format";
 import type { Doc } from "../types";
 
 export const LS_OR_KEY = "xpend:or";
+const LS_MODEL = "xpend:ai-model";
+const LS_ASK = "xpend:ask";
 const API = "https://openrouter.ai/api/v1";
 export const DEFAULT_MODEL = "openrouter/free";
 export const MAX_TOOL_ROUNDS = 6;
@@ -32,6 +34,38 @@ export function setKey(k: string): void {
 
 export function clearKey(): void {
   setKey("");
+}
+
+export function getModel(): string {
+  try {
+    return localStorage.getItem(LS_MODEL) || DEFAULT_MODEL;
+  } catch {
+    return DEFAULT_MODEL;
+  }
+}
+
+export function setModel(m: string): void {
+  try {
+    if (m && m !== DEFAULT_MODEL) localStorage.setItem(LS_MODEL, m);
+    else localStorage.removeItem(LS_MODEL);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Remove all AI-local state (key, model override, chat history). */
+export function wipeAiLocal(): void {
+  clearKey();
+  try {
+    localStorage.removeItem(LS_MODEL);
+    localStorage.removeItem(LS_ASK);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function askHistoryKey(): string {
+  return LS_ASK;
 }
 
 export type AiCode =

@@ -10,6 +10,9 @@ import type { Doc } from "../types";
 import { Gist, gistConnected, gistDirty, gistUnlocked } from "../services/gist";
 import { keyFingerprint } from "../services/escrow";
 import { ghLinked, ghWhoami } from "../services/githubAuth";
+import {
+  DEFAULT_MODEL, clearKey, fetchModels, getKey, getModel, setKey, setModel, verifyKey, wipeAiLocal,
+} from "../services/ai";
 import { useApp } from "../services/store";
 import type { Friend } from "../types";
 
@@ -51,6 +54,11 @@ export function SettingsPage() {
   const [fp, setFp] = useState<string | null>(null);
   const [linked, setLinked] = useState(ghLinked());
   const [ghLogin, setGhLogin] = useState<string | null>(null);
+  const [aiKey, setAiKey] = useState("");
+  const [aiModel, setAiModel] = useState(getModel());
+  const [aiOn, setAiOn] = useState(!!getKey());
+  const [aiMsg, setAiMsg] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
   useEffect(() => {
     if (gistUnlocked() && Gist.key) keyFingerprint(Gist.key).then(setFp).catch(() => undefined);
     else setFp(null);
@@ -63,6 +71,62 @@ export function SettingsPage() {
       setGhLogin(null);
     }
   }, [state.gistVersion, state.booted]);
+
+  const saveVerifyKey = async () => {
+    const k = aiKey.trim();
+    if (!k) {
+      toast("Paste an OpenRouter key first");
+      return;
+    }
+    setAiBusy(true);
+    setAiMsg("Checking key…");
+    const r = await verifyKey(k);
+    setAiBusy(false);
+    if (!r.ok) {
+      setAiMsg(r.error ? r.error.message : "Key check failed.");
+      return;
+    }
+    setKey(k);
+    setAiKey("");
+    setAiOn(true);
+    const left = r.limit_remaining;
+    setAiMsg(
+      "Key live" +
+        (r.label ? ` · ${r.label}` : "") +
+        (left == null ? " · no cap set — add one!" : ` · $${left.toFixed(2)} cap left`) +
+        (r.usage_daily != null ? ` · $${r.usage_daily.toFixed(3)} used today` : "")
+    );
+    toast("AI key saved");
+  };
+
+  const saveModel = async () => {
+    const m = aiModel.trim() || DEFAULT_MODEL;
+    setModel(m);
+    setAiModel(m);
+    if (m === DEFAULT_MODEL) {
+      toast("Model reset to default");
+      return;
+    }
+    setAiMsg("Checking model…");
+    try {
+      const ids = await fetchModels();
+      if (!ids.includes(m)) {
+        setAiMsg("Not on OpenRouter's model list — check the ID (saved anyway).");
+        return;
+      }
+      setAiMsg("Model OK · " + m);
+      toast("Model saved");
+    } catch {
+      setAiMsg("Couldn't reach the model list — saved anyway.");
+    }
+  };
+
+  const removeAiKey = () => {
+    clearKey();
+    setAiKey("");
+    setAiOn(false);
+    setAiMsg("Key removed from this device.");
+  };
 
   const pushNow = async () => {
     if (!gistUnlocked()) {
@@ -82,6 +146,11 @@ export function SettingsPage() {
   const resetAll = () => {
     if (resetText.trim() !== RESET_SENTENCE) return;
     Gist.disconnect();
+    wipeAiLocal();
+    setAiKey("");
+    setAiModel(DEFAULT_MODEL);
+    setAiOn(false);
+    setAiMsg("");
     mutate((d) => {
       const f = defaultDoc();
       (Object.keys(f) as Array<keyof Doc>).forEach((k) => {
@@ -89,7 +158,7 @@ export function SettingsPage() {
       });
     });
     setMkey(monthKey(new Date()));
-    setFilter({ q: "", dir: "all", cat: "all", acc: "all", merch: "all" });
+    setFilter({ q: "", dir: "all", cat: "all", acc: "all", merch: "all", bucket: "all" });
     setArmReset(false);
     setResetText("");
     toast("Reset complete");
@@ -294,6 +363,79 @@ export function SettingsPage() {
               Share
             </button>
           </div>
+        )}
+      </div>
+
+      <div className="sec-label">AI assistant</div>
+      <div className="card">
+        <div className="slab">
+          <span className="set" style={{ cursor: "default" }}>
+            <span className="s-label">
+              Status
+              <div className="s-sub">{aiOn ? "Key saved on this device" : "No key — chat is off"}</div>
+            </span>
+            <span className={"pill " + (aiOn ? "on" : "")}>{aiOn ? "On" : "Off"}</span>
+          </span>
+        </div>
+        <div className="slab">
+          <span className="set" style={{ cursor: "default" }}>
+            <span className="s-label">
+              OpenRouter key
+              <div className="s-sub">Device-only · never synced · use a capped key</div>
+            </span>
+            <input
+              type="password"
+              value={aiKey}
+              onChange={(e) => setAiKey(e.target.value)}
+              placeholder="sk-or-v1-…"
+              style={{ marginTop: 0, maxWidth: 150, textAlign: "right" }}
+              autoComplete="off"
+            />
+          </span>
+        </div>
+        <button className="set" onClick={saveVerifyKey}>
+          <span className="s-label">
+            Save &amp; verify key
+            <div className="s-sub">{aiBusy ? "Checking…" : aiMsg || "Checks key + shows spend"}</div>
+          </span>
+          {IC.check}
+        </button>
+        <div className="slab">
+          <span className="set" style={{ cursor: "default" }}>
+            <span className="s-label">
+              Model
+              <div className="s-sub">Default: {DEFAULT_MODEL}</div>
+            </span>
+            <input
+              type="text"
+              value={aiModel}
+              onChange={(e) => setAiModel(e.target.value)}
+              placeholder={DEFAULT_MODEL}
+              style={{ marginTop: 0, maxWidth: 150, textAlign: "right" }}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </span>
+        </div>
+        <button className="set" onClick={saveModel}>
+          <span className="s-label">
+            Save model
+            <div className="s-sub">Validated against OpenRouter's list</div>
+          </span>
+          {IC.right}
+        </button>
+        <div className="tsub" style={{ padding: "2px 2px 8px", color: "var(--muted)" }}>
+          Aggregates + labeled transactions leave the device per question; free-text notes never do.
+          Advice is general info only.
+        </div>
+        {aiOn && (
+          <button className="set" onClick={removeAiKey}>
+            <span className="s-label">
+              Remove key
+              <div className="s-sub">Chat turns off on this device</div>
+            </span>
+            {IC.x}
+          </button>
         )}
       </div>
 

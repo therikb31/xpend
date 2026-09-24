@@ -217,6 +217,7 @@ export type View =
   | "category"
   | "merchant"
   | "bucket"
+  | "ask"
   | "goals"
   | "groceries"
   | "accounts"

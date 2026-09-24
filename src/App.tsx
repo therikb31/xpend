@@ -13,6 +13,7 @@ import { cleanUsername, parseInvite } from "./lib/friends";
 import { AccountsPage } from "./pages/Accounts";
 import { ActivityPage } from "./pages/Activity";
 import { AddPage } from "./pages/Add";
+import { AskPage } from "./pages/Ask";
 import { BudgetPage } from "./pages/Budget";
 import { BucketPage } from "./pages/Bucket";
 import { CategoryPage } from "./pages/Category";
@@ -55,6 +56,8 @@ function Page() {
       return <MerchantPage />;
     case "bucket":
       return <BucketPage />;
+    case "ask":
+      return <AskPage />;
     case "goals":
       return <GoalsPage />;
     case "groceries":
@@ -90,7 +93,7 @@ function Screen() {
 }
 
 function Shell() {
-  const { state, openAdd, openSheet } = useApp();
+  const { state, openAdd, openSheet, go } = useApp();
   const addFriend = useFriendAdd();
   useViewportFix();
   useGrocerySync();
@@ -160,6 +163,14 @@ function Shell() {
           </button>
         </div>
       )}
+      {state.booted &&
+        (state.view === "summary" || state.view === "budget" || state.view === "goals") && (
+          <div className="fab-stack">
+            <button className="fab ask" onClick={() => go("ask", state.view)} aria-label="Ask AI">
+              {IC.star}
+            </button>
+          </div>
+        )}
       <SheetRoot />
       <div id="toast" className={state.toast ? "on" : ""}>
         {state.toast ?? ""}
