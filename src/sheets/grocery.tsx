@@ -5,8 +5,10 @@
 import { useState } from "react";
 import { addDaysStr, dayDiff, deviceName, findGroceryItem } from "../lib/grocery";
 import { todayStr, uid } from "../lib/format";
+import { MAX_LINKS, buildLink, faviconFor, normalizeUrl } from "../lib/unfurl";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
+import type { BuyLink } from "../types";
 import { Grab } from "./Sheet";
 const DAY_CHIPS: Array<{ label: string; days: number }> = [
   { label: "Today", days: 0 },
@@ -26,6 +28,53 @@ export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: 
   const [name, setName] = useState(existing ? existing.name : "");
   const [qty, setQty] = useState(existing ? existing.qty || "" : "");
   const [expectDate, setExpectDate] = useState(existing ? existing.expectDate : addDaysStr(3));
+  const [links, setLinks] = useState<BuyLink[]>(existing ? [...(existing.links || [])] : []);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [busy, setBusy] = useState<string | null>(null); // "add" or link id
+  const [titleEdit, setTitleEdit] = useState<{ id: string; value: string } | null>(null);
+  const addLink = async () => {
+    const url = normalizeUrl(linkUrl);
+    if (!url) {
+      toast("Paste a valid link");
+      return;
+    }
+    if (links.some((x) => x.url === url)) {
+      toast("Link already added");
+      return;
+    }
+    if (links.length >= MAX_LINKS) {
+      toast(`Max ${MAX_LINKS} links per item`);
+      return;
+    }
+    setBusy("add");
+    try {
+      const rec = await buildLink(url);
+      setLinks((prev) => (prev.length >= MAX_LINKS ? prev : [...prev, rec]));
+      setLinkUrl("");
+    } finally {
+      setBusy(null);
+    }
+  };
+  const dropLink = (id: string) => setLinks((prev) => prev.filter((x) => x.id !== id));
+  const refreshLink = async (id: string) => {
+    const cur = links.find((x) => x.id === id);
+    if (!cur || busy) return;
+    setBusy(id);
+    try {
+      const rec = await buildLink(cur.url, cur.title);
+      setLinks((prev) => prev.map((x) => (x.id === id ? { ...rec, id, url: cur.url } : x)));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const commitTitle = () => {
+    if (!titleEdit) return;
+    const v = titleEdit.value.trim();
+    const id = titleEdit.id;
+    setLinks((prev) => prev.map((x) => (x.id === id ? { ...x, title: v || x.site } : x)));
+    setTitleEdit(null);
+  };
+
   if (!list) {
     return (
       <>
@@ -65,11 +114,14 @@ export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: 
         it.name = n;
         it.qty = qty.trim();
         it.expectDate = expectDate || todayStr();
+        if (links.length) it.links = links.map((x) => ({ ...x }));
+        else delete it.links;
         it.updatedAt = now;
       } else {
         l.items.push({
           id: uid(), name: n, qty: qty.trim(), expectDate: expectDate || todayStr(),
           status: "active", purchasedAt: null, addedBy: by, updatedAt: now,
+          ...(links.length ? { links: links.map((x) => ({ ...x })) } : null),
         });
       }
       l.updatedAt = now;
@@ -138,6 +190,85 @@ export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: 
         onChange={(e) => setExpectDate(e.target.value)}
         style={{ marginTop: 8 }}
       />
+      <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+        Buy online{links.length > 0 ? ` · ${links.length}` : ""}
+      </div>
+      {links.map((l) => (
+        <div className="link-card" key={l.id}>
+          <span className="link-thumb">
+            {l.image ? (
+              <img src={l.image} alt="" loading="lazy" />
+            ) : (
+              <img src={faviconFor(l.url)} alt="" loading="lazy" />
+            )}
+          </span>
+          <span className="link-meta">
+            {titleEdit && titleEdit.id === l.id ? (
+              <input
+                type="text"
+                value={titleEdit.value}
+                style={{ margin: 0, padding: "8px 10px" }}
+                onChange={(e) => setTitleEdit({ id: l.id, value: e.target.value })}
+                onBlur={commitTitle}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitTitle();
+                }}
+                autoFocus
+              />
+            ) : (
+              <span
+                className="link-title"
+                onClick={() => setTitleEdit({ id: l.id, value: l.title })}
+                role="button"
+              >
+                {l.title}
+              </span>
+            )}
+            <span className="link-site">{l.site}</span>
+            {!!l.desc && <span className="link-desc">{l.desc}</span>}
+          </span>
+          <span className="link-acts">
+            <a className="link-btn" href={l.url} target="_blank" rel="noopener noreferrer" aria-label="Open link">
+              ↗
+            </a>
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => refreshLink(l.id)}
+              aria-label="Refresh preview"
+              disabled={busy === l.id}
+            >
+              {busy === l.id ? "…" : "⟳"}
+            </button>
+            <button
+              type="button"
+              className="link-btn danger"
+              onClick={() => dropLink(l.id)}
+              aria-label="Remove link"
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      ))}
+      {links.length < MAX_LINKS && (
+        <div className="link-addrow">
+          <input
+            type="text"
+            inputMode="url"
+            placeholder="Paste a shopping link"
+            value={linkUrl}
+            style={{ margin: 0 }}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addLink();
+            }}
+          />
+          <button type="button" className="btn mini" onClick={addLink} disabled={busy === "add"}>
+            {busy === "add" ? "…" : "Add"}
+          </button>
+        </div>
+      )}
       <button className="btn" style={{ marginTop: 16 }} onClick={save}>
         {IC.check} {existing ? "Save item" : "Add item"}
       </button>

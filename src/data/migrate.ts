@@ -180,6 +180,10 @@ export function migrateGrocery(d: Doc): boolean {
         it.updatedAt = Date.now();
         changed = true;
       }
+      if (it.links !== undefined && !Array.isArray(it.links)) {
+        it.links = [];
+        changed = true;
+      }
     }
     if (typeof l.updatedAt !== "number") {
       l.updatedAt = Date.now();

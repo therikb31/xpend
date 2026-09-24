@@ -121,6 +121,16 @@ export interface GistCfg {
 
 export type GroceryStatus = "active" | "purchased";
 
+export interface BuyLink {
+  id: string;
+  url: string;
+  title: string;
+  desc?: string;
+  image?: string; // remote preview image URL (never a blob — keeps gist payloads small)
+  site: string; // hostname label
+  fetchedAt: number;
+}
+
 export interface GroceryItem {
   id: string;
   name: string;
@@ -131,6 +141,7 @@ export interface GroceryItem {
   addedBy: string; // deviceName of the device that added it
   updatedAt: number;
   deleted?: boolean; // tombstone for shared-list merges
+  links?: BuyLink[]; // shortlisted buy-online links (max 5)
 }
 
 export interface GroceryShare {

@@ -34,7 +34,9 @@ function ActiveRow({ item, listId }: { item: GroceryItem; listId: string }) {
       <span className="s-label" onClick={() => openSheet({ name: "grocery-item", id: listId, id2: item.id })}>
         {item.name}
         <div className="s-sub">
-          {[item.qty, info.label + " · " + info.date].filter(Boolean).join(" · ")}
+          {[item.qty, info.label + " · " + info.date, (item.links || []).length ? "🔗" + item.links!.length : ""]
+            .filter(Boolean)
+            .join(" · ")}
         </div>
       </span>
       <span className={"pill " + (info.overdue ? "err" : info.soon ? "warn" : "")}>{info.label}</span>
@@ -76,7 +78,11 @@ function PurchasedRow({ item, listId }: { item: GroceryItem; listId: string }) {
     <div className="slab g-row done">
       <span className="s-label">
         {item.name}
-        <div className="s-sub">{[item.qty, bought ? "Bought " + bought : ""].filter(Boolean).join(" · ")}</div>
+        <div className="s-sub">
+          {[item.qty, bought ? "Bought " + bought : "", (item.links || []).length ? "🔗" + item.links!.length : ""]
+            .filter(Boolean)
+            .join(" · ")}
+        </div>
       </span>
       <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button type="button" className="row-btn" onClick={moveBack} aria-label={"Move " + item.name + " back to list"}>
