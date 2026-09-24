@@ -513,10 +513,21 @@ select.sel{
 .g-row .s-label{flex:1;min-width:0;font-size:15.5px;font-weight:600}
 .g-row .s-sub{font-size:12.5px;color:var(--muted);margin-top:1px;font-weight:400}
 .g-row.done .s-label{color:var(--muted)}
-.gcheck{flex:none;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--muted-2);background:transparent;color:transparent;display:inline-flex;align-items:center;justify-content:center;padding:0}
-.gcheck svg{width:15px;height:15px}
+.gcheck{flex:none;width:24px;height:24px;border-radius:50%;border:2px solid var(--muted);background:transparent;color:transparent;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.gcheck svg{width:13px;height:13px}
 .gcheck:active{background:var(--sel);border-color:var(--sel);color:var(--sel-txt)}
 .g-row .pill{flex:none}
+.g-head{margin:6px 0 4px}
+.g-title-row{display:flex;align-items:center;gap:8px;min-width:0}
+.g-title{flex:1;min-width:0;font-size:21px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-sub{font-size:13px;color:var(--muted);margin:2px 2px 0}
+.g-actions{display:flex;align-items:center;gap:8px;margin-top:10px}
+.g-add{flex:1;min-width:0}
+.g-add-ic{flex:none;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.16);display:inline-flex;align-items:center;justify-content:center}
+.g-add-ic svg{width:13px;height:13px}
+.g-link{display:inline-flex;align-items:center;gap:3px;color:var(--muted);margin-left:6px;vertical-align:1px}
+.g-link svg{width:12px;height:12px}
+.g-link b{font-size:11.5px;font-weight:700}
 .link-addrow{display:flex;gap:8px;align-items:center}
 .link-addrow input{flex:1;min-width:0}
 .link-addrow .btn{flex:none}

@@ -1,7 +1,7 @@
 // Pure formatting + date helpers — verbatim ports of the legacy global helpers.
 // rupees()/shortAmt() take `hide` explicitly (legacy read App.data.settings).
 
-export const APP_VER = "108";
+export const APP_VER = "109";
 
 export const pad = (n: number): string => String(n).padStart(2, "0");
 

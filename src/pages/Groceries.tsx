@@ -6,9 +6,20 @@
 import { useState } from "react";
 import { Empty } from "../components/ui";
 import { IC } from "../lib/icons";
-import { activeItems, expectInfo, purchasedItems } from "../lib/grocery";
+import { activeItems, expectInfo } from "../lib/grocery";
 import { useApp } from "../services/store";
 import type { GroceryItem } from "../types";
+
+function linkBadge(item: GroceryItem) {
+  const n = (item.links || []).length;
+  if (!n) return null;
+  return (
+    <span className="g-link">
+      {IC.link}
+      <b>{n}</b>
+    </span>
+  );
+}
 
 function ActiveRow({ item, listId }: { item: GroceryItem; listId: string }) {
   const { mutate, openSheet, toast } = useApp();
@@ -34,9 +45,8 @@ function ActiveRow({ item, listId }: { item: GroceryItem; listId: string }) {
       <span className="s-label" onClick={() => openSheet({ name: "grocery-item", id: listId, id2: item.id })}>
         {item.name}
         <div className="s-sub">
-          {[item.qty, info.label + " · " + info.date, (item.links || []).length ? "🔗" + item.links!.length : ""]
-            .filter(Boolean)
-            .join(" · ")}
+          {[item.qty, info.date].filter(Boolean).join(" · ")}
+          {linkBadge(item)}
         </div>
       </span>
       <span className={"pill " + (info.overdue ? "err" : info.soon ? "warn" : "")}>{info.label}</span>
@@ -44,7 +54,7 @@ function ActiveRow({ item, listId }: { item: GroceryItem; listId: string }) {
   );
 }
 
-function PurchasedRow({ item, listId }: { item: GroceryItem; listId: string }) {
+export function PurchasedRow({ item, listId }: { item: GroceryItem; listId: string }) {
   const { mutate, toast } = useApp();
   const bought = item.purchasedAt
     ? new Date(item.purchasedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
@@ -79,9 +89,8 @@ function PurchasedRow({ item, listId }: { item: GroceryItem; listId: string }) {
       <span className="s-label">
         {item.name}
         <div className="s-sub">
-          {[item.qty, bought ? "Bought " + bought : "", (item.links || []).length ? "🔗" + item.links!.length : ""]
-            .filter(Boolean)
-            .join(" · ")}
+          {[item.qty, bought ? "Bought " + bought : ""].filter(Boolean).join(" · ")}
+          {linkBadge(item)}
         </div>
       </span>
       <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -101,10 +110,8 @@ export function GroceriesPage() {
   const doc = state.doc!;
   const lists = doc.groceryLists || [];
   const [sel, setSel] = useState<string | null>(null);
-  const [showBought, setShowBought] = useState(false);
   const list = lists.find((l) => l.id === sel) ?? lists[0] ?? null;
   const active = list ? activeItems(list) : [];
-  const bought = list ? purchasedItems(list) : [];
   const dueCount = active.filter((i) => expectInfo(i.expectDate).overdue).length;
 
   return (
@@ -112,7 +119,7 @@ export function GroceriesPage() {
       <header className="scrhdr">
         <div className="hdr-title">Groceries</div>
         <div className="hdr-left">
-          <button className="cbtn small" onClick={() => openSheet({ name: "grocery-more" })} aria-label="More options">
+          <button className="cbtn small" onClick={() => openSheet({ name: "grocery-more", id: list ? list.id : "" })} aria-label="More options">
             {IC.dots}
           </button>
         </div>
@@ -141,34 +148,39 @@ export function GroceriesPage() {
         </div>
       ) : (
         <>
-          <div className="sec-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ flex: 1 }}>
-              {list.name} · {active.length} to buy{dueCount ? ` · ${dueCount} overdue` : ""}
-            </span>
-            {list.share && (
-              <span className="pill on" style={{ flex: "none" }}>
-                Shared
-              </span>
-            )}
-            <button
-              type="button"
-              className="row-btn"
-              onClick={() => openSheet({ name: "grocery-share", id: list.id })}
-              aria-label="Share list"
-            >
-              {IC.share}
-            </button>
-            <button
-              type="button"
-              className="row-btn"
-              onClick={() => openSheet({ name: "grocery-list", id: list.id })}
-              aria-label="Rename or delete list"
-            >
-              {IC.pen}
-            </button>
-            <button type="button" className="btn mini" onClick={() => openSheet({ name: "grocery-item", id: list.id })}>
-              {IC.plus} Add item
-            </button>
+          <div className="g-head">
+            <div className="g-title-row">
+              <span className="g-title">{list.name}</span>
+              {list.share && (
+                <span className="pill on" style={{ flex: "none" }}>
+                  Shared
+                </span>
+              )}
+            </div>
+            <div className="g-sub">
+              {active.length} to buy{dueCount ? ` · ${dueCount} overdue` : ""}
+            </div>
+            <div className="g-actions">
+              <button type="button" className="btn mini g-add" onClick={() => openSheet({ name: "grocery-item", id: list.id })}>
+                <span className="g-add-ic">{IC.plus}</span> Add item
+              </button>
+              <button
+                type="button"
+                className="row-btn"
+                onClick={() => openSheet({ name: "grocery-share", id: list.id })}
+                aria-label="Share list"
+              >
+                {IC.share}
+              </button>
+              <button
+                type="button"
+                className="row-btn"
+                onClick={() => openSheet({ name: "grocery-list", id: list.id })}
+                aria-label="Rename or delete list"
+              >
+                {IC.pen}
+              </button>
+            </div>
           </div>
           {active.length ? (
             active.map((it) => <ActiveRow key={it.id} item={it} listId={list.id} />)
@@ -176,22 +188,6 @@ export function GroceriesPage() {
             <div className="card">
               <Empty icon={IC.check} title="All stocked up" sub="Nothing left to buy on this list" />
             </div>
-          )}
-          {bought.length > 0 && (
-            <>
-              <div
-                className="sec-label"
-                style={{ display: "flex", alignItems: "center", gap: 8 }}
-                onClick={() => setShowBought((v) => !v)}
-                role="button"
-              >
-                <span style={{ flex: 1 }}>
-                  Already purchased · {bought.length}
-                </span>
-                <span className="row-btn" aria-hidden="true">{showBought ? IC.chev : IC.right}</span>
-              </div>
-              {showBought && bought.map((it) => <PurchasedRow key={it.id} item={it} listId={list.id} />)}
-            </>
           )}
         </>
       )}

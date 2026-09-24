@@ -70,6 +70,9 @@ export const IC: Record<string, ReactNode> = {
   pen: (
     <Svg><path d="M4.5 19.5l.9-4 10.6-10.6 3 3L8.4 18.6z" /><path d="M14 6l3 3" /></Svg>
   ),
+  link: (
+    <Svg><path d="M10 13.5a4.5 4.5 0 0 0 6.8.5l2.7-2.7a4.5 4.5 0 0 0-6.4-6.4l-1.6 1.6" /><path d="M14 10.5a4.5 4.5 0 0 0-6.8-.5l-2.7 2.7a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6" /></Svg>
+  ),
   empty: (
     <Svg><path d="M4 5h16v14H4z" /><path d="M4 10h16M9 15h6" /></Svg>
   ),
