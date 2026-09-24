@@ -1,11 +1,10 @@
 // Bucket drill-down — 50-30-20 Needs/Wants/Savings from Insights.
-// Mirrors CategoryPage: month scope + account chip + day groups.
-// Predicate matches the Insights card math exactly: tag-matched expenses
-// (account filter applies) plus, for Savings, transfers INTO savings
-// accounts that month (account filter not applied, same as the card).
+// Needs/Wants mirror CategoryPage: month scope + account chip + day groups.
+// Savings is balance-based (not transactional): it lists the savings
+// accounts with their current balances; moves never count as flow.
 
-import { Empty, OvCard, SwipeMk, TrendIcon } from "../components/ui";
-import { NW_META, accById, bucketTxns } from "../data/finance";
+import { AccountAvatar, Empty, OvCard, SwipeMk, TrendIcon } from "../components/ui";
+import { NW_META, accBalance, accById, bucketTxns } from "../data/finance";
 import type { NwKey } from "../data/finance";
 import { dayLabel, monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
@@ -47,13 +46,22 @@ export function BucketPage() {
   }
   const key: NwKey = flt.bucket;
   const meta = NW_META[key];
+  const isSaving = key === "saving";
 
-  const list = bucketTxns(doc, key, mkey, flt.acc);
-  const total = list.reduce((s, t) => s + t.amount, 0);
-  const prevTotal = bucketTxns(doc, key, prevKey, flt.acc).reduce((s, t) => s + t.amount, 0);
+  const savAccs = (doc.accounts || []).filter((a) => a.kind === "savings");
+  const savList = isSaving && flt.acc !== "all" ? savAccs.filter((a) => a.id === flt.acc) : savAccs;
+  const savTotal = savList.reduce((s, a) => s + accBalance(doc, a.id), 0);
+
+  const list = isSaving ? [] : bucketTxns(doc, key, mkey, flt.acc);
+  const total = isSaving ? savTotal : list.reduce((s, t) => s + t.amount, 0);
+  const prevTotal = isSaving ? 0 : bucketTxns(doc, key, prevKey, flt.acc).reduce((s, t) => s + t.amount, 0);
 
   let delta: ReactNode;
-  if (total === 0) delta = <span className="cat-delta mute">Nothing this month</span>;
+  if (isSaving)
+    delta = (
+      <span className="cat-delta mute">{savList.length ? "Current savings" : "No savings accounts yet"}</span>
+    );
+  else if (total === 0) delta = <span className="cat-delta mute">Nothing this month</span>;
   else if (prevTotal === 0)
     delta = (
       <span className="cat-delta mute">
@@ -96,9 +104,9 @@ export function BucketPage() {
           </button>
         </div>
       </header>
-      <SwipeMk className="cat-metric" onTap={() => openSheet({ name: "month" })}>
+      <SwipeMk className="cat-metric" onTap={isSaving ? undefined : () => openSheet({ name: "month" })}>
         <span className="cat-title">
-          {meta.emoji} {meta.name} {IC.chev}
+          {meta.emoji} {meta.name} {isSaving ? null : IC.chev}
         </span>
         <span className="cat-total">{rupees(total, hide)}</span>
         {delta}
@@ -108,9 +116,11 @@ export function BucketPage() {
         <button className="ov-chip circ" onClick={() => go("activity", state.view)} aria-label="Search">
           {IC.search}
         </button>
-        <button className="ov-chip" onClick={() => openSheet({ name: "month" })}>
-          {monthName}
-        </button>
+        {isSaving ? null : (
+          <button className="ov-chip" onClick={() => openSheet({ name: "month" })}>
+            {monthName}
+          </button>
+        )}
         <button
           className={"ov-chip " + (acc ? "on" : "")}
           onClick={() => openSheet({ name: "account-filter" })}
@@ -125,7 +135,36 @@ export function BucketPage() {
         </button>
       </div>
       <div className="ov-groups">
-        {groups.length ? (
+        {isSaving ? (
+          savList.length ? (
+            savList.map((a) => (
+              <div
+                key={a.id}
+                className="card"
+                onClick={() => openSheet({ name: "account-edit", id: a.id })}
+                role="button"
+              >
+                <div className="bud-top">
+                  <AccountAvatar a={a} />
+                  <span className="bname-h">
+                    {a.name}
+                    <div className="tsub" style={{ textTransform: "capitalize" }}>
+                      Savings account
+                    </div>
+                  </span>
+                  <span className="tamt">
+                    {rupees(accBalance(doc, a.id), hide)}
+                    <div className="tsub" style={{ textAlign: "right" }}>
+                      Current savings
+                    </div>
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <Empty icon={IC.empty} title="No savings accounts" sub="Add one from Accounts → Add → Savings" />
+          )
+        ) : groups.length ? (
           groups.map((g) => (
             <div key={g.date}>
               <div className="ov-dg">

@@ -28,18 +28,25 @@ export const NW_META = {
 export type NwKey = keyof typeof NW_META;
 
 /* 50-30-20 drill predicate — single source of truth for the Insights cards,
-   the bucket drill page, and export. Expenses match their category tag
-   (account filter applies); Savings also counts transfers INTO savings
-   accounts that month (gross in; account filter not applied). */
+   the bucket drill page, and export. Needs/Wants match their category tag
+   (expense-only, account filter applies). Savings is NOT transactional:
+   it is the balance of savings accounts (see savingsBalance), so this
+   returns no transactions for "saving" — moves never count as flow. */
 export function bucketTxns(doc: Doc, key: NwKey, mkey: string, acc: string): Txn[] {
-  const savIds = new Set((doc.accounts || []).filter((a) => a.kind === "savings").map((a) => a.id));
+  if (key === "saving") return [];
   return sortedTxs(doc).filter((t) => {
-    if (t.date.slice(0, 7) !== mkey) return false;
-    if (t.dir === "trans") return key === "saving" && !!t.to && savIds.has(t.to);
-    if (t.dir !== "expense") return false;
+    if (t.date.slice(0, 7) !== mkey || t.dir !== "expense") return false;
     if (acc !== "all" && t.accountId !== acc) return false;
     return (catById(doc, t.categoryId).need || "need") === key;
   });
+}
+
+/* Savings bucket amount: sum of current savings-account balances
+   (the "Current savings" figure from Accounts; excludes previous savings). */
+export function savingsBalance(doc: Doc): number {
+  return (doc.accounts || [])
+    .filter((a) => a.kind === "savings")
+    .reduce((s, a) => s + accBalance(doc, a.id), 0);
 }
 
 export function catById(doc: Doc, id: string): Category {
@@ -471,6 +478,17 @@ export function expData(doc: Doc, view: View, mkey: string, flt: Filters): Recor
   if (view === "bucket") {
     const key = (flt.bucket === "need" || flt.bucket === "want" || flt.bucket === "saving") ? flt.bucket : "need";
     const meta = NW_META[key];
+    if (key === "saving") {
+      const savAccs = (doc.accounts || []).filter((a) => a.kind === "savings");
+      const shown = flt.acc !== "all" ? savAccs.filter((a) => a.id === flt.acc) : savAccs;
+      env.data = {
+        scope: { id: key, name: meta.name, emoji: meta.emoji, rule: meta.rule },
+        total: shown.reduce((s, a) => s + accBalance(doc, a.id), 0),
+        savingsAccounts: shown.map((a) => ({ id: a.id, name: a.name, balance: accBalance(doc, a.id), prev: a.prev != null ? a.prev : null })),
+        transactions: [],
+      };
+      return env;
+    }
     const list = bucketTxns(doc, key, mkey, flt.acc);
     const total = list.reduce((s, t) => s + t.amount, 0);
     const prevTotal = bucketTxns(doc, key, prevKey, flt.acc).reduce((s, t) => s + t.amount, 0);

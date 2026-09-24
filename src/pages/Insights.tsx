@@ -6,7 +6,7 @@ import { useState } from "react";
 import { DonutHero } from "../components/charts";
 import type { DonutDetail } from "../components/charts";
 import { CatSumCard, Empty, ItemSumCard, MerchSumCard, MerchantLogoImg, TrendIcon } from "../components/ui";
-import { NW_META, PAL, accById, bucketTxns, catById, merchById, monthStats } from "../data/finance";
+import { NW_META, PAL, accById, bucketTxns, catById, merchById, monthStats, savingsBalance } from "../data/finance";
 import type { NwKey } from "../data/finance";
 import { catEmoji, fallbackEmoji, monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
@@ -89,12 +89,17 @@ export function InsightsPage() {
   let nwBuckets: NwBucket[] = [];
   let nwPrev = 0;
   if (grp === "nws") {
-    nwBuckets = (Object.keys(NW_META) as NwKey[])
+    const flow = (Object.keys(NW_META) as NwKey[])
+      .filter((k) => k !== "saving")
       .map((k) => {
         const list = bucketTxns(doc, k, mkey, flt.acc);
         return { key: k, count: list.length, amt: list.reduce((s, t) => s + t.amount, 0) };
-      })
-      .filter((b) => b.amt > 0);
+      });
+    const savAccs = (doc.accounts || []).filter((a) => a.kind === "savings");
+    nwBuckets = [
+      ...flow,
+      { key: "saving" as NwKey, count: savAccs.length, amt: savingsBalance(doc) },
+    ].filter((b) => b.amt > 0);
     nwPrev = (doc.accounts || [])
       .filter((a) => a.kind === "savings")
       .reduce((s, a) => s + (a.prev || 0), 0);
