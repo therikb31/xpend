@@ -320,25 +320,19 @@ export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: 
             +
           </button>
         </span>
-        <span className="unit-seg" role="group" aria-label="Quantity unit">
+        <select
+          className="unit-select"
+          value={qunit}
+          onChange={(e) => setQunit(e.target.value as QtyUnit)}
+          aria-label="Quantity unit"
+        >
           {UNITS.map((u) => (
-            <button
-              key={u}
-              type="button"
-              className={qunit === u ? "on" : ""}
-              onClick={() => setQunit(u)}
-            >
+            <option key={u} value={u}>
               {u}
-            </button>
+            </option>
           ))}
-          <button
-            type="button"
-            className={qunit === "custom" ? "on" : ""}
-            onClick={() => setQunit("custom")}
-          >
-            …
-          </button>
-        </span>
+          <option value="custom">Other</option>
+        </select>
       </div>
       {qunit === "custom" && (
         <input
