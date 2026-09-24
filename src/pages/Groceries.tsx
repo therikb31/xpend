@@ -156,30 +156,17 @@ export function GroceriesPage() {
                   Shared
                 </span>
               )}
+              <button
+                type="button"
+                className="g-plusbtn"
+                onClick={() => openSheet({ name: "grocery-item", id: list.id })}
+                aria-label="Add item"
+              >
+                {IC.plus}
+              </button>
             </div>
             <div className="g-sub">
               {active.length} to buy{dueCount ? ` · ${dueCount} overdue` : ""}
-            </div>
-            <div className="g-actions">
-              <button type="button" className="btn mini g-add" onClick={() => openSheet({ name: "grocery-item", id: list.id })}>
-                <span className="g-add-ic">{IC.plus}</span> Add item
-              </button>
-              <button
-                type="button"
-                className="row-btn"
-                onClick={() => openSheet({ name: "grocery-share", id: list.id })}
-                aria-label="Share list"
-              >
-                {IC.share}
-              </button>
-              <button
-                type="button"
-                className="row-btn"
-                onClick={() => openSheet({ name: "grocery-list", id: list.id })}
-                aria-label="Rename or delete list"
-              >
-                {IC.pen}
-              </button>
             </div>
           </div>
           {active.length ? (

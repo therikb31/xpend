@@ -372,6 +372,20 @@ export function GroceryMoreSheet() {
         <span className="rname">Join shared list</span>
         {IC.right}
       </button>
+      {listId && (
+        <button className="sh-row" onClick={() => openSheet({ name: "grocery-share", id: listId })}>
+          <span className="ccircle">{IC.share}</span>
+          <span className="rname">Share list</span>
+          {IC.right}
+        </button>
+      )}
+      {listId && (
+        <button className="sh-row" onClick={() => openSheet({ name: "grocery-list", id: listId })}>
+          <span className="ccircle">{IC.pen}</span>
+          <span className="rname">Rename or delete list</span>
+          {IC.right}
+        </button>
+      )}
       {boughtN > 0 && (
         <button className="sh-row" onClick={() => openSheet({ name: "grocery-purchased", id: listId })}>
           <span className="ccircle">{IC.check}</span>
