@@ -28,12 +28,11 @@ export const NW_META = {
 export type NwKey = keyof typeof NW_META;
 
 /* 50-30-20 drill predicate — single source of truth for the Insights cards,
-   the bucket drill page, and export. Needs/Wants match their category tag
-   (expense-only, account filter applies). Savings is NOT transactional:
-   it is the balance of savings accounts (see savingsBalance), so this
-   returns no transactions for "saving" — moves never count as flow. */
+   the bucket drill page, and export. Buckets match their category tag
+   (expense-only, account filter applies). Transfers never count as flow:
+   money moved into savings shows up via the account balance instead
+   (see savingsBalance). */
 export function bucketTxns(doc: Doc, key: NwKey, mkey: string, acc: string): Txn[] {
-  if (key === "saving") return [];
   return sortedTxs(doc).filter((t) => {
     if (t.date.slice(0, 7) !== mkey || t.dir !== "expense") return false;
     if (acc !== "all" && t.accountId !== acc) return false;
@@ -481,11 +480,12 @@ export function expData(doc: Doc, view: View, mkey: string, flt: Filters): Recor
     if (key === "saving") {
       const savAccs = (doc.accounts || []).filter((a) => a.kind === "savings");
       const shown = flt.acc !== "all" ? savAccs.filter((a) => a.id === flt.acc) : savAccs;
+      const txList = bucketTxns(doc, key, mkey, flt.acc);
       env.data = {
         scope: { id: key, name: meta.name, emoji: meta.emoji, rule: meta.rule },
-        total: shown.reduce((s, a) => s + accBalance(doc, a.id), 0),
+        total: shown.reduce((s, a) => s + accBalance(doc, a.id), 0) + txList.reduce((s, t) => s + t.amount, 0),
         savingsAccounts: shown.map((a) => ({ id: a.id, name: a.name, balance: accBalance(doc, a.id), prev: a.prev != null ? a.prev : null })),
-        transactions: [],
+        transactions: resolvedTxs(doc, txList),
       };
       return env;
     }

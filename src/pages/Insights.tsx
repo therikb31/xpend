@@ -95,10 +95,16 @@ export function InsightsPage() {
         const list = bucketTxns(doc, k, mkey, flt.acc);
         return { key: k, count: list.length, amt: list.reduce((s, t) => s + t.amount, 0) };
       });
+    // Savings = account balances + saving-tagged expenses (transfers excluded).
     const savAccs = (doc.accounts || []).filter((a) => a.kind === "savings");
+    const savTx = bucketTxns(doc, "saving", mkey, flt.acc);
     nwBuckets = [
       ...flow,
-      { key: "saving" as NwKey, count: savAccs.length, amt: savingsBalance(doc) },
+      {
+        key: "saving" as NwKey,
+        count: savAccs.length + savTx.length,
+        amt: savingsBalance(doc) + savTx.reduce((s, t) => s + t.amount, 0),
+      },
     ].filter((b) => b.amt > 0);
     nwPrev = (doc.accounts || [])
       .filter((a) => a.kind === "savings")

@@ -52,8 +52,9 @@ export function BucketPage() {
   const savList = isSaving && flt.acc !== "all" ? savAccs.filter((a) => a.id === flt.acc) : savAccs;
   const savTotal = savList.reduce((s, a) => s + accBalance(doc, a.id), 0);
 
-  const list = isSaving ? [] : bucketTxns(doc, key, mkey, flt.acc);
-  const total = isSaving ? savTotal : list.reduce((s, t) => s + t.amount, 0);
+  const list = bucketTxns(doc, key, mkey, flt.acc);
+  const txTotal = list.reduce((s, t) => s + t.amount, 0);
+  const total = isSaving ? savTotal + txTotal : txTotal;
   const prevTotal = isSaving ? 0 : bucketTxns(doc, key, prevKey, flt.acc).reduce((s, t) => s + t.amount, 0);
 
   let delta: ReactNode;
@@ -135,7 +136,7 @@ export function BucketPage() {
         </button>
       </div>
       <div className="ov-groups">
-        {isSaving ? (
+        {isSaving && (
           savList.length ? (
             savList.map((a) => (
               <div
@@ -164,28 +165,31 @@ export function BucketPage() {
           ) : (
             <Empty icon={IC.empty} title="No savings accounts" sub="Add one from Accounts → Add → Savings" />
           )
-        ) : groups.length ? (
-          groups.map((g) => (
-            <div key={g.date}>
-              <div className="ov-dg">
-                <span className="ov-dg-day">{dayLabel(g.date)}</span>
-                <span className="ov-dg-amt">
-                  {rupees(
-                    g.items.reduce((s, t) => s + t.amount, 0),
-                    hide
-                  )}
-                </span>
-              </div>
-              <div className="ov-day">
-                {g.items.map((t) => (
-                  <OvCard key={t.id} doc={doc} t={t} onOpen={openTxn} />
-                ))}
-              </div>
-            </div>
-          ))
-        ) : (
-          <Empty icon={IC.empty} title="No transactions" sub={`Nothing in ${meta.name} for this month yet`} />
         )}
+        {!isSaving || list.length ? (
+          groups.length ? (
+            groups.map((g) => (
+              <div key={g.date}>
+                <div className="ov-dg">
+                  <span className="ov-dg-day">{dayLabel(g.date)}</span>
+                  <span className="ov-dg-amt">
+                    {rupees(
+                      g.items.reduce((s, t) => s + t.amount, 0),
+                      hide
+                    )}
+                  </span>
+                </div>
+                <div className="ov-day">
+                  {g.items.map((t) => (
+                    <OvCard key={t.id} doc={doc} t={t} onOpen={openTxn} />
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <Empty icon={IC.empty} title="No transactions" sub={`Nothing in ${meta.name} for this month yet`} />
+          )
+        ) : null}
       </div>
     </div>
   );
