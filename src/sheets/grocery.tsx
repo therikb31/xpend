@@ -3,12 +3,11 @@
 // by a plain date input; deletes are tombstones for shared-list merges.
 
 import { useState } from "react";
-import { addDaysStr, dayDiff, deviceName, findGroceryItem, purchasedItems } from "../lib/grocery";
+import { addDaysStr, dayDiff, deviceName, findGroceryItem } from "../lib/grocery";
 import { todayStr, uid } from "../lib/format";
 import { MAX_LINKS, buildLink, faviconFor, normalizeUrl } from "../lib/unfurl";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
-import { PurchasedRow } from "../pages/Groceries";
 import type { BuyLink } from "../types";
 import { Grab } from "./Sheet";
 const DAY_CHIPS: Array<{ label: string; days: number }> = [
@@ -354,11 +353,7 @@ export function GroceryListSheet({ id }: { id?: string }) {
 }
 
 export function GroceryMoreSheet() {
-  const { state, openSheet, closeSheet } = useApp();
-  const doc = state.doc!;
-  const listId = state.sheet?.id || "";
-  const list = (doc.groceryLists || []).find((l) => l.id === listId);
-  const boughtN = list ? purchasedItems(list).length : 0;
+  const { openSheet, closeSheet } = useApp();
   return (
     <>
       <Grab />
@@ -372,27 +367,6 @@ export function GroceryMoreSheet() {
         <span className="rname">Join shared list</span>
         {IC.right}
       </button>
-      {listId && (
-        <button className="sh-row" onClick={() => openSheet({ name: "grocery-share", id: listId })}>
-          <span className="ccircle">{IC.share}</span>
-          <span className="rname">Share list</span>
-          {IC.right}
-        </button>
-      )}
-      {listId && (
-        <button className="sh-row" onClick={() => openSheet({ name: "grocery-list", id: listId })}>
-          <span className="ccircle">{IC.pen}</span>
-          <span className="rname">Rename or delete list</span>
-          {IC.right}
-        </button>
-      )}
-      {boughtN > 0 && (
-        <button className="sh-row" onClick={() => openSheet({ name: "grocery-purchased", id: listId })}>
-          <span className="ccircle">{IC.check}</span>
-          <span className="rname">Already purchased · {boughtN}</span>
-          {IC.right}
-        </button>
-      )}
       <button className="sh-row" onClick={() => openSheet({ name: "export" })}>
         <span className="ccircle">{IC.share}</span>
         <span className="rname">Export data</span>
@@ -402,29 +376,6 @@ export function GroceryMoreSheet() {
         <span className="ccircle">{IC.x}</span>
         <span className="rname">Close</span>
         {IC.right}
-      </button>
-    </>
-  );
-}
-
-export function GroceryPurchasedSheet({ listId }: { listId: string }) {
-  const { state, closeSheet } = useApp();
-  const doc = state.doc!;
-  const list = (doc.groceryLists || []).find((l) => l.id === listId);
-  const bought = list ? purchasedItems(list) : [];
-  return (
-    <>
-      <Grab />
-      <div className="sh-title">Already purchased{bought.length ? ` · ${bought.length}` : ""}</div>
-      {bought.length ? (
-        bought.map((it) => <PurchasedRow key={it.id} item={it} listId={list!.id} />)
-      ) : (
-        <div className="tsub" style={{ margin: "0 2px 8px", color: "var(--muted)" }}>
-          Nothing purchased yet.
-        </div>
-      )}
-      <button className="btn ghost" style={{ marginTop: 12 }} onClick={closeSheet}>
-        Done
       </button>
     </>
   );

@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { Empty } from "../components/ui";
 import { IC } from "../lib/icons";
-import { activeItems, expectInfo } from "../lib/grocery";
+import { activeItems, expectInfo, purchasedItems } from "../lib/grocery";
 import { useApp } from "../services/store";
 import type { GroceryItem } from "../types";
 
@@ -110,8 +110,10 @@ export function GroceriesPage() {
   const doc = state.doc!;
   const lists = doc.groceryLists || [];
   const [sel, setSel] = useState<string | null>(null);
+  const [showBought, setShowBought] = useState(false);
   const list = lists.find((l) => l.id === sel) ?? lists[0] ?? null;
   const active = list ? activeItems(list) : [];
+  const bought = list ? purchasedItems(list) : [];
   const dueCount = active.filter((i) => expectInfo(i.expectDate).overdue).length;
 
   return (
@@ -119,7 +121,7 @@ export function GroceriesPage() {
       <header className="scrhdr">
         <div className="hdr-title">Groceries</div>
         <div className="hdr-left">
-          <button className="cbtn small" onClick={() => openSheet({ name: "grocery-more", id: list ? list.id : "" })} aria-label="More options">
+          <button className="cbtn small" onClick={() => openSheet({ name: "grocery-more" })} aria-label="More options">
             {IC.dots}
           </button>
         </div>
@@ -165,8 +167,26 @@ export function GroceriesPage() {
                 {IC.plus}
               </button>
             </div>
-            <div className="g-sub">
-              {active.length} to buy{dueCount ? ` · ${dueCount} overdue` : ""}
+            <div className="g-sub g-tools-row">
+              <span style={{ flex: 1, minWidth: 0 }}>
+                {active.length} to buy{dueCount ? ` · ${dueCount} overdue` : ""}
+              </span>
+              <button
+                type="button"
+                className="g-tool"
+                onClick={() => openSheet({ name: "grocery-share", id: list.id })}
+                aria-label="Share list"
+              >
+                {IC.share}
+              </button>
+              <button
+                type="button"
+                className="g-tool"
+                onClick={() => openSheet({ name: "grocery-list", id: list.id })}
+                aria-label="Rename or delete list"
+              >
+                {IC.pen}
+              </button>
             </div>
           </div>
           {active.length ? (
@@ -175,6 +195,17 @@ export function GroceriesPage() {
             <div className="card">
               <Empty icon={IC.check} title="All stocked up" sub="Nothing left to buy on this list" />
             </div>
+          )}
+          {bought.length > 0 && (
+            <>
+              <button type="button" className="g-bought" onClick={() => setShowBought((v) => !v)}>
+                <span>
+                  Already purchased · {bought.length}
+                </span>
+                <span aria-hidden="true">{showBought ? IC.chev : IC.right}</span>
+              </button>
+              {showBought && bought.map((it) => <PurchasedRow key={it.id} item={it} listId={list.id} />)}
+            </>
           )}
         </>
       )}

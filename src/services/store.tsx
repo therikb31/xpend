@@ -40,7 +40,7 @@ export type SheetName =
   | "account-add" | "account-edit" | "account-icon"
   | "gist-setup" | "gist-unlock" | "gist-restore"
   | "export" | "pwa-help" | "budget-form" | "budget-detail"
-  | "grocery-item" | "grocery-list" | "grocery-share" | "grocery-join" | "grocery-more" | "grocery-purchased"
+  | "grocery-item" | "grocery-list" | "grocery-share" | "grocery-join" | "grocery-more"
   | "friend-add" | "github-link" | "import-merge" | "open-in-app" | "day-txns";
 
 export interface SheetSpec {

@@ -521,6 +521,13 @@ select.sel{
 .g-title-row{display:flex;align-items:center;gap:8px;min-width:0}
 .g-title{flex:1;min-width:0;font-size:21px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .g-sub{font-size:13px;color:var(--muted);margin:2px 2px 0}
+.g-tools-row{display:flex;align-items:center;gap:2px}
+.g-tool{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;color:var(--muted-2)}
+.g-tool:active{color:var(--text);background:var(--faint)}
+.g-tool svg{width:15px;height:15px}
+.g-bought{display:flex;align-items:center;gap:6px;width:100%;padding:10px 2px 4px;font-size:12.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
+.g-bought span:first-child{flex:1;min-width:0;text-align:left}
+.g-bought svg{width:14px;height:14px}
 .g-plusbtn{flex:none;width:34px;height:34px;border-radius:50%;background:#fff;color:#0B0E11;display:inline-flex;align-items:center;justify-content:center}
 .g-plusbtn:active{opacity:.85}
 .g-plusbtn svg{width:15px;height:15px}
