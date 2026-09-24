@@ -377,29 +377,38 @@ export function SettingsPage() {
             <span className={"pill " + (aiOn ? "on" : "")}>{aiOn ? "On" : "Off"}</span>
           </span>
         </div>
-        <div className="slab">
-          <span className="set" style={{ cursor: "default" }}>
-            <span className="s-label">
-              OpenRouter key
-              <div className="s-sub">Device-only · never synced · use a capped key</div>
-            </span>
-            <input
-              type="password"
-              value={aiKey}
-              onChange={(e) => setAiKey(e.target.value)}
-              placeholder="sk-or-v1-…"
-              style={{ marginTop: 0, maxWidth: 150, textAlign: "right" }}
-              autoComplete="off"
-            />
-          </span>
-        </div>
-        <button className="set" onClick={saveVerifyKey}>
-          <span className="s-label">
-            Save &amp; verify key
-            <div className="s-sub">{aiBusy ? "Checking…" : aiMsg || "Checks key + shows spend"}</div>
-          </span>
-          {IC.check}
-        </button>
+        {!aiOn && (
+          <>
+            <div className="slab">
+              <span className="set" style={{ cursor: "default" }}>
+                <span className="s-label">
+                  OpenRouter key
+                  <div className="s-sub">Device-only · never synced · use a capped key</div>
+                </span>
+                <input
+                  type="password"
+                  value={aiKey}
+                  onChange={(e) => setAiKey(e.target.value)}
+                  placeholder="sk-or-v1-…"
+                  style={{ marginTop: 0, maxWidth: 150, textAlign: "right" }}
+                  autoComplete="off"
+                />
+              </span>
+            </div>
+            <button className="set" onClick={saveVerifyKey}>
+              <span className="s-label">
+                Save &amp; verify key
+                <div className="s-sub">{aiBusy ? "Checking…" : aiMsg || "Checks key + shows spend"}</div>
+              </span>
+              {IC.check}
+            </button>
+          </>
+        )}
+        {aiOn && aiMsg ? (
+          <div className="tsub" style={{ padding: "2px 2px 8px", color: "var(--muted)" }}>
+            {aiMsg}
+          </div>
+        ) : null}
         <div className="slab">
           <span className="set" style={{ cursor: "default" }}>
             <span className="s-label">
@@ -432,7 +441,7 @@ export function SettingsPage() {
           <button className="set" onClick={removeAiKey}>
             <span className="s-label">
               Remove key
-              <div className="s-sub">Chat turns off on this device</div>
+              <div className="s-sub">Deletes it — add a new one anytime</div>
             </span>
             {IC.x}
           </button>
