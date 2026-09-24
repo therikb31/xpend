@@ -36,6 +36,7 @@ export function bucketTxns(doc: Doc, key: NwKey, mkey: string, acc: string): Txn
   return sortedTxs(doc).filter((t) => {
     if (t.date.slice(0, 7) !== mkey) return false;
     if (t.dir === "trans") return key === "saving" && !!t.to && savIds.has(t.to);
+    if (t.dir !== "expense") return false;
     if (acc !== "all" && t.accountId !== acc) return false;
     return (catById(doc, t.categoryId).need || "need") === key;
   });
