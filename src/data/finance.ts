@@ -48,6 +48,75 @@ export function savingsBalance(doc: Doc): number {
     .reduce((s, a) => s + accBalance(doc, a.id), 0);
 }
 
+/* Date-bounded per-account net (same definition as accBalance/netOf, but
+   only legs dated within-or-before mkey). Powers past-month savings. */
+function balanceAsOf(doc: Doc, id: string, mkey: string): number {
+  let n = 0;
+  for (const t of doc.transactions) {
+    if (t.date.slice(0, 7) > mkey) continue;
+    if (t.dir === "trans") {
+      if (t.from === id) n -= t.amount;
+      if (t.to === id) n += t.amount;
+      continue;
+    }
+    if (t.accountId !== id) continue;
+    n += t.dir === "income" ? t.amount : -t.amount;
+  }
+  return n;
+}
+
+export interface SavingsTally {
+  total: number; // balance + moved + tagged
+  balance: number; // savings held at month end (live for the current month)
+  moved: number; // manual Current → Previous moves dated in month
+  tagged: number; // saving-tagged expenses dated in month
+  movedTxns: Txn[];
+  taggedTxns: Txn[];
+  inTxns: Txn[]; // transfers into savings + income on savings, in month
+  outTxns: Txn[]; // transfers out (non-previous) + expenses on savings, in month
+  savAccs: Account[];
+}
+
+/* Month M's savings, computed purely from the ledger (no snapshots):
+   balance held at end of M + manual moves to Previous in M + tagged
+   expenses in M. Transfers never count as flow — money moved in shows up
+   via the balance exactly once. Current month uses live balances so the
+   card matches Accounts; past months use the date-bounded balance. */
+export function savingsTally(doc: Doc, mkey: string, acc: string): SavingsTally {
+  const nowKey = monthKey(new Date());
+  const savAccs = (doc.accounts || []).filter((a) => a.kind === "savings");
+  const savIds = new Set(savAccs.map((a) => a.id));
+  const inMonth = (d: string) => d.slice(0, 7) === mkey;
+  const legOk = (id: string) => acc === "all" || acc === id;
+  const balance =
+    mkey === nowKey
+      ? savAccs.reduce((s, a) => s + accBalance(doc, a.id), 0)
+      : savAccs.reduce((s, a) => s + balanceAsOf(doc, a.id, mkey), 0);
+  const movedTxns = sortedTxs(doc).filter(
+    (t) => t.dir === "trans" && t.to === "__prev" && inMonth(t.date) && savIds.has(t.from) && legOk(t.from)
+  );
+  const taggedTxns = bucketTxns(doc, "saving", mkey, acc);
+  const inTxns = sortedTxs(doc).filter(
+    (t) =>
+      inMonth(t.date) &&
+      ((t.dir === "trans" && !!t.to && savIds.has(t.to) && legOk(t.to)) ||
+        (t.dir === "income" && savIds.has(t.accountId) && legOk(t.accountId)))
+  );
+  const outTxns = sortedTxs(doc).filter(
+    (t) =>
+      inMonth(t.date) &&
+      ((t.dir === "trans" && savIds.has(t.from) && t.to !== "__prev" && legOk(t.from)) ||
+        (t.dir === "expense" && savIds.has(t.accountId) && legOk(t.accountId)))
+  );
+  const sum = (l: Txn[]) => l.reduce((s, t) => s + t.amount, 0);
+  const moved = sum(movedTxns);
+  const tagged = sum(taggedTxns);
+  return {
+    total: balance + moved + tagged, balance, moved, tagged,
+    movedTxns, taggedTxns, inTxns, outTxns, savAccs,
+  };
+}
+
 export function catById(doc: Doc, id: string): Category {
   return (
     doc.categories.find((c) => c.id === id) ||
@@ -478,14 +547,13 @@ export function expData(doc: Doc, view: View, mkey: string, flt: Filters): Recor
     const key = (flt.bucket === "need" || flt.bucket === "want" || flt.bucket === "saving") ? flt.bucket : "need";
     const meta = NW_META[key];
     if (key === "saving") {
-      const savAccs = (doc.accounts || []).filter((a) => a.kind === "savings");
-      const shown = flt.acc !== "all" ? savAccs.filter((a) => a.id === flt.acc) : savAccs;
-      const txList = bucketTxns(doc, key, mkey, flt.acc);
+      const tal = savingsTally(doc, mkey, flt.acc);
+      const shown = flt.acc !== "all" ? tal.savAccs.filter((a) => a.id === flt.acc) : tal.savAccs;
       env.data = {
         scope: { id: key, name: meta.name, emoji: meta.emoji, rule: meta.rule },
-        total: shown.reduce((s, a) => s + accBalance(doc, a.id), 0) + txList.reduce((s, t) => s + t.amount, 0),
+        total: tal.total, balance: tal.balance, moved: tal.moved, tagged: tal.tagged,
         savingsAccounts: shown.map((a) => ({ id: a.id, name: a.name, balance: accBalance(doc, a.id), prev: a.prev != null ? a.prev : null })),
-        transactions: resolvedTxs(doc, txList),
+        transactions: resolvedTxs(doc, [...tal.inTxns, ...tal.movedTxns, ...tal.taggedTxns, ...tal.outTxns]),
       };
       return env;
     }

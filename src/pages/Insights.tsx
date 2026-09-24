@@ -5,7 +5,7 @@
 import { DonutHero } from "../components/charts";
 import type { DonutDetail } from "../components/charts";
 import { CatSumCard, Empty, ItemSumCard, MerchSumCard, MerchantLogoImg, TrendIcon } from "../components/ui";
-import { NW_META, PAL, accById, bucketTxns, catById, merchById, monthStats, savingsBalance } from "../data/finance";
+import { NW_META, PAL, accById, bucketTxns, catById, merchById, monthStats, savingsTally } from "../data/finance";
 import type { NwKey } from "../data/finance";
 import { catEmoji, fallbackEmoji, monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
@@ -95,15 +95,14 @@ export function InsightsPage() {
         const list = bucketTxns(doc, k, mkey, flt.acc);
         return { key: k, count: list.length, amt: list.reduce((s, t) => s + t.amount, 0) };
       });
-    // Savings = account balances + saving-tagged expenses (transfers excluded).
-    const savAccs = (doc.accounts || []).filter((a) => a.kind === "savings");
-    const savTx = bucketTxns(doc, "saving", mkey, flt.acc);
+    // Savings = end-of-month balance + manual moves to Previous + tagged.
+    const tal = savingsTally(doc, mkey, flt.acc);
     nwBuckets = [
       ...flow,
       {
         key: "saving" as NwKey,
-        count: savAccs.length + savTx.length,
-        amt: savingsBalance(doc) + savTx.reduce((s, t) => s + t.amount, 0),
+        count: tal.savAccs.length + tal.movedTxns.length + tal.taggedTxns.length,
+        amt: tal.total,
       },
     ].filter((b) => b.amt > 0);
     nwPrev = (doc.accounts || [])

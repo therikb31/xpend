@@ -4,7 +4,7 @@
 // accounts with their current balances; moves never count as flow.
 
 import { AccountAvatar, Empty, OvCard, SwipeMk, TrendIcon } from "../components/ui";
-import { NW_META, accBalance, accById, bucketTxns } from "../data/finance";
+import { NW_META, accBalance, accById, bucketTxns, savingsTally } from "../data/finance";
 import type { NwKey } from "../data/finance";
 import { dayLabel, monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
@@ -47,18 +47,31 @@ export function BucketPage() {
   const key: NwKey = flt.bucket;
   const meta = NW_META[key];
   const isSaving = key === "saving";
+  const isCurMonth = mkey === monthKey(new Date());
 
-  const savAccs = (doc.accounts || []).filter((a) => a.kind === "savings");
-  const savList = isSaving && flt.acc !== "all" ? savAccs.filter((a) => a.id === flt.acc) : savAccs;
-  const savTotal = savList.reduce((s, a) => s + accBalance(doc, a.id), 0);
+  const tal = savingsTally(doc, mkey, flt.acc);
+  const talPrev = savingsTally(doc, prevKey, flt.acc);
+  const savList =
+    isSaving && flt.acc !== "all" ? tal.savAccs.filter((a) => a.id === flt.acc) : tal.savAccs;
 
   const list = bucketTxns(doc, key, mkey, flt.acc);
   const txTotal = list.reduce((s, t) => s + t.amount, 0);
-  const total = isSaving ? savTotal + txTotal : txTotal;
-  const prevTotal = isSaving ? 0 : bucketTxns(doc, key, prevKey, flt.acc).reduce((s, t) => s + t.amount, 0);
+  const total = isSaving ? tal.total : txTotal;
+  const prevTotal = isSaving
+    ? talPrev.total
+    : bucketTxns(doc, key, prevKey, flt.acc).reduce((s, t) => s + t.amount, 0);
+
+  // Savings "saved" movements: transfers in + manual moves to Previous +
+  // tagged expenses (merge the desc-sorted lists back into date order).
+  const byNewest = (a: Txn, b: Txn) =>
+    a.date === b.date ? (b.createdAt || 0) - (a.createdAt || 0) : a.date < b.date ? 1 : -1;
+  const savedList = isSaving
+    ? [...tal.inTxns, ...tal.movedTxns, ...tal.taggedTxns].sort(byNewest)
+    : [];
+  const outList = isSaving ? tal.outTxns : [];
 
   let delta: ReactNode;
-  if (isSaving)
+  if (isSaving && isCurMonth)
     delta = (
       <span className="cat-delta mute">{savList.length ? "Current savings" : "No savings accounts yet"}</span>
     );
@@ -79,12 +92,37 @@ export function BucketPage() {
     );
   }
 
-  const groups: Array<{ date: string; items: Txn[] }> = [];
-  for (const t of list) {
-    const g = groups[groups.length - 1];
-    if (!g || g.date !== t.date) groups.push({ date: t.date, items: [t] });
-    else g.items.push(t);
-  }
+  const groupTxns = (items: Txn[]) => {
+    const g: Array<{ date: string; items: Txn[] }> = [];
+    for (const t of items) {
+      const last = g[g.length - 1];
+      if (!last || last.date !== t.date) g.push({ date: t.date, items: [t] });
+      else last.items.push(t);
+    }
+    return g;
+  };
+  const groups = groupTxns(list);
+  const savedGroups = groupTxns(savedList);
+  const outGroups = groupTxns(outList);
+  const txnGroups = (gs: Array<{ date: string; items: Txn[] }>) =>
+    gs.map((g) => (
+      <div key={g.date}>
+        <div className="ov-dg">
+          <span className="ov-dg-day">{dayLabel(g.date)}</span>
+          <span className="ov-dg-amt">
+            {rupees(
+              g.items.reduce((s, t) => s + t.amount, 0),
+              hide
+            )}
+          </span>
+        </div>
+        <div className="ov-day">
+          {g.items.map((t) => (
+            <OvCard key={t.id} doc={doc} t={t} onOpen={openTxn} />
+          ))}
+        </div>
+      </div>
+    ));
 
   const acc = flt.acc !== "all" ? accById(doc, flt.acc) : null;
   const accTxt = acc ? (acc.name.length > 11 ? acc.name.slice(0, 11) + "…" : acc.name) : "All accounts";
@@ -136,7 +174,7 @@ export function BucketPage() {
         </button>
       </div>
       <div className="ov-groups">
-        {isSaving && (
+        {isSaving && isCurMonth && (
           savList.length ? (
             savList.map((a) => (
               <div
@@ -166,26 +204,37 @@ export function BucketPage() {
             <Empty icon={IC.empty} title="No savings accounts" sub="Add one from Accounts → Add → Savings" />
           )
         )}
-        {!isSaving || list.length ? (
+        {isSaving && !isCurMonth && total > 0 && (
+          <div className="tsub" style={{ padding: "2px 18px 6px" }}>
+            Balance at end of {monthName} · {rupees(tal.balance, hide)}
+          </div>
+        )}
+        {isSaving && savedGroups.length > 0 && (
+          <div className="tsub" style={{ padding: "6px 18px 0" }}>
+            Saved this month
+          </div>
+        )}
+        {isSaving ? txnGroups(savedGroups) : null}
+        {isSaving && outGroups.length > 0 && (
+          <div className="tsub" style={{ padding: "6px 18px 0" }}>
+            Moved out
+          </div>
+        )}
+        {isSaving ? txnGroups(outGroups) : null}
+        {isSaving && total === 0 && savList.length === 0 ? (
+          <Empty
+            icon={IC.empty}
+            title={isCurMonth ? "No savings accounts" : "No savings"}
+            sub={
+              isCurMonth
+                ? "Add one from Accounts → Add → Savings"
+                : `Nothing saved in ${monthName} yet`
+            }
+          />
+        ) : null}
+        {!isSaving ? (
           groups.length ? (
-            groups.map((g) => (
-              <div key={g.date}>
-                <div className="ov-dg">
-                  <span className="ov-dg-day">{dayLabel(g.date)}</span>
-                  <span className="ov-dg-amt">
-                    {rupees(
-                      g.items.reduce((s, t) => s + t.amount, 0),
-                      hide
-                    )}
-                  </span>
-                </div>
-                <div className="ov-day">
-                  {g.items.map((t) => (
-                    <OvCard key={t.id} doc={doc} t={t} onOpen={openTxn} />
-                  ))}
-                </div>
-              </div>
-            ))
+            txnGroups(groups)
           ) : (
             <Empty icon={IC.empty} title="No transactions" sub={`Nothing in ${meta.name} for this month yet`} />
           )
