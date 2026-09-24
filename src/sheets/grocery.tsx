@@ -57,10 +57,11 @@ function LinkCard({
   };
   return (
     <div className="link-reveal">
-      <div className="link-under">
+      <div className="link-under" style={{ visibility: open ? "visible" : "hidden" }}>
         <button
           type="button"
           aria-label="Rename link"
+          tabIndex={open ? 0 : -1}
           onClick={() => {
             close();
             onEditStart();
@@ -68,7 +69,13 @@ function LinkCard({
         >
           {IC.pen}
         </button>
-        <button type="button" className="lu-del" aria-label="Delete link" onClick={onDelete}>
+        <button
+          type="button"
+          className="lu-del"
+          aria-label="Delete link"
+          tabIndex={open ? 0 : -1}
+          onClick={onDelete}
+        >
           {IC.trash}
         </button>
       </div>
@@ -91,14 +98,19 @@ function LinkCard({
           if (!d) return;
           const ddx = e.clientX - d.x;
           const ddy = e.clientY - d.y;
-          if (Math.abs(ddx) > 10 && Math.abs(ddx) > Math.abs(ddy) * 1.2) dragged.current = true;
-          if (ddx < 0) setDx(Math.max(-REVEAL_W, ddx));
+          const horizontal = Math.abs(ddx) > 10 && Math.abs(ddx) > Math.abs(ddy) * 1.2;
+          if (horizontal) dragged.current = true;
+          // Only a horizontal gesture may reveal — diagonal sheet scrolls
+          // must never translate or pin the card.
+          if (horizontal && ddx < 0) setDx(Math.max(-REVEAL_W, ddx));
         }}
         onPointerUp={(e) => {
           const d = drag.current;
           drag.current = null;
           if (!d) return;
-          if (e.clientX - d.x < -REVEAL_W / 2) {
+          const ddx = e.clientX - d.x;
+          const ddy = e.clientY - d.y;
+          if (ddx < -REVEAL_W / 2 && Math.abs(ddx) > Math.abs(ddy) * 1.2) {
             setOpen(true);
             setDx(-REVEAL_W);
           } else {
