@@ -293,7 +293,7 @@ html.is-standalone #app{height:100%}
 
 /* floating action buttons (+ mic, + add) */
 .fab-stack{
-  position:fixed;right:20px;bottom:calc(104px + env(safe-area-inset-bottom,0px));z-index:45;
+  position:fixed;right:20px;bottom:104px;z-index:45;
   display:flex;flex-direction:column;align-items:center;gap:13px;pointer-events:none;
 }
 .fab{pointer-events:auto;display:grid;place-items:center;border-radius:50%;box-shadow:0 10px 26px rgba(0,0,0,.5)}

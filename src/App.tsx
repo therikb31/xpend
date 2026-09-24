@@ -153,7 +153,7 @@ function Shell() {
     <div id="app" className={(ov ? "ov " : "") + (add ? "add" : "")}>
       <Screen />
       {!add && <BottomNav />}
-      {!add && state.booted && state.view !== "groceries" && (
+      {state.booted && state.view === "overview" && (
         <div className="fab-stack">
           <button className="fab add" onClick={openAdd} aria-label="Add transaction">
             {IC.plusB}
