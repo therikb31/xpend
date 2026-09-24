@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Empty } from "../components/ui";
+import { Markdown } from "../lib/markdown";
 import { monthKey } from "../lib/format";
 import { IC } from "../lib/icons";
 import {
@@ -243,7 +244,11 @@ export function AskPage() {
             </div>
           ) : (
             <div key={i} className="msg msg-ai">
-              {m.text || (busy && i === msgs.length - 1 ? "…" : "")}
+              {m.text ? (
+                <Markdown text={m.text} />
+              ) : (
+                busy && i === msgs.length - 1 ? "…" : ""
+              )}
               {m.usage?.total_tokens != null && (
                 <div className="msg-meta">~{(m.usage.total_tokens / 1000).toFixed(1)}k tokens</div>
               )}

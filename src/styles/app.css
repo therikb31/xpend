@@ -318,6 +318,18 @@ html.is-standalone #app{height:100%}
 .ask-send[disabled]{opacity:.35}
 .qprompts{display:flex;gap:8px;overflow-x:auto;padding:8px 2px;-webkit-overflow-scrolling:touch}
 .qprompts .chip{flex:none}
+.md{overflow-wrap:anywhere}
+.md p{margin:0 0 7px}
+.md p:last-child{margin-bottom:0}
+.md h4{margin:2px 0 7px;font-size:14.5px}
+.md ul,.md ol{margin:0 0 7px;padding-left:20px;display:flex;flex-direction:column;gap:3px}
+.md li{line-height:1.45}
+.md strong{font-weight:700}
+.md code{font-family:ui-monospace,monospace;font-size:12.5px;background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px}
+.md pre{margin:0 0 7px;background:rgba(0,0,0,.28);border-radius:10px;padding:9px 11px;overflow-x:auto}
+.md pre code{background:none;padding:0;white-space:pre}
+.md a{color:var(--teal,#4AA8A0)}
+.md hr{border:0;border-top:.5px solid rgba(255,255,255,.12);margin:8px 0}
 
 /* month picker sheet */
 .mk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:4px 0 6px}
