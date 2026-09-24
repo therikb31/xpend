@@ -11,7 +11,7 @@ import React, {
   useReducer,
   useRef,
 } from "react";
-import type { AddDraft, Doc, Filters, Txn, View } from "../types";
+import type { AddDraft, Doc, Filters, InsightGrp, Txn, View } from "../types";
 import { defaultDoc } from "../data/defaults";
 import {
   mergePool,
@@ -62,6 +62,7 @@ interface AppState {
   prevView: View;
   mkey: string;
   flt: Filters;
+  igrp: InsightGrp;
   add: AddDraft;
   editingId: string | null;
   sheet: SheetSpec | null;
@@ -103,6 +104,7 @@ type Action =
   | { t: "CLOSE_ADD"; view: View }
   | { t: "SET_MKEY"; mkey: string }
   | { t: "SET_FILTER"; patch: Partial<Filters> }
+  | { t: "SET_IGRP"; igrp: InsightGrp }
   | { t: "CLEAR_FILTERS" }
   | { t: "SET_ADD"; patch: Partial<AddDraft> }
   | { t: "OPEN_SHEET"; sheet: SheetSpec | null }
@@ -119,6 +121,7 @@ const initial: AppState = {
   prevView: "overview",
   mkey: monthKey(new Date()),
   flt: { q: "", dir: "all", cat: "all", acc: "all", merch: "all", bucket: "all" },
+  igrp: "cat" as InsightGrp,
   add: { amount: "", dir: "expense", categoryId: "cat-gro", accountId: "", date: todayStr(), note: "", merchantId: "" },
   editingId: null,
   sheet: null,
@@ -154,6 +157,8 @@ function reducer(s: AppState, a: Action): AppState {
       return { ...s, mkey: a.mkey };
     case "SET_FILTER":
       return { ...s, flt: { ...s.flt, ...a.patch } };
+    case "SET_IGRP":
+      return { ...s, igrp: a.igrp };
     case "CLEAR_FILTERS":
       return { ...s, flt: { ...s.flt, dir: "all", acc: "all", merch: "all", bucket: "all" } };
     case "SET_ADD":
@@ -194,6 +199,7 @@ interface Ctx {
   saveAdd: () => void;
   setMkey: (m: string) => void;
   setFilter: (patch: Partial<Filters>) => void;
+  setIgrp: (g: InsightGrp) => void;
   setAdd: (patch: Partial<AddDraft>) => void;
   shiftMonth: (delta: number) => void;
   openSheet: (sheet: SheetSpec) => void;
@@ -338,6 +344,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     const setMkey = (mkey: string) => dispatch({ t: "SET_MKEY", mkey });
     const setFilter = (patch: Partial<Filters>) => dispatch({ t: "SET_FILTER", patch });
+    const setIgrp = (igrp: InsightGrp) => dispatch({ t: "SET_IGRP", igrp });
     const setAdd = (patch: Partial<AddDraft>) => dispatch({ t: "SET_ADD", patch });
     const shiftMonth = (delta: number) => {
       const cur = s();
@@ -349,7 +356,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     return {
       state, toast, mutate, loadDoc, goTab, go, back, openAdd, closeAdd,
-      startEdit, keyInput, saveAdd, setMkey, setFilter, setAdd, shiftMonth, openSheet, closeSheet, bumpGist,
+      startEdit, keyInput, saveAdd, setMkey, setFilter, setIgrp, setAdd, shiftMonth, openSheet, closeSheet, bumpGist,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);

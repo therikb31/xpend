@@ -2,7 +2,6 @@
 // chips + sum cards). Items groups expense notes (normalized) with a
 // persisted frequency threshold; tap drills to a pre-searched Activity.
 
-import { useState } from "react";
 import { DonutHero } from "../components/charts";
 import type { DonutDetail } from "../components/charts";
 import { CatSumCard, Empty, ItemSumCard, MerchSumCard, MerchantLogoImg, TrendIcon } from "../components/ui";
@@ -31,12 +30,13 @@ interface ItemGroup {
 }
 
 export function InsightsPage() {
-  const { state, openSheet, setFilter, go, mutate } = useApp();
+  const { state, openSheet, setFilter, setIgrp, go, mutate } = useApp();
   const doc = state.doc!;
   const mkey = state.mkey;
   const flt = state.flt;
   const hide = !!doc.settings.hideBalances;
-  const [grp, setGrp] = useState<"cat" | "merch" | "item" | "nws">("cat");
+  const grp = state.igrp;
+  const setGrp = setIgrp;
   const minCount = doc.settings.itemMinCount ?? 2;
 
   const mk = parseMk(mkey);

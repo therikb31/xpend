@@ -221,6 +221,9 @@ export interface Filters {
   bucket: string; // 50-30-20 bucket key ("need" | "want" | "saving") or "all"
 }
 
+/** Insights tab — kept in global store so drill round-trips restore it. */
+export type InsightGrp = "cat" | "merch" | "item" | "nws";
+
 export interface AddDraft {
   amount: string; // raw keypad string — must stay a string
   dir: TxnDir;
