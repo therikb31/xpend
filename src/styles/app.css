@@ -824,6 +824,20 @@ input[type=month],input[type=date]{
 }
 input[type=month]::-webkit-calendar-picker-indicator,input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);cursor:pointer;opacity:.7;width:20px;height:20px;margin:0 0 0 6px;flex:none}
 input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit{color:var(--text);flex:1;min-width:0;max-width:100%;padding:0;overflow:hidden;white-space:nowrap}
+/* Clipping wrapper for date inputs: contains WebKit segment paint overflow
+   (iOS ignores overflow on the shadow datetime-edit pseudo itself). */
+.date-wrap{
+  display:flex;align-items:center;
+  width:100%;min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden;
+  background:var(--control);border:0;border-radius:16px;
+  height:52px;padding:0 16px;margin:4px 0 14px;
+}
+.date-wrap input[type=date]{
+  flex:1;min-width:0;max-width:100%;width:100%;
+  background:transparent;border:0;border-radius:0;outline:0;
+  height:100%;padding:0;margin:0;font-size:16px;font-family:inherit;color:var(--text);
+  color-scheme:dark;
+}
 /* Sheet children containment (iOS WebKit date-segment paint overflow). */
 #sheet-body>*{min-width:0;max-width:100%}
 

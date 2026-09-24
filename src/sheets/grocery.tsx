@@ -184,12 +184,14 @@ export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: 
           </button>
         ))}
       </div>
-      <input
-        type="date"
-        value={expectDate}
-        onChange={(e) => setExpectDate(e.target.value)}
-        style={{ marginTop: 8 }}
-      />
+      <div className="date-wrap" style={{ marginTop: 8 }}>
+        <input
+          type="date"
+          value={expectDate}
+          onChange={(e) => setExpectDate(e.target.value)}
+          aria-label="Expect to buy date"
+        />
+      </div>
       <div className="tsub" style={{ margin: "8px 2px 4px" }}>
         Buy online{links.length > 0 ? ` · ${links.length}` : ""}
       </div>

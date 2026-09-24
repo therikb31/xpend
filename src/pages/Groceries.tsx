@@ -101,7 +101,7 @@ export function GroceriesPage() {
   const doc = state.doc!;
   const lists = doc.groceryLists || [];
   const [sel, setSel] = useState<string | null>(null);
-  const [showBought, setShowBought] = useState(true);
+  const [showBought, setShowBought] = useState(false);
   const list = lists.find((l) => l.id === sel) ?? lists[0] ?? null;
   const active = list ? activeItems(list) : [];
   const bought = list ? purchasedItems(list) : [];
