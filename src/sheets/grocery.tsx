@@ -2,21 +2,160 @@
 // list create/rename/delete. Expected date is picked via day chips backed
 // by a plain date input; deletes are tombstones for shared-list merges.
 
-import { useState } from "react";
-import { addDaysStr, dayDiff, deviceName, findGroceryItem } from "../lib/grocery";
-import { todayStr, uid } from "../lib/format";
+import { useRef, useState } from "react";
+import { addDaysStr, deviceName, findGroceryItem } from "../lib/grocery";
+import { dayLabel, todayStr, uid } from "../lib/format";
 import { MAX_LINKS, buildLink, faviconFor, normalizeUrl } from "../lib/unfurl";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { BuyLink } from "../types";
 import { Grab } from "./Sheet";
-const DAY_CHIPS: Array<{ label: string; days: number }> = [
-  { label: "Today", days: 0 },
-  { label: "Tomorrow", days: 1 },
-  { label: "3 days", days: 3 },
-  { label: "7 days", days: 7 },
-  { label: "2 weeks", days: 14 },
-];
+import { CalGrid } from "./pickers";
+
+const UNITS = ["unit", "kg", "ml"] as const;
+type QtyUnit = (typeof UNITS)[number] | "custom";
+
+/* Split a stored qty string ("2 kg", "500 ml", legacy free text) into
+   stepper number + unit pick + preserved custom text. Never loses data:
+   unrecognized remainders ride along as custom. */
+function parseQty(raw: string): { n: string; unit: QtyUnit; custom: string } {  const m = /^\s*(\d{1,3})\s*(.*)$/.exec(raw || "");
+  if (!m) {
+    const rest = (raw || "").trim();
+    return { n: "", unit: "unit", custom: rest };
+  }
+  const rest = m[2].trim();
+  const hit = UNITS.find((u) => rest.toLowerCase() === u || rest.toLowerCase() === u + "s");
+  if (hit) return { n: m[1], unit: hit, custom: "" };
+  return { n: m[1], unit: "custom", custom: rest };
+}
+
+const REVEAL_W = 96;
+
+/* Buy-link row: tap anywhere opens the link; swipe left reveals
+   Rename | Delete. Dragging suppresses the tap so swipes never navigate. */
+function LinkCard({
+  l, editing, editValue, onEditStart, onEditChange, onEditCommit, onDelete,
+}: {
+  l: BuyLink;
+  editing: boolean;
+  editValue: string;
+  onEditStart: () => void;
+  onEditChange: (v: string) => void;
+  onEditCommit: () => void;
+  onDelete: () => void;
+}) {
+  const [dx, setDx] = useState(0);
+  const [open, setOpen] = useState(false);
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  const dragged = useRef(false);
+  const close = () => {
+    setOpen(false);
+    setDx(0);
+  };
+  const go = () => {
+    window.open(l.url, "_blank", "noopener,noreferrer");
+  };
+  return (
+    <div className="link-reveal">
+      <div className="link-under">
+        <button
+          type="button"
+          aria-label="Rename link"
+          onClick={() => {
+            close();
+            onEditStart();
+          }}
+        >
+          {IC.pen}
+        </button>
+        <button type="button" className="lu-del" aria-label="Delete link" onClick={onDelete}>
+          {IC.trash}
+        </button>
+      </div>
+      <div
+        className="link-card link-track"
+        role="link"
+        tabIndex={0}
+        style={dx ? { transform: `translateX(${dx}px)` } : undefined}
+        onPointerDown={(e) => {
+          if (open) {
+            close();
+            dragged.current = true;
+            return;
+          }
+          dragged.current = false;
+          drag.current = { x: e.clientX, y: e.clientY };
+        }}
+        onPointerMove={(e) => {
+          const d = drag.current;
+          if (!d) return;
+          const ddx = e.clientX - d.x;
+          const ddy = e.clientY - d.y;
+          if (Math.abs(ddx) > 10 && Math.abs(ddx) > Math.abs(ddy) * 1.2) dragged.current = true;
+          if (ddx < 0) setDx(Math.max(-REVEAL_W, ddx));
+        }}
+        onPointerUp={(e) => {
+          const d = drag.current;
+          drag.current = null;
+          if (!d) return;
+          if (e.clientX - d.x < -REVEAL_W / 2) {
+            setOpen(true);
+            setDx(-REVEAL_W);
+          } else {
+            close();
+          }
+        }}
+        onPointerCancel={() => {
+          drag.current = null;
+          if (!open) setDx(0);
+        }}
+        onClickCapture={(e) => {
+          if (dragged.current) {
+            dragged.current = false;
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
+        onClick={() => {
+          if (!editing) go();
+        }}
+        onKeyDown={(e) => {
+          if ((e.key === "Enter" || e.key === " ") && !editing) {
+            e.preventDefault();
+            go();
+          }
+        }}
+      >
+        <span className="link-thumb">
+          {l.image ? (
+            <img src={l.image} alt="" loading="lazy" />
+          ) : (
+            <img src={faviconFor(l.url)} alt="" loading="lazy" />
+          )}
+        </span>
+        <span className="link-meta">
+          {editing ? (
+            <input
+              type="text"
+              value={editValue}
+              style={{ margin: 0, padding: "8px 10px" }}
+              onChange={(e) => onEditChange(e.target.value)}
+              onBlur={onEditCommit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onEditCommit();
+              }}
+              autoFocus
+            />
+          ) : (
+            <span className="link-title">{l.title}</span>
+          )}
+          <span className="link-site">{l.site}</span>
+          {!!l.desc && <span className="link-desc">{l.desc}</span>}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: string }) {
   const { state, mutate, closeSheet, toast } = useApp();
@@ -26,8 +165,12 @@ export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: 
   const existing = found && found.list.id === listId ? found.item : undefined;
 
   const [name, setName] = useState(existing ? existing.name : "");
-  const [qty, setQty] = useState(existing ? existing.qty || "" : "");
+  const _q0 = parseQty(existing ? existing.qty || "" : "");
+  const [qn, setQn] = useState(_q0.n);
+  const [qunit, setQunit] = useState<QtyUnit>(_q0.unit);
+  const [qcustom, setQcustom] = useState(_q0.custom);
   const [expectDate, setExpectDate] = useState(existing ? existing.expectDate : addDaysStr(3));
+  const [showCal, setShowCal] = useState(false);
   const [links, setLinks] = useState<BuyLink[]>(existing ? [...(existing.links || [])] : []);
   const [linkUrl, setLinkUrl] = useState("");
   const [busy, setBusy] = useState<string | null>(null); // "add" or link id
@@ -55,17 +198,9 @@ export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: 
       setBusy(null);
     }
   };
-  const dropLink = (id: string) => setLinks((prev) => prev.filter((x) => x.id !== id));
-  const refreshLink = async (id: string) => {
-    const cur = links.find((x) => x.id === id);
-    if (!cur || busy) return;
-    setBusy(id);
-    try {
-      const rec = await buildLink(cur.url, cur.title);
-      setLinks((prev) => prev.map((x) => (x.id === id ? { ...rec, id, url: cur.url } : x)));
-    } finally {
-      setBusy(null);
-    }
+  const dropLink = (id: string) => {
+    setLinks((prev) => prev.filter((x) => x.id !== id));
+    toast("Link removed");
   };
   const commitTitle = () => {
     if (!titleEdit) return;
@@ -90,10 +225,17 @@ export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: 
     );
   }
 
-  const chipDays = (() => {
-    const diff = dayDiff(expectDate || todayStr());
-    const hit = DAY_CHIPS.find((c) => c.days === diff);
-    return hit ? hit.days : null;
+  const stepQn = (d: number) => {
+    const cur = parseInt(qn.replace(/\D/g, ""), 10);
+    const next = isNaN(cur) ? (d > 0 ? 1 : "") : Math.min(99, Math.max(0, cur + d));
+    setQn(next === "" ? "" : String(next));
+  };
+
+  const qtyStr = (() => {
+    const n = qn.replace(/\D/g, "").slice(0, 3);
+    if (!n) return qcustom.trim();
+    if (qunit === "custom") return (n + " " + qcustom.trim()).trim();
+    return n + " " + qunit;
   })();
 
   const save = () => {
@@ -112,14 +254,14 @@ export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: 
         const it = l.items.find((x) => x.id === existing.id);
         if (!it || it.deleted) return;
         it.name = n;
-        it.qty = qty.trim();
+        it.qty = qtyStr;
         it.expectDate = expectDate || todayStr();
         if (links.length) it.links = links.map((x) => ({ ...x }));
         else delete it.links;
         it.updatedAt = now;
       } else {
         l.items.push({
-          id: uid(), name: n, qty: qty.trim(), expectDate: expectDate || todayStr(),
+          id: uid(), name: n, qty: qtyStr, expectDate: expectDate || todayStr(),
           status: "active", purchasedAt: null, addedBy: by, updatedAt: now,
           ...(links.length ? { links: links.map((x) => ({ ...x })) } : null),
         });
@@ -149,109 +291,93 @@ export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: 
     <>
       <Grab />
       <div className="sh-title">{existing ? "Edit item" : "Add item"}</div>
-      <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-        Item
-      </div>
-      <input
-        type="text"
-        placeholder="e.g. Facewash"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        style={{ marginTop: 0 }}
-      />
-      <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-        Quantity
-      </div>
-      <input
-        type="text"
-        placeholder="e.g. 2 packs, 500 ml"
-        value={qty}
-        onChange={(e) => setQty(e.target.value)}
-        style={{ marginTop: 0 }}
-      />
-      <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-        Expect to buy
-      </div>
-      <div className="chip-row" style={{ marginTop: 0 }}>
-        {DAY_CHIPS.map((c) => (
-          <button
-            key={c.label}
-            type="button"
-            className={"chip " + (chipDays === c.days ? "on" : "")}
-            onClick={() => setExpectDate(addDaysStr(c.days))}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-      <div className="date-wrap" style={{ marginTop: 8 }}>
+      <label className="field note-field">
+        <span className="ficon">🛒</span>
         <input
-          type="date"
-          value={expectDate}
-          onChange={(e) => setExpectDate(e.target.value)}
-          aria-label="Expect to buy date"
+          type="text"
+          className="note-inline"
+          placeholder="e.g. Facewash"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
         />
+      </label>
+      <div className="field">
+        <span className="ficon">⚖️</span>
+        <span className="qty-step">
+          <button type="button" className="qty-btn" onClick={() => stepQn(-1)} aria-label="Decrease quantity">
+            −
+          </button>
+          <input
+            type="text"
+            inputMode="numeric"
+            className="qty-num"
+            placeholder="1"
+            value={qn}
+            onChange={(e) => setQn(e.target.value.replace(/\D/g, "").slice(0, 3))}
+            aria-label="Quantity number"
+          />
+          <button type="button" className="qty-btn" onClick={() => stepQn(1)} aria-label="Increase quantity">
+            +
+          </button>
+        </span>
+        <span className="unit-seg" role="group" aria-label="Quantity unit">
+          {UNITS.map((u) => (
+            <button
+              key={u}
+              type="button"
+              className={qunit === u ? "on" : ""}
+              onClick={() => setQunit(u)}
+            >
+              {u}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={qunit === "custom" ? "on" : ""}
+            onClick={() => setQunit("custom")}
+          >
+            …
+          </button>
+        </span>
       </div>
+      {qunit === "custom" && (
+        <input
+          type="text"
+          placeholder="e.g. packs, bottles"
+          value={qcustom}
+          onChange={(e) => setQcustom(e.target.value)}
+          style={{ marginTop: 0 }}
+        />
+      )}
+      <button type="button" className="field" onClick={() => setShowCal((v) => !v)}>
+        <span className="ficon">🗓️</span>
+        <span className="f-name">{dayLabel(expectDate || todayStr())}</span>
+        <span className="f-val">Date</span>
+        {IC.right}
+      </button>
+      {showCal && (
+        <CalGrid
+          value={expectDate || todayStr()}
+          onPick={(d) => {
+            setExpectDate(d);
+            setShowCal(false);
+          }}
+        />
+      )}
       <div className="tsub" style={{ margin: "8px 2px 4px" }}>
         Buy online{links.length > 0 ? ` · ${links.length}` : ""}
       </div>
       {links.map((l) => (
-        <div className="link-card" key={l.id}>
-          <span className="link-thumb">
-            {l.image ? (
-              <img src={l.image} alt="" loading="lazy" />
-            ) : (
-              <img src={faviconFor(l.url)} alt="" loading="lazy" />
-            )}
-          </span>
-          <span className="link-meta">
-            {titleEdit && titleEdit.id === l.id ? (
-              <input
-                type="text"
-                value={titleEdit.value}
-                style={{ margin: 0, padding: "8px 10px" }}
-                onChange={(e) => setTitleEdit({ id: l.id, value: e.target.value })}
-                onBlur={commitTitle}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitTitle();
-                }}
-                autoFocus
-              />
-            ) : (
-              <span
-                className="link-title"
-                onClick={() => setTitleEdit({ id: l.id, value: l.title })}
-                role="button"
-              >
-                {l.title}
-              </span>
-            )}
-            <span className="link-site">{l.site}</span>
-            {!!l.desc && <span className="link-desc">{l.desc}</span>}
-          </span>
-          <span className="link-acts">
-            <a className="link-btn" href={l.url} target="_blank" rel="noopener noreferrer" aria-label="Open link">
-              ↗
-            </a>
-            <button
-              type="button"
-              className="link-btn"
-              onClick={() => refreshLink(l.id)}
-              aria-label="Refresh preview"
-              disabled={busy === l.id}
-            >
-              {busy === l.id ? "…" : "⟳"}
-            </button>
-            <button
-              type="button"
-              className="link-btn danger"
-              onClick={() => dropLink(l.id)}
-              aria-label="Remove link"
-            >
-              ×
-            </button>
-          </span>
-        </div>
+        <LinkCard
+          key={l.id}
+          l={l}
+          editing={!!titleEdit && titleEdit.id === l.id}
+          editValue={titleEdit && titleEdit.id === l.id ? titleEdit.value : ""}
+          onEditStart={() => setTitleEdit({ id: l.id, value: l.title })}
+          onEditChange={(v) => setTitleEdit({ id: l.id, value: v })}
+          onEditCommit={commitTitle}
+          onDelete={() => dropLink(l.id)}
+        />
       ))}
       {links.length < MAX_LINKS && (
         <div className="link-addrow">
@@ -266,7 +392,7 @@ export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: 
               if (e.key === "Enter") addLink();
             }}
           />
-          <button type="button" className="btn mini" onClick={addLink} disabled={busy === "add"}>
+          <button type="button" className="btn ghost mini" onClick={addLink} disabled={busy === "add"}>
             {busy === "add" ? "…" : "Add"}
           </button>
         </div>

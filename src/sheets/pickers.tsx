@@ -89,31 +89,23 @@ export function MonthSheet() {
 
 /* ---------------- date picker (dp-open, Monday-first) ---------------- */
 
-export function DateSheet() {
-  const { state, setAdd, closeSheet } = useApp();
-  const initD = parseD(state.add.date);
+/** Shared calendar grid (month nav + day cells). Pure value/onPick — the
+    caller owns where the picked date goes. */
+export function CalGrid({ value, onPick }: { value: string; onPick: (d: string) => void }) {
+  const initD = parseD(value || todayStr());
   const [cur, setCur] = useState({ y: initD.getFullYear(), m: initD.getMonth() });
   const d = new Date(cur.y, cur.m, 1);
   const title = d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
   const first = (d.getDay() + 6) % 7;
   const dim = new Date(cur.y, cur.m + 1, 0).getDate();
   const today = todayStr();
-  const sel = state.add.date;
   const cells: React.ReactNode[] = [];
   for (let i = 0; i < first; i++) cells.push(<i key={"b" + i}></i>);
   for (let day = 1; day <= dim; day++) {
     const key = cur.y + "-" + pad(cur.m + 1) + "-" + pad(day);
-    const cls = "cal-day" + (key === sel ? " sel" : "") + (key === today ? " today" : "");
+    const cls = "cal-day" + (key === value ? " sel" : "") + (key === today ? " today" : "");
     cells.push(
-      <button
-        key={key}
-        type="button"
-        className={cls}
-        onClick={() => {
-          setAdd({ date: key });
-          closeSheet();
-        }}
-      >
+      <button key={key} type="button" className={cls} onClick={() => onPick(key)}>
         {day}
       </button>
     );
@@ -134,7 +126,6 @@ export function DateSheet() {
     });
   return (
     <>
-      <Grab />
       <div className="dp-head">
         <div className="dp-title">{title}</div>
         <button
@@ -162,6 +153,22 @@ export function DateSheet() {
         ))}
         {cells}
       </div>
+    </>
+  );
+}
+
+export function DateSheet() {
+  const { state, setAdd, closeSheet } = useApp();
+  return (
+    <>
+      <Grab />
+      <CalGrid
+        value={state.add.date}
+        onPick={(key) => {
+          setAdd({ date: key });
+          closeSheet();
+        }}
+      />
     </>
   );
 }
