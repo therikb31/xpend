@@ -69,6 +69,18 @@ export function ShortcutsSheet() {
 
 /* ---------------- category manager ---------------- */
 
+const NEED_LABEL: Record<string, string> = {
+  need: "🏠 Needs",
+  want: "✨ Wants",
+  saving: "🏦 Savings",
+};
+
+const NEED_NEXT: Record<string, "need" | "want" | "saving"> = {
+  need: "want",
+  want: "saving",
+  saving: "need",
+};
+
 export function CategoryManageSheet() {
   const { state, mutate, toast } = useApp();
   const doc = state.doc!;
@@ -88,7 +100,14 @@ export function CategoryManageSheet() {
     }
     const id = "cat-u-" + uid();
     mutate((d) => {
-      d.categories.push({ id, name: n, kind, color, emoji: fallbackEmoji({ id, name: n }) });
+      d.categories.push({
+        id,
+        name: n,
+        kind,
+        color,
+        emoji: fallbackEmoji({ id, name: n }),
+        ...(kind === "expense" ? { need: "need" as const } : {}),
+      });
     });
     setName("");
   };
@@ -108,6 +127,22 @@ export function CategoryManageSheet() {
               <span className="rname">{c.name}</span>
               {c.kind === "income" && <span className="rbal">{c.kind}</span>}
             </span>
+            {c.kind === "expense" && (
+              <button
+                type="button"
+                className="chip"
+                style={{ marginLeft: 8, padding: "4px 10px", fontSize: 12 }}
+                onClick={() =>
+                  mutate((d) => {
+                    const t = d.categories.find((x) => x.id === c.id);
+                    if (t) t.need = NEED_NEXT[t.need || "need"];
+                  })
+                }
+                aria-label={"Tag for " + c.name}
+              >
+                {NEED_LABEL[c.need || "need"]}
+              </button>
+            )}
             {custom && (
               <button
                 className="cbtn small"

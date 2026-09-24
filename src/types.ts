@@ -43,6 +43,8 @@ export interface Account {
 
 export type CategoryKind = "expense" | "income";
 
+export type NeedTag = "need" | "want" | "saving";
+
 export interface Category {
   id: string;
   name: string;
@@ -50,6 +52,7 @@ export interface Category {
   color: string;
   emoji?: string;
   custom?: boolean;
+  need?: NeedTag; // 50-30-20 bucket (expense categories only)
 }
 
 export interface Merchant {
@@ -176,6 +179,7 @@ export interface Settings {
   savV?: number;
   itemMinCount?: number; // items-tab frequency threshold (default 2)
   chartScale?: 0 | 1 | 2; // daily chart scale: 0 linear, 1 cube-root, 2 log (default 1)
+  needV?: number; // category need-tag schema version
 }
 
 export interface Doc {

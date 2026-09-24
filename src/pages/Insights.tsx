@@ -16,6 +16,22 @@ import type { CSSProperties } from "react";
 const MIN_OPTS = [1, 2, 3, 5];
 const DONUT_TOP = 10;
 
+/* 50-30-20 buckets: stable identities (not PAL-cycled). Rule shares are
+   fractions of month income, matching the classic rule's definition. */
+const NW_META = {
+  need: { name: "Needs", emoji: "🏠", color: "#5BB98C", rule: 50 },
+  want: { name: "Wants", emoji: "✨", color: "#FF9F43", rule: 30 },
+  saving: { name: "Savings", emoji: "🏦", color: "#8C52FF", rule: 20 },
+} as const;
+
+type NwKey = keyof typeof NW_META;
+
+interface NwBucket {
+  key: NwKey;
+  count: number;
+  amt: number;
+}
+
 interface ItemGroup {
   key: string;
   display: string;
@@ -29,7 +45,7 @@ export function InsightsPage() {
   const mkey = state.mkey;
   const flt = state.flt;
   const hide = !!doc.settings.hideBalances;
-  const [grp, setGrp] = useState<"cat" | "merch" | "item">("cat");
+  const [grp, setGrp] = useState<"cat" | "merch" | "item" | "nws">("cat");
   const minCount = doc.settings.itemMinCount ?? 2;
 
   const mk = parseMk(mkey);
@@ -76,8 +92,43 @@ export function InsightsPage() {
       .sort((a, b) => b.amt - a.amt);
   }
 
+  // Needs / wants / savings buckets (50-30-20). Expenses by category tag;
+  // savings also counts transfers INTO savings accounts that month
+  // (gross in; month-scoped like siblings, account filter not applied).
+  let nwBuckets: NwBucket[] = [];
+  let nwPrev = 0;
+  if (grp === "nws") {
+    const sums: Record<NwKey, { count: number; amt: number }> = {
+      need: { count: 0, amt: 0 },
+      want: { count: 0, amt: 0 },
+      saving: { count: 0, amt: 0 },
+    };
+    for (const t of txs) {
+      const tag = (catById(doc, t.categoryId).need || "need") as NwKey;
+      sums[tag].count += 1;
+      sums[tag].amt += t.amount;
+    }
+    const savIds = new Set(
+      (doc.accounts || []).filter((a) => a.kind === "savings").map((a) => a.id)
+    );
+    for (const t of doc.transactions) {
+      if (t.dir === "trans" && t.date.slice(0, 7) === mkey && savIds.has(t.to)) {
+        sums.saving.count += 1;
+        sums.saving.amt += t.amount;
+      }
+    }
+    nwBuckets = (Object.keys(sums) as NwKey[])
+      .filter((k) => sums[k].amt > 0)
+      .map((k) => ({ key: k, count: sums[k].count, amt: sums[k].amt }));
+    nwPrev = (doc.accounts || [])
+      .filter((a) => a.kind === "savings")
+      .reduce((s, a) => s + (a.prev || 0), 0);
+  }
+
   const agg: Record<string, number> = {};
-  if (grp !== "item") {
+  if (grp === "nws") {
+    for (const b of nwBuckets) agg[b.key] = b.amt;
+  } else if (grp !== "item") {
     for (const t of txs) {
       const k = grp === "cat" ? t.categoryId : t.merchantId || "__none";
       agg[k] = (agg[k] || 0) + t.amount;
@@ -95,7 +146,9 @@ export function InsightsPage() {
   const down = pct != null && pct >= 0;
   const prevName = parseMk(prevKey).toLocaleDateString("en-IN", { month: "short" });
   const colors: Record<string, string> = {};
-  if (grp === "item") {
+  if (grp === "nws") {
+    for (const b of nwBuckets) colors[b.key] = NW_META[b.key].color;
+  } else if (grp === "item") {
     // Every group needs a color for its card, not just donut entries.
     itemGroups.forEach((g, i) => {
       colors[g.key] = PAL[i % PAL.length];
@@ -142,6 +195,17 @@ export function InsightsPage() {
         amount: shortTotal(amt),
         sub: <span className="dc-trend">{p}% of total</span>,
       };
+    } else if (grp === "nws") {
+      const meta = NW_META[id as NwKey];
+      details[id] = {
+        title: (
+          <>
+            <span>{meta.emoji}</span> {meta.name}
+          </>
+        ),
+        amount: shortTotal(amt),
+        sub: <span className="dc-trend">{p}% of total</span>,
+      };
     } else {
       const g = itemGroups.find((x) => x.key === id);
       details[id] = {
@@ -163,12 +227,13 @@ export function InsightsPage() {
     } else if (grp === "merch") {
       setFilter({ merch: id });
       go("merchant", state.view);
-    } else if (id !== "__other") {
+    } else if (grp === "item" && id !== "__other") {
       // Substring match ("Milk" also finds "Milkshake") — accepted v1.
       const g = itemGroups.find((x) => x.key === id);
       setFilter({ q: g ? g.display : id });
       go("activity", state.view);
     }
+    // Needs mode is intentionally static: no tag view exists to drill to.
   };
   const countFor = (id: string) =>
     grp === "cat"
@@ -180,11 +245,32 @@ export function InsightsPage() {
       ? "Tap + to add your first expense"
       : grp === "merch"
         ? "Tag a merchant when adding an expense"
-        : txs.some((t) => (t.note || "").trim())
-          ? "Nothing repeats " + minCount + "+ times — lower the filter"
-          : "Add notes to expenses to track items";
+        : grp === "nws"
+          ? "Tag categories in Settings → Manage → Categories"
+          : txs.some((t) => (t.note || "").trim())
+            ? "Nothing repeats " + minCount + "+ times — lower the filter"
+            : "Add notes to expenses to track items";
   const listBody =
-    grp === "item"
+    grp === "nws"
+      ? (Object.keys(NW_META) as NwKey[]).map((k) => {
+          const meta = NW_META[k];
+          const found = nwBuckets.find((x) => x.key === k);
+          return (
+            <ItemSumCard
+              key={k}
+              name={meta.name}
+              count={found ? found.count : 0}
+              amt={found ? found.amt : 0}
+              total={total}
+              color={meta.color}
+              hide={hide}
+              icon={<span>{meta.emoji}</span>}
+              onOpen={openEntry}
+              id={k}
+            />
+          );
+        })
+      : grp === "item"
       ? itemGroups.map((g) => (
           <ItemSumCard
             key={g.key}
@@ -263,6 +349,15 @@ export function InsightsPage() {
         >
           Items
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={grp === "nws"}
+          className={"chip " + (grp === "nws" ? "on" : "")}
+          onClick={() => setGrp("nws")}
+        >
+          50-30-20
+        </button>
       </div>
       {grp === "item" && (
         <div className="chip-row center" style={{ marginTop: 0 }} aria-label="Minimum times bought">
@@ -326,10 +421,19 @@ export function InsightsPage() {
           listBody
         ) : (
           <div className="card">
-            <Empty icon={IC.empty} title={grp === "item" ? "No repeated items" : "No spending yet"} sub={emptySub} />
+            <Empty
+              icon={IC.empty}
+              title={grp === "item" ? "No repeated items" : grp === "nws" ? "No categorized spending" : "No spending yet"}
+              sub={emptySub}
+            />
           </div>
         )}
       </div>
+      {grp === "nws" && nwPrev > 0 && (
+        <div className="tsub" style={{ textAlign: "center", padding: "4px 12px 8px", color: "var(--muted)" }}>
+          Saved before this month · {shortTotal(nwPrev)}
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 // Pure: doc + callbacks in, JSX out. No store access (pages pass what they need).
 
 import React, { useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useSwipe } from "../hooks/useSwipe";
 import { useApp } from "../services/store";
 import { budgetCtx, budgetSpent, isOverall, overallLimit, aggIdsRaw, aggSpentV, trNames, catById, goalCalc, budgetCats, budgetAccent } from "../data/finance";
@@ -238,15 +238,15 @@ export function MerchSumCard({
 }
 
 export function ItemSumCard({
-  id, name, count, amt, total, color, hide, onOpen,
+  id, name, count, amt, total, color, hide, icon, onOpen,
 }: {
-  id: string; name: string; count: number; amt: number; total: number; color: string; hide: boolean; onOpen: (id: string) => void;
+  id: string; name: string; count: number; amt: number; total: number; color: string; hide: boolean; icon?: ReactNode; onOpen: (id: string) => void;
 }) {
   const p = total > 0 ? ((amt / total) * 100).toFixed(2) : "0.00";
   return (
     <button className="sum-card" onClick={() => onOpen(id)}>
       <span className="sum-ic logo ring" style={cssVar(color)}>
-        {fallbackEmoji({ id, name })}
+        {icon ?? fallbackEmoji({ id, name })}
       </span>
       <span className="sum-cc">
         <span className="sum-name">

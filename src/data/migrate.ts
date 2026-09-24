@@ -223,6 +223,27 @@ export function migrateGrocery(d: Doc): boolean {
   return changed;
 }
 
+/* v2: need tags for the 50-30-20 split. Backfills from DEF_CATS by id;
+   unknown expense categories default to need. Stamp needV when done. */
+export function migrateNeeds(d: Doc): boolean {
+  const s = (d.settings = d.settings || ({} as Doc["settings"]));
+  const defs = Object.fromEntries(DEF_CATS.map((c) => [c.id, c]));
+  let changed = false;
+  for (const c of d.categories || []) {
+    if (c.kind !== "expense") continue;
+    if (!c.need) {
+      const def = defs[c.id];
+      c.need = (def && def.need) || "need";
+      changed = true;
+    }
+  }
+  if (s.needV !== 1) {
+    s.needV = 1;
+    changed = true;
+  }
+  return changed;
+}
+
 /* Merge the shared merchant pool into a user's list on every boot.
    Per-user deletions live in settings.merchHidden (lowercased names). */
 export function mergePool(d: Doc): boolean {

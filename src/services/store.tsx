@@ -20,6 +20,7 @@ import {
   migrateGoals,
   migrateGrocery,
   migrateMerch,
+  migrateNeeds,
   migrateSav,
 } from "../data/migrate";
 import { monthKey, parseMk, rupees, todayStr, uid } from "../lib/format";
@@ -379,6 +380,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       d.shortcuts = d.shortcuts || [];
       d.transactions = d.transactions || [];
       if (migrateGrocery(d)) dirty = true;
+      if (migrateNeeds(d)) dirty = true;
       if (!Array.isArray(d.merchants) || !d.merchants.length) {
         if (!migrateMerch(d)) {
           d.merchants = [];
