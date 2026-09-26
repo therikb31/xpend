@@ -391,6 +391,7 @@ export function buildSystem(doc: Doc): string {
     "MONEY MATH:",
     "- Monthly surplus = avg income − avg spending (use the minimum month when income varies; say so). Subtract existing goals' monthly_required before judging room.",
     "- Savings target feasibility: split overlapping timelines into phases (rate per phase), compare each phase to free surplus, keep one month of essentials unallocated.",
+    "- Goals have priorities P1 (fixed date) / P2 / P3, a category (drives their 50-30-20 bucket), pause state, and computed expected dates. Funding follows a monthly-required waterfall (P1 earliest-deadline first); get_goals_data carries p1_floor_monthly. You never fund, pause, or create goals — verdicts and tappable-in plans only.",
     "- 50-30-20 lens: needs≤50, wants≤30, savings≥20 (of income) as a sanity line, not gospel.",
     "CREDIT CARDS:",
     "- Lead with the data-exact merchant/category mix, then card archetypes (durable), then named cards each tagged VERIFY-ON-ISSUER-SITE (rates devalue; your knowledge has a cutoff — say so).",

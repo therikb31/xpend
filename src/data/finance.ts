@@ -28,13 +28,27 @@ export const NW_META = {
 export type NwKey = keyof typeof NW_META;
 
 /* 50-30-20 drill predicate — single source of truth for the Insights cards,
-   the bucket drill page, and export. Buckets match their category tag
-   (expense-only, account filter applies). Transfers never count as flow:
-   money moved into savings shows up via the account balance instead
-   (see savingsBalance). */
+   the bucket drill page, and export. Expenses match their category tag
+   (account filter applies). Goal funding legs (transfers carrying goalId)
+   count under the destination goal's category tag. Plain transfers never
+   count as flow: money moved into savings shows up via the account balance
+   instead (see savingsBalance). */
+export function goalTag(doc: Doc, g: { categoryId?: string }): NwKey {
+  const c = g.categoryId ? catById(doc, g.categoryId) : null;
+  return (c && c.need) || "saving";
+}
+
 export function bucketTxns(doc: Doc, key: NwKey, mkey: string, acc: string): Txn[] {
   return sortedTxs(doc).filter((t) => {
-    if (t.date.slice(0, 7) !== mkey || t.dir !== "expense") return false;
+    if (t.date.slice(0, 7) !== mkey) return false;
+    if (t.dir === "trans") {
+      if (!t.goalId) return false;
+      const g = (doc.goals || []).find((x) => x.id === t.goalId);
+      if (!g) return false;
+      if (acc !== "all" && t.from !== acc && t.to !== acc) return false;
+      return goalTag(doc, g) === key;
+    }
+    if (t.dir !== "expense") return false;
     if (acc !== "all" && t.accountId !== acc) return false;
     return (catById(doc, t.categoryId).need || "need") === key;
   });
@@ -413,9 +427,9 @@ export interface GoalCalc {
   status: "completed" | "on-track" | "needs-attention" | "overdue";
 }
 
-export function goalCalc(g: Goal): GoalCalc {
+export function goalCalc(g: Goal, extraCurrent = 0): GoalCalc {
   const target = g.target || 0;
-  const current = goalCurrent(g);
+  const current = goalCurrent(g) + extraCurrent;
   const remaining = Math.max(0, target - current);
   const pct = target > 0 ? (current / target) * 100 : 0;
   const now = new Date();
@@ -440,6 +454,153 @@ export function goalCalc(g: Goal): GoalCalc {
   }
   return { target, current, remaining, pct, months, saveMonths, required, plan, est, estDate, status };
 }
+
+/* Net txn funding for a goal: legs tagged goalId minus legs moved away
+   (fromGoalId). Progress = goalCurrent(sources) + this. */
+export function goalFunded(doc: Doc, goalId: string): number {
+  let n = 0;
+  for (const t of doc.transactions || []) {
+    if (t.dir !== "trans") continue;
+    if (t.goalId === goalId) n += t.amount;
+    if (t.fromGoalId === goalId) n -= t.amount;
+  }
+  return n;
+}
+
+/** Live goals (hidden tombstones/completed stay out of funding math). */
+export function liveGoals(doc: Doc): Goal[] {
+  return (doc.goals || []).filter((g) => !g.deleted && !g.completed);
+}
+
+/** Full progress calc: sources + net funding legs. */
+export function goalProgress(doc: Doc, g: Goal): GoalCalc {
+  return goalCalc(g, goalFunded(doc, g.id));
+}
+
+export function goalOrder(a: Goal, b: Goal): number {
+  const pa = a.priority ?? 2;
+  const pb = b.priority ?? 2;
+  if (pa !== pb) return pa - pb;
+  if ((a.date || "") !== (b.date || "")) {
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return a.date < b.date ? -1 : 1;
+  }
+  return (a.createdAt || 0) - (b.createdAt || 0);
+}
+
+/* P1 floor (paise/mo): Σ monthly-required over incomplete unpaused P1s.
+   The minimum monthly allocation that keeps every P1 on schedule. */
+export function p1Floor(doc: Doc): number {
+  return liveGoals(doc)
+    .filter((g) => (g.priority ?? 2) === 1 && !g.paused)
+    .reduce((s, g) => s + (goalProgress(doc, g).required || 0), 0);
+}
+
+export interface WaterfallAlloc {
+  goalId: string;
+  amount: number; // paise
+}
+
+export interface WaterfallResult {
+  allocs: WaterfallAlloc[];
+  leftover: number; // paise staying unallocated
+  shortfalls: Array<{ goalId: string; missing: number }>;
+  p1Required: number;
+  p1Covered: boolean;
+}
+
+/* Waterfall a deposit across goals: monthly-required claims in
+   priority → earliest-date order (undated goals skip the claim round and
+   catch spillover only), then spillover tops up earliest remaining in the
+   same order. Anything beyond all remainings stays unallocated. */
+export function allocateWaterfall(doc: Doc, amountPaise: number, excludeId?: string): WaterfallResult {
+  const cands = liveGoals(doc).filter((g) => !g.paused && g.id !== excludeId).sort(goalOrder);
+  const prog = new Map<string, GoalCalc>();
+  const progOf = (g: Goal): GoalCalc => {
+    let c = prog.get(g.id);
+    if (!c) {
+      c = goalProgress(doc, g);
+      prog.set(g.id, c);
+    }
+    return c;
+  };
+  const given = new Map<string, number>();
+  let left = Math.max(0, Math.round(amountPaise || 0));
+  const shortfalls: Array<{ goalId: string; missing: number }> = [];
+  let p1Required = 0;
+  let p1Got = 0;
+  // Round 1: monthly-required claims (dated goals only).
+  for (const g of cands) {
+    if (!g.date) continue;
+    const claim = Math.max(0, progOf(g).required || 0);
+    if ((g.priority ?? 2) === 1) p1Required += claim;
+    if (claim <= 0) continue;
+    const give = Math.min(claim, left);
+    if (give > 0) {
+      given.set(g.id, (given.get(g.id) || 0) + give);
+      left -= give;
+      if ((g.priority ?? 2) === 1) p1Got += give;
+    }
+    if (give < claim) shortfalls.push({ goalId: g.id, missing: claim - give });
+  }
+  // Round 2: spillover tops up earliest remaining in the same order.
+  if (left > 0) {
+    for (const g of cands) {
+      if (left <= 0) break;
+      const c = progOf(g);
+      const unmet = Math.max(0, c.remaining - (given.get(g.id) || 0));
+      if (unmet <= 0) continue;
+      const give = Math.min(unmet, left);
+      given.set(g.id, (given.get(g.id) || 0) + give);
+      left -= give;
+    }
+  }
+  return {
+    allocs: [...given.entries()]
+      .filter(([, a]) => a > 0)
+      .map(([goalId, amount]) => ({ goalId, amount })),
+    leftover: left,
+    shortfalls,
+    p1Required,
+    p1Covered: p1Got >= p1Required,
+  };
+}
+
+export interface GoalExpectation {
+  rate: number; // paise/mo trailing allocation rate (0 when unknown)
+  expectedKey: string | null; // YYYY-MM or null when unprojectable
+}
+
+/* Expected completion: trailing-90-day actual allocation rate, falling
+   back to the goal's plan, else unprojectable. rateOverride previews a
+   hypothetical monthly rate (what-if) without touching data. */
+export function goalExpected(doc: Doc, g: Goal, rateOverride?: number): GoalExpectation {
+  const now = new Date();
+  const cut = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 90);
+  const iso =
+    cut.getFullYear() + "-" + String(cut.getMonth() + 1).padStart(2, "0") + "-" + String(cut.getDate()).padStart(2, "0");
+  let got = 0;
+  for (const t of doc.transactions || []) {
+    if (t.dir !== "trans" || t.date.slice(0, 10) < iso) continue;
+    if (t.goalId === g.id && t.fromGoalId === g.id) continue; // same-goal re-earmark: net zero
+    if (t.goalId === g.id) got += t.amount;
+    else if (t.fromGoalId === g.id) got -= t.amount;
+  }
+  let rate = Math.round(got / 3);
+  if (rateOverride != null && rateOverride > 0) rate = Math.round(rateOverride);
+  if (rate <= 0) rate = g.plan || 0;
+  const total = goalCurrent(g) + goalFunded(doc, g.id);
+  const remaining = Math.max(0, (g.target || 0) - total);
+  if (remaining <= 0) {
+    return { rate, expectedKey: monthKey(now) };
+  }
+  if (rate <= 0) return { rate: 0, expectedKey: null };
+  const months = Math.ceil(remaining / rate);
+  const d = new Date(now.getFullYear(), now.getMonth() + months, 1);
+  return { rate, expectedKey: monthKey(d) };
+}
+
 
 // ---------------- export JSON dump ----------------
 
@@ -599,21 +760,24 @@ export function expData(doc: Doc, view: View, mkey: string, flt: Filters): Recor
     return env;
   }
   if (view === "goals") {
-    const gs = doc.goals || [];
-    const active = gs.filter((g) => !g.completed);
+    const gs = (doc.goals || []).filter((g) => !g.deleted);
+    const active = liveGoals(doc);
     const rows = gs.map((g) => {
-      const cc = goalCalc(g);
+      const cc = goalProgress(doc, g);
+      const exp = goalExpected(doc, g);
+      const cat = g.categoryId ? catById(doc, g.categoryId) : null;
       const sources = (g.sources || []).map((s) => ({ name: s.name, amount: s.amount || 0, date: s.date || null }));
-      return { id: g.id, name: g.name, target: g.target, current: cc.current, remaining: cc.remaining, pct: +cc.pct.toFixed(1), status: cc.status, date: g.date || null, plan: g.plan || 0, monthlyRequired: cc.required, estimatedMonths: cc.est, estimatedDate: cc.estDate ? cc.estDate.toISOString().slice(0, 7) : null, sources, completed: !!g.completed, actualAmount: g.actualAmount || null };
+      return { id: g.id, name: g.name, target: g.target, current: cc.current, remaining: cc.remaining, pct: +cc.pct.toFixed(1), status: cc.status, date: g.date || null, expectedDate: exp.expectedKey, priority: g.priority ?? 2, paused: !!g.paused, category: cat ? cat.name : null, bucket: goalTag(doc, g), plan: g.plan || 0, monthlyRequired: cc.required, estimatedMonths: cc.est, estimatedDate: cc.estDate ? cc.estDate.toISOString().slice(0, 7) : null, sources, completed: !!g.completed, actualAmount: g.actualAmount || null };
     });
     env.data = {
       aggregates: {
         totalTarget: gs.reduce((s, g) => s + (g.target || 0), 0),
-        totalSaved: gs.reduce((s, g) => s + goalCurrent(g), 0),
-        monthlyRequired: active.reduce((s, g) => s + (goalCalc(g).required || 0), 0),
-        onTrack: active.filter((g) => goalCalc(g).status === "on-track").length,
-        needsAttention: active.filter((g) => goalCalc(g).status === "needs-attention").length,
-        overdue: active.filter((g) => goalCalc(g).status === "overdue").length,
+        totalSaved: gs.reduce((s, g) => s + goalProgress(doc, g).current, 0),
+        monthlyRequired: active.reduce((s, g) => s + (goalProgress(doc, g).required || 0), 0),
+        p1Floor: p1Floor(doc),
+        onTrack: active.filter((g) => goalProgress(doc, g).status === "on-track").length,
+        needsAttention: active.filter((g) => goalProgress(doc, g).status === "needs-attention").length,
+        overdue: active.filter((g) => goalProgress(doc, g).status === "overdue").length,
         completed: gs.filter((g) => g.completed).length,
       },
       goals: rows,
@@ -622,7 +786,7 @@ export function expData(doc: Doc, view: View, mkey: string, flt: Filters): Recor
   }
   if (view === "accounts") {
     const accs = doc.accounts;
-    const net = accs.reduce((s, a) => s + (a.kind === "savings" || a.secondary ? 0 : accBalance(doc, a.id)), 0);
+    const net = accs.reduce((s, a) => s + (a.kind === "savings" || a.kind === "goal" || a.secondary ? 0 : accBalance(doc, a.id)), 0);
     env.data = {
       netWorth: net,
       accounts: accs.map((a) => ({ id: a.id, name: a.name, kind: a.kind, opening: a.opening, balance: accBalance(doc, a.id), icon: a.icon || null, color: a.color, secondary: !!a.secondary, prev: a.prev != null ? a.prev : null })),

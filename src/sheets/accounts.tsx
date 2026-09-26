@@ -117,9 +117,9 @@ export function AccountAddSheet() {
       <div className="sh-title">New account</div>
       <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
       <div className="chip-row" style={{ marginTop: 4 }}>
-        {(["cash", "card", "savings"] as const).map((k) => (
+        {(["cash", "card", "savings", "goal"] as const).map((k) => (
           <button key={k} className={"chip " + (kind === k ? "on" : "")} onClick={() => setKind(k)}>
-            {k === "cash" ? "Cash" : k === "card" ? "Card" : "Savings"}
+            {k === "cash" ? "Cash" : k === "card" ? "Card" : k === "savings" ? "Savings" : "Goal"}
           </button>
         ))}
       </div>
@@ -258,9 +258,9 @@ function AccountEditBody({ id }: { id: string }) {
         Type
       </div>
       <div className="chip-row" style={{ marginTop: 0 }}>
-        {(["cash", "card", "savings"] as const).map((k) => (
+        {(["cash", "card", "savings", "goal"] as const).map((k) => (
           <button key={k} className={"chip " + (kind === k ? "on" : "")} onClick={() => setKind(k)}>
-            {k === "cash" ? "Cash" : k === "card" ? "Card" : "Savings"}
+            {k === "cash" ? "Cash" : k === "card" ? "Card" : k === "savings" ? "Savings" : "Goal"}
           </button>
         ))}
       </div>

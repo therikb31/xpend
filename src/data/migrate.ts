@@ -95,7 +95,7 @@ export function migrateBud(d: Doc): void {
 
 export function migrateGoals(d: Doc): boolean {
   const s = (d.settings = d.settings || ({} as Doc["settings"]));
-  if (s.goalV === 1) return false;
+  if (s.goalV === 2) return false;
   let changed = false;
   for (const g of d.goals || []) {
     if (g.sources == null) {
@@ -114,8 +114,12 @@ export function migrateGoals(d: Doc): boolean {
       g.completedAt = new Date().toISOString().slice(0, 7);
       changed = true;
     }
+    if (g.priority == null) {
+      g.priority = 2;
+      changed = true;
+    }
   }
-  s.goalV = 1;
+  s.goalV = 2;
   return changed;
 }
 

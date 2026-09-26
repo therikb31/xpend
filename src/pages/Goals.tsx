@@ -1,7 +1,7 @@
 // Goals — port of App.goals + goal rows.
 
 import { Empty, GoalRow } from "../components/ui";
-import { PAL, goalCalc, goalCurrent } from "../data/finance";
+import { PAL, goalOrder, goalProgress, liveGoals, p1Floor } from "../data/finance";
 import { rupees } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
@@ -11,20 +11,24 @@ export function GoalsPage() {
   const doc = state.doc!;
   const hide = !!doc.settings.hideBalances;
 
-  const gs = doc.goals || [];
-  const active = gs.filter((g) => !g.completed);
+  const gs = (doc.goals || []).filter((g) => !g.deleted);
+  const active = liveGoals(doc);
   const totalTarget = gs.reduce((s, g) => s + (g.target || 0), 0);
-  const totalSaved = gs.reduce((s, g) => s + goalCurrent(g), 0);
-  const totalRemaining = Math.max(0, totalTarget - totalSaved);
-  const onTrack = active.filter((g) => goalCalc(g).status === "on-track").length;
-  const needsAttention = active.filter((g) => goalCalc(g).status === "needs-attention").length;
-  const overdue = active.filter((g) => goalCalc(g).status === "overdue").length;
+  const saved = gs.reduce((s, g) => s + goalProgress(doc, g).current, 0);
+  const totalRemaining = Math.max(0, totalTarget - saved);
+  const onTrack = active.filter((g) => goalProgress(doc, g).status === "on-track").length;
+  const needsAttention = active.filter((g) => goalProgress(doc, g).status === "needs-attention").length;
+  const overdue = active.filter((g) => goalProgress(doc, g).status === "overdue").length;
   const completed = gs.filter((g) => g.completed).length;
-  const monthlyReq = active.reduce((s, g) => s + (goalCalc(g).required || 0), 0);
+  const monthlyReq = active.reduce((s, g) => s + (goalProgress(doc, g).required || 0), 0);
+  const floor = p1Floor(doc);
+  const p1Bad = active.some(
+    (g) => (g.priority ?? 2) === 1 && ["needs-attention", "overdue"].includes(goalProgress(doc, g).status)
+  );
   const upcoming = active
     .slice()
-    .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-    .slice(0, 5);
+    .sort(goalOrder)
+    .slice(0, 8);
   const done = gs.filter((g) => g.completed);
   const colors: Record<string, string> = {};
   gs.forEach((g, i) => {
@@ -44,6 +48,11 @@ export function GoalsPage() {
           </button>
         </div>
       </header>
+      {p1Bad && (
+        <div className="bud-strip">
+          A P1 goal is off track — fund it first to protect its date.
+        </div>
+      )}
       <div className="card">
         <div className="card-title">Overview</div>
         <div className="metrics-grid">
@@ -52,7 +61,7 @@ export function GoalsPage() {
             <span className="metric-lbl">Total Needed</span>
           </div>
           <div className="metric">
-            <span className="metric-val inc">{rupees(totalSaved, hide)}</span>
+            <span className="metric-val inc">{rupees(saved, hide)}</span>
             <span className="metric-lbl">Saved</span>
           </div>
           <div className="metric">
@@ -67,11 +76,24 @@ export function GoalsPage() {
             <span className="metric-lbl">Monthly Required</span>
           </div>
         </div>
+        {floor > 0 && (
+          <div className="tsub" style={{ marginTop: 10, color: "var(--muted)" }}>
+            P1 floor · <b>{rupees(floor, hide)}/mo</b> minimum to keep P1 goals on schedule
+          </div>
+        )}
         <div className="status-pills" style={{ marginTop: 14 }}>
           <span className="pill on">{onTrack} On Track</span>
           <span className={"pill " + (needsAttention ? "warn" : "")}>{needsAttention} Need Attention</span>
           <span className={"pill " + (overdue ? "err" : "")}>{overdue} Overdue</span>
           <span className={"pill " + (completed ? "ok" : "")}>{completed} Completed</span>
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+          <button className="btn mini" style={{ flex: 1 }} onClick={() => openSheet({ name: "goal-fund" })}>
+            Fund goals
+          </button>
+          <button className="btn mini ghost" style={{ flex: 1 }} onClick={() => openSheet({ name: "goal-whatif" })}>
+            What-if
+          </button>
         </div>
       </div>
       <div className="sec-label">Upcoming Goals</div>

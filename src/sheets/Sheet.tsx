@@ -10,7 +10,7 @@ import { AccountAddSheet, AccountEditSheet } from "./accounts";
 import { BudgetDetailSheet, BudgetFormSheet } from "./budget";
 import { DayTxnsSheet } from "./daytxns";
 import { FriendAddSheet, OpenInAppSheet } from "./friends";
-import { GoalCompleteSheet, GoalDetailSheet, GoalFormSheet } from "./goals";
+import { GoalCompleteSheet, GoalDeleteSheet, GoalDetailSheet, GoalFormSheet, GoalFundSheet, GoalMoveSheet, GoalWhatIfSheet } from "./goals";
 import { GroceryItemSheet, GroceryListSheet, GroceryMoreSheet } from "./grocery";
 import { GroceryJoinSheet, GroceryShareSheet } from "./groceryshare";
 import { MerchantEditorSheet, MerchantManageSheet } from "./manage";
@@ -77,6 +77,14 @@ function Content({ sheet }: { sheet: SheetSpec }) {
       return <GoalDetailSheet id={sheet.id!} />;
     case "goal-complete":
       return <GoalCompleteSheet id={sheet.id!} />;
+    case "goal-fund":
+      return <GoalFundSheet />;
+    case "goal-move":
+      return <GoalMoveSheet fromId={sheet.id} toId={sheet.id2} />;
+    case "goal-whatif":
+      return <GoalWhatIfSheet />;
+    case "goal-delete":
+      return <GoalDeleteSheet id={sheet.id!} />;
     case "account-add":
       return <AccountAddSheet />;
     case "account-edit":

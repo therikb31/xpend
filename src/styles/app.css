@@ -1,5 +1,6 @@
 ﻿/* ============================ DESIGN TOKENS (UI_DESIGN_SPEC.md) ============================ */
 :root{
+  color-scheme:dark;
   --bg:#060809;          /* app background */
   --bg-elev:#090B0C;
   --card:#0D1113;        /* faint card lift */
@@ -312,7 +313,7 @@ html.is-standalone #app{height:100%}
 .msg-meta{font-size:11px;color:var(--muted-2);margin-top:5px}
 .ask-status{display:flex}
 .ask-row{display:flex;gap:8px;align-items:center;margin-top:6px}
-.ask-input{flex:1;min-width:0;background:var(--control);border:0;border-radius:16px;padding:13px 14px;font-size:15px;color:var(--text);outline:0;margin:0}
+.ask-row .ask-input{flex:1;min-width:0;background:var(--control);border:0;border-radius:16px;padding:13px 14px;font-size:15px;color:var(--text);outline:0;margin:0}
 .ask-send{flex:none;width:44px;height:44px;border-radius:50%;border:0;background:#fff;color:#0B0E11;display:grid;place-items:center}
 .ask-send svg{width:18px;height:18px}
 .ask-send[disabled]{opacity:.35}
@@ -512,7 +513,7 @@ html.is-standalone #app{height:100%}
   overflow:hidden;
 }
 .search svg{width:19px;height:19px;color:var(--muted);flex:none}
-.search input{flex:1;min-width:0;height:100%;margin:0 !important;padding:0 !important;width:0;background:none;border:0;outline:0;font-size:15.5px;line-height:normal;color:var(--text)}
+.search input[type=text]{flex:1;min-width:0;height:100%;margin:0 !important;padding:0 !important;width:0;background:none;border:0;outline:0;font-size:15.5px;line-height:normal;color:var(--text)}
 .search input::placeholder{color:var(--muted)}
 
 /* ============================ SETTINGS ROWS / TOGGLES ============================ */
@@ -565,7 +566,7 @@ select.sel{
 .g-link svg{width:12px;height:12px}
 .g-link b{font-size:11.5px;font-weight:700}
 .link-addrow{display:flex;gap:8px;align-items:center}
-.link-addrow input{flex:1;min-width:0}
+.link-addrow input[type=text]{flex:1;min-width:0}
 .link-addrow .btn{flex:none}
 .link-card{display:flex;gap:10px;align-items:center;background:var(--control);border-radius:14px;padding:9px 10px;margin:0;max-width:100%}
 .link-reveal{position:relative;overflow:hidden;border-radius:14px;margin:0 0 8px;max-width:100%}
@@ -705,11 +706,17 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
 .field .f-name.mute{color:var(--muted-2)}
 .field .f-val{color:var(--muted-2);font-size:15px;font-variant-numeric:tabular-nums}
 .note-field{flex:1;min-width:0;overflow:hidden}
-.note-inline{
+.field .note-inline{
   flex:1;min-width:0;background:transparent;border:0;outline:0;
   font-size:16px;color:var(--text);padding:2px 0;
 }
 .note-inline::placeholder{color:var(--muted-2)}
+.field input[type=month]{
+  flex:1;min-width:0;max-width:100%;width:100%;
+  background:transparent;border:0;border-radius:0;outline:0;
+  height:auto;padding:2px 0;margin:0;font-size:16px;font-family:inherit;color:var(--text);
+  color-scheme:dark;
+}
 .ficon{
   width:40px;height:40px;border-radius:13px;flex:none;
   display:grid;place-items:center;
@@ -800,6 +807,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
 .pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;letter-spacing:.2px;white-space:nowrap;background:var(--control);color:var(--muted)}
 .pill.on{background:rgba(82,229,165,.13);color:#52E5A5}
 .pill.warn{background:rgba(255,159,67,.14);color:#FF9F43}
+.tsub.warn{color:var(--neg)}
 .pill.err{background:rgba(255,90,90,.14);color:#FF5A5A}
 .pill.ok{background:rgba(82,229,165,.13);color:#52E5A5}
 .metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 10px;margin-top:12px}
@@ -866,9 +874,9 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
 
 /* note text */
 .note-ico{font-size:15px;color:var(--muted-2)}
-input[type=text],textarea.tx{
+input[type=text],input[type=password],input:not([type]),textarea.tx{
   width:100%;background:var(--control);border:0;border-radius:16px;
-  padding:15px 16px;font-size:16px;outline:0;margin:4px 0 14px;
+  padding:15px 16px;font-size:16px;color:var(--text);outline:0;margin:4px 0 14px;
 }
 textarea.tx{resize:none;font-family:none;min-height:64px}
 input[type=month],input[type=date]{

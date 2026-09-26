@@ -306,7 +306,6 @@ export function GroceryItemSheet({ listId, itemId }: { listId: string; itemId?: 
       <label className="field note-field">
         <span className="ficon">🛒</span>
         <input
-          type="text"
           className="note-inline"
           placeholder="e.g. Facewash"
           value={name}

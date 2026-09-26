@@ -14,9 +14,10 @@ export function AccountsPage() {
 
   const accs = doc.accounts;
   const hasSav = accs.some((a) => a.kind === "savings");
+  const hasGoal = accs.some((a) => a.kind === "goal");
   const hasSec = accs.some((a) => a.secondary);
   const net = accs.reduce(
-    (s, a) => s + (a.kind === "savings" || a.secondary ? 0 : accBalance(doc, a.id)),
+    (s, a) => s + (a.kind === "savings" || a.kind === "goal" || a.secondary ? 0 : accBalance(doc, a.id)),
     0
   );
   const openAcc = (a: Account) => openSheet({ name: "account-edit", id: a.id });
@@ -45,6 +46,7 @@ export function AccountsPage() {
         <div className="dc-sub2" style={{ color: "var(--muted)", fontSize: 13.5 }}>
           {accs.length} account{accs.length === 1 ? "" : "s"}
           {hasSav ? " · excluding savings" : ""}
+          {hasGoal ? " · excluding goals" : ""}
           {hasSec ? " · excluding secondary" : ""}
         </div>
       </div>
@@ -59,6 +61,11 @@ export function AccountsPage() {
                 {a.kind === "savings" && (
                   <div className="tsub" style={{ textTransform: "capitalize" }}>
                     Savings account
+                  </div>
+                )}
+                {a.kind === "goal" && (
+                  <div className="tsub" style={{ textTransform: "capitalize" }}>
+                    Goal account
                   </div>
                 )}
               </span>

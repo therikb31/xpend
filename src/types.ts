@@ -22,11 +22,13 @@ export interface TransferTxn extends TxnBase {
   dir: "trans";
   from: string; // account id or "__prev"
   to: string; // account id or "__prev"
+  goalId?: string; // destination goal (goal funding / goal-to-goal moves)
+  fromGoalId?: string; // source goal for goal-to-goal moves (trail)
 }
 
 export type Txn = ExpenseTxn | TransferTxn;
 
-export type AccountKind = "cash" | "card" | "bank" | "other" | "savings";
+export type AccountKind = "cash" | "card" | "bank" | "other" | "savings" | "goal";
 
 export interface Account {
   id: string;
@@ -82,7 +84,10 @@ export interface GoalSource {
   type: string;
   amount: number; // paise
   date?: string | null;
+  txnId?: string; // funding transfer that created this entry
 }
+
+export type GoalPriority = 1 | 2 | 3;
 
 export interface Goal {
   id: string;
@@ -99,6 +104,10 @@ export interface Goal {
   actualTxId?: string | null;
   actualCatId?: string | null;
   createdAt?: number;
+  priority?: GoalPriority; // 1 = fixed date, 2/3 flexible (default 2)
+  categoryId?: string; // expense category: drives 50-30-20 tag (default saving)
+  paused?: boolean; // P2/P3 only — P1 cannot pause
+  deleted?: boolean; // tombstone: history intact, hidden from lists/waterfall
 }
 
 export interface Shortcut {

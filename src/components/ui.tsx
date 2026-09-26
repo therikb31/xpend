@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { useSwipe } from "../hooks/useSwipe";
 import { useApp } from "../services/store";
-import { budgetCtx, budgetSpent, isOverall, overallLimit, aggIdsRaw, aggSpentV, trNames, catById, goalCalc, budgetCats, budgetAccent } from "../data/finance";
+import { budgetCtx, budgetSpent, isOverall, overallLimit, aggIdsRaw, aggSpentV, trNames, catById, goalExpected, goalProgress, budgetCats, budgetAccent } from "../data/finance";
 import type { Account, Budget, Doc, Goal, Merchant, Txn } from "../types";
 import { catEmoji, fallbackEmoji, init, rupees } from "../lib/format";
 import { ACC_ICONS, IC, MERCH_ICONS } from "../lib/icons";
@@ -327,11 +327,21 @@ const GOAL_STATUS_LABEL: Record<string, string> = {
 
 export function GoalRow({ doc, g, color, onOpen }: { doc: Doc; g: Goal; color: string; onOpen: (id: string) => void }) {
   const hide = !!doc.settings.hideBalances;
-  const c = goalCalc(g);
+  const c = goalProgress(doc, g);
   const st = c.status;
   const stL = GOAL_STATUS_LABEL[st];
   const stC = st === "on-track" ? "on" : st === "needs-attention" ? "warn" : st === "overdue" ? "err" : "ok";
   const chipC = st === "completed" || st === "on-track" ? "ok" : st === "overdue" ? "err" : "warn";
+  const prio = g.priority ?? 2;
+  const exp = !g.completed ? goalExpected(doc, g) : null;
+  const expLbl =
+    exp && exp.expectedKey
+      ? new Date(
+          parseInt(exp.expectedKey.slice(0, 4), 10),
+          parseInt(exp.expectedKey.slice(5, 7), 10) - 1,
+          1
+        ).toLocaleDateString("en-IN", { month: "short", year: "numeric" })
+      : null;
   const dateLbl = g.date
     ? new Date(parseInt(g.date.slice(0, 4), 10), parseInt(g.date.slice(5, 7), 10) - 1, 1).toLocaleDateString("en-IN", { month: "short", year: "numeric" })
     : "No date";
@@ -342,6 +352,8 @@ export function GoalRow({ doc, g, color, onOpen }: { doc: Doc; g: Goal; color: s
           {init(g.name)}
         </span>
         <span className="goal-name">{g.name}</span>
+        <span className="pill">P{prio}</span>
+        {g.paused && prio !== 1 ? <span className="pill">Paused</span> : null}
         <span className={"pill " + stC}>{stL}</span>
       </div>
       <div className={"goal-pbar " + (st === "overdue" ? "err" : "")}>
@@ -363,6 +375,7 @@ export function GoalRow({ doc, g, color, onOpen }: { doc: Doc; g: Goal; color: s
           <>
             <span className="gchip">
               {IC.cal} {dateLbl}
+              {expLbl && expLbl !== dateLbl ? ` → ${expLbl}` : ""}
             </span>
             <span className={"gchip " + chipC}>
               {IC.trend} {rupees(c.required, hide)}/mo

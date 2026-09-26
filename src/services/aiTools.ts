@@ -5,7 +5,7 @@
 
 import {
   accBalance, bucketTxns, budgetsFor, budgetCtx, budgetSpent, catById, catSpend, isOverall,
-  goalCalc, merchById, merchantSpend, monthStats, savingsTally, sortedTxs,
+  goalExpected, goalFunded, goalProgress, goalTag, merchById, merchantSpend, monthStats, p1Floor, savingsTally, sortedTxs,
   trNames,
 } from "../data/finance";
 import { monthKey, parseMk } from "../lib/format";
@@ -280,15 +280,24 @@ export function runTool(name: string, rawArgs: unknown, doc: Doc): unknown {
     }
     case "get_goals_data": {
       return {
-        goals: (doc.goals || []).map((g) => {
-          const c = goalCalc(g);
-          return {
-            id: g.id, name: g.name, target: rs(c.target), current: rs(c.current),
-            remaining: rs(c.remaining), pct: Math.round(c.pct * 10) / 10,
-            monthly_required: rs(c.required), date: g.date || null, status: c.status,
-            completed: !!g.completed,
-          };
-        }),
+        p1_floor_monthly: rs(p1Floor(doc)),
+        goals: (doc.goals || [])
+          .filter((g) => !g.deleted)
+          .map((g) => {
+            const c = goalProgress(doc, g);
+            const exp = goalExpected(doc, g);
+            const cat = g.categoryId ? catById(doc, g.categoryId) : null;
+            return {
+              id: g.id, name: g.name, target: rs(c.target), current: rs(c.current),
+              remaining: rs(c.remaining), pct: Math.round(c.pct * 10) / 10,
+              monthly_required: rs(c.required), date: g.date || null,
+              expected_date: exp.expectedKey, status: c.status,
+              priority: g.priority ?? 2, paused: !!g.paused,
+              category: cat ? cat.name : null, bucket_50_30_20: goalTag(doc, g),
+              funded_via_transfers: rs(goalFunded(doc, g.id)),
+              completed: !!g.completed,
+            };
+          }),
       };
     }
     case "get_accounts_data": {
