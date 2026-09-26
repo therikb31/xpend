@@ -510,37 +510,46 @@ export interface WaterfallResult {
   p1Covered: boolean;
 }
 
-/* Waterfall a deposit across goals: monthly-required claims in
-   priority → earliest-date order (undated goals skip the claim round and
-   catch spillover only), then spillover tops up earliest remaining in the
-   same order. Anything beyond all remainings stays unallocated. */
-export function allocateWaterfall(doc: Doc, amountPaise: number, excludeId?: string): WaterfallResult {
-  const cands = liveGoals(doc).filter((g) => !g.paused && g.id !== excludeId).sort(goalOrder);
-  const prog = new Map<string, GoalCalc>();
-  const progOf = (g: Goal): GoalCalc => {
-    let c = prog.get(g.id);
-    if (!c) {
-      c = goalProgress(doc, g);
-      prog.set(g.id, c);
-    }
-    return c;
-  };
+export interface WFItem {
+  id: string;
+  priority: number;
+  date: string; // YYYY-MM or ""
+  remaining: number; // paise
+  claim: number; // paise this round
+  createdAt: number;
+}
+
+/* Shared cascade: monthly-required claims in priority → earliest-date
+   order (undated items skip the claim round and catch spillover only),
+   then spillover tops up earliest remaining in the same order. */
+export function allocateWaterfallAmounts(items: WFItem[], amountPaise: number): WaterfallResult {
+  const cands = items
+    .filter((g) => g.remaining > 0)
+    .sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      if (a.date !== b.date) {
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return a.date < b.date ? -1 : 1;
+      }
+      return a.createdAt - b.createdAt;
+    });
   const given = new Map<string, number>();
   let left = Math.max(0, Math.round(amountPaise || 0));
   const shortfalls: Array<{ goalId: string; missing: number }> = [];
   let p1Required = 0;
   let p1Got = 0;
-  // Round 1: monthly-required claims (dated goals only).
+  // Round 1: claims (dated items only).
   for (const g of cands) {
     if (!g.date) continue;
-    const claim = Math.max(0, progOf(g).required || 0);
-    if ((g.priority ?? 2) === 1) p1Required += claim;
+    const claim = Math.max(0, g.claim || 0);
+    if (g.priority === 1) p1Required += claim;
     if (claim <= 0) continue;
     const give = Math.min(claim, left);
     if (give > 0) {
       given.set(g.id, (given.get(g.id) || 0) + give);
       left -= give;
-      if ((g.priority ?? 2) === 1) p1Got += give;
+      if (g.priority === 1) p1Got += give;
     }
     if (give < claim) shortfalls.push({ goalId: g.id, missing: claim - give });
   }
@@ -548,8 +557,7 @@ export function allocateWaterfall(doc: Doc, amountPaise: number, excludeId?: str
   if (left > 0) {
     for (const g of cands) {
       if (left <= 0) break;
-      const c = progOf(g);
-      const unmet = Math.max(0, c.remaining - (given.get(g.id) || 0));
+      const unmet = Math.max(0, g.remaining - (given.get(g.id) || 0));
       if (unmet <= 0) continue;
       const give = Math.min(unmet, left);
       given.set(g.id, (given.get(g.id) || 0) + give);
@@ -567,15 +575,101 @@ export function allocateWaterfall(doc: Doc, amountPaise: number, excludeId?: str
   };
 }
 
+/* Live-doc wrapper: claims are each goal's monthly required. */
+export function allocateWaterfall(doc: Doc, amountPaise: number, excludeId?: string): WaterfallResult {
+  const items: WFItem[] = liveGoals(doc)
+    .filter((g) => !g.paused && g.id !== excludeId)
+    .map((g) => {
+      const c = goalProgress(doc, g);
+      return {
+        id: g.id, priority: g.priority ?? 2, date: g.date || "",
+        remaining: c.remaining, claim: g.date ? Math.max(0, c.required || 0) : 0,
+        createdAt: g.createdAt || 0,
+      };
+    });
+  return allocateWaterfallAmounts(items, amountPaise);
+}
+
+/* Claim math mirroring goalCalc, but against a simulation cursor instead
+   of today. Due/overdue at the cursor claims everything outstanding. */
+function claimForDate(remaining: number, dateKey: string, cursorKey: string): number {
+  if (!dateKey || remaining <= 0) return 0;
+  const y = parseInt(dateKey.slice(0, 4), 10);
+  const m = parseInt(dateKey.slice(5, 7), 10) - 1;
+  const cy = parseInt(cursorKey.slice(0, 4), 10);
+  const cm = parseInt(cursorKey.slice(5, 7), 10) - 1;
+  const months = (y - cy) * 12 + (m - cm);
+  const saveMonths = months > 1 ? months - 1 : months === 1 ? 1 : 0;
+  if (saveMonths <= 0) return Math.round(remaining);
+  return Math.ceil(remaining / saveMonths / 100) * 100;
+}
+
+function nextKey(k: string): string {
+  const d = parseMk(k);
+  d.setMonth(d.getMonth() + 1);
+  return monthKey(d);
+}
+
+export interface SimulatedGoal {
+  goalId: string;
+  expectedKey: string | null; // YYYY-MM completion month
+  months: number | null; // months from now (0 = this month)
+  contributed: number; // paise allocated across the simulation
+}
+
+/* Simulate funding `monthlyPaise`/mo through the waterfall, month by
+   month. Pure preview — reads progress, writes nothing. */
+export function simulateWaterfall(doc: Doc, monthlyPaise: number, maxMonths = 600): SimulatedGoal[] {
+  const m = Math.max(0, Math.round(monthlyPaise || 0));
+  const live = liveGoals(doc).filter((g) => !g.paused);
+  const rem = new Map<string, number>();
+  const contrib = new Map<string, number>();
+  const done = new Map<string, { key: string; months: number }>();
+  for (const g of live) {
+    rem.set(g.id, Math.max(0, g.target - (goalCurrent(g) + goalFunded(doc, g.id))));
+  }
+  let cursor = monthKey(new Date());
+  for (let i = 0; i < maxMonths; i++) {
+    const items: WFItem[] = [];
+    for (const g of live) {
+      const r = rem.get(g.id) || 0;
+      if (r <= 0) continue;
+      items.push({
+        id: g.id, priority: g.priority ?? 2, date: g.date || "", remaining: r,
+        claim: claimForDate(r, g.date || "", cursor), createdAt: g.createdAt || 0,
+      });
+    }
+    if (!items.length || m <= 0) break;
+    const r = allocateWaterfallAmounts(items, m);
+    for (const a of r.allocs) {
+      rem.set(a.goalId, Math.max(0, (rem.get(a.goalId) || 0) - a.amount));
+      contrib.set(a.goalId, (contrib.get(a.goalId) || 0) + a.amount);
+      if ((rem.get(a.goalId) || 0) <= 0 && !done.has(a.goalId)) {
+        done.set(a.goalId, { key: cursor, months: i });
+      }
+    }
+    if ([...rem.values()].every((x) => x <= 0)) break;
+    cursor = nextKey(cursor);
+  }
+  return live.map((g) => {
+    const d = done.get(g.id);
+    return {
+      goalId: g.id,
+      expectedKey: d ? d.key : null,
+      months: d ? d.months : null,
+      contributed: contrib.get(g.id) || 0,
+    };
+  });
+}
+
 export interface GoalExpectation {
   rate: number; // paise/mo trailing allocation rate (0 when unknown)
   expectedKey: string | null; // YYYY-MM or null when unprojectable
 }
 
 /* Expected completion: trailing-90-day actual allocation rate, falling
-   back to the goal's plan, else unprojectable. rateOverride previews a
-   hypothetical monthly rate (what-if) without touching data. */
-export function goalExpected(doc: Doc, g: Goal, rateOverride?: number): GoalExpectation {
+   back to the goal's plan, else unprojectable. */
+export function goalExpected(doc: Doc, g: Goal): GoalExpectation {
   const now = new Date();
   const cut = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 90);
   const iso =
@@ -588,7 +682,6 @@ export function goalExpected(doc: Doc, g: Goal, rateOverride?: number): GoalExpe
     else if (t.fromGoalId === g.id) got -= t.amount;
   }
   let rate = Math.round(got / 3);
-  if (rateOverride != null && rateOverride > 0) rate = Math.round(rateOverride);
   if (rate <= 0) rate = g.plan || 0;
   const total = goalCurrent(g) + goalFunded(doc, g.id);
   const remaining = Math.max(0, (g.target || 0) - total);

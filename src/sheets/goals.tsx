@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import {
   accBalance, allocateWaterfall, expenseCats, goalCalc, goalCurrent, goalExpected,
-  goalProgress, liveGoals, p1Floor,
+  goalProgress, liveGoals, p1Floor, simulateWaterfall,
 } from "../data/finance";
 import { catEmoji, parseMk, parseRupeesToPaise, rupees, todayStr, uid } from "../lib/format";
 import { IC } from "../lib/icons";
@@ -408,13 +408,23 @@ export function GoalDetailSheet({ id }: { id: string }) {
   const g = doc.goals.find((x) => x.id === id);
   if (!g || g.deleted) return null;
   const c = goalProgress(doc, g);
-  const stL = STATUS_LABEL[c.status];
-  const stC = statusClass(c.status);
+  const st = c.status;
+  const stL = STATUS_LABEL[st];
+  const stC = statusClass(st);
   const srcTotal = goalCurrent(g);
-  const monthsLeft = c.saveMonths > 0 ? c.saveMonths : g.date ? "past due" : "no date";
   const dateTxt = g.date
     ? parseMk(g.date).toLocaleDateString("en-IN", { month: "short", year: "numeric" })
     : "—";
+  const verdict =
+    c.status === "on-track"
+      ? `On track · ${rupees(c.plan, hide)}/mo${g.date ? ` for ${dateTxt}` : ""}`
+      : c.status === "needs-attention"
+        ? `Needs ${rupees(c.required, hide)}/mo${g.date ? ` by ${dateTxt}` : ""}${
+            c.plan > 0 ? ` · saving ${rupees(c.plan, hide)}/mo` : ""
+          }`
+        : c.status === "overdue"
+          ? `Past due · needs ${rupees(c.required, hide)}/mo now`
+          : "Target saved — ready to buy!";
 
   const del = () => {
     if (c.current > 0) {
@@ -448,58 +458,49 @@ export function GoalDetailSheet({ id }: { id: string }) {
   return (
     <>
       <Grab />
-      <div className="sh-title">{g.name}</div>
-      <div className="gd-status">
-        <span className={"pill " + stC}>{stL}</span>
+      <div className="goal-hero">
+        <div className="goal-hero-title">{g.name}</div>
+        <div className="goal-hero-pills">
+          <span className={"pill " + stC}>{stL}</span>
+          <span className="pill">P{g.priority ?? 2}</span>
+          {g.paused && (g.priority ?? 2) !== 1 ? <span className="pill">Paused</span> : null}
+        </div>
+        <div className="goal-hero-bar">
+          <div
+            className={
+              "goal-pbar big " +
+              (st === "overdue" ? "err" : st === "needs-attention" ? "warn" : st === "completed" ? "ok" : "")
+            }
+          >
+            <div className="goal-pbar-track">
+              <i style={{ width: Math.min(100, c.pct) + "%" }}></i>
+            </div>
+          </div>
+          <span className="goal-hero-pct">{Math.round(c.pct)}%</span>
+        </div>
+        {!g.completed && <div className="goal-verdict">{verdict}</div>}
       </div>
-      <div className="gd-progress">
-        <i style={{ width: Math.min(100, c.pct) + "%" }}></i>
-      </div>
-      <div className="gc-grid">
+      <div className="goal-trio">
         <div>
           <span className="gc-lbl">Saved</span>
-          <span className="gc-val inc">{rupees(c.current, hide)}</span>
+          <span className={"gc-big " + (c.current > 0 ? "inc" : "")}>{rupees(c.current, hide)}</span>
         </div>
         <div>
-          <span className="gc-lbl">Target</span>
-          <span className="gc-val">{rupees(c.target, hide)}</span>
+          <span className="gc-lbl">To go</span>
+          <span className="gc-big">{rupees(c.remaining, hide)}</span>
         </div>
         <div>
-          <span className="gc-lbl">Remaining</span>
-          <span className="gc-val neg">{rupees(c.remaining, hide)}</span>
-        </div>
-        <div>
-          <span className="gc-lbl">Progress</span>
-          <span className="gc-val">{Math.round(c.pct)}%</span>
+          <span className="gc-lbl">Per month</span>
+          <span className="gc-big">{c.required > 0 ? `${rupees(c.required, hide)}/mo` : "—"}</span>
         </div>
       </div>
-      {!g.completed && (
-        <div className="gd-note">
-          {c.status === "on-track"
-            ? "Saving " + rupees(c.plan, hide) + "/mo" + (g.date ? " · on track for " + dateTxt : "")
-            : c.status === "needs-attention"
-              ? (
-                <>
-                  Needs <b>{rupees(c.required, hide)}/mo</b> to hit the target
-                  {g.date ? ` by ${dateTxt}` : ""}
-                  {c.plan > 0 ? ` · saving ${rupees(c.plan, hide)}/mo` : ""}
-                </>
-              )
-              : c.status === "overdue"
-                ? (
-                  <>
-                    Target date ({dateTxt}) has passed — needs <b>{rupees(c.required, hide)}/mo</b> now.
-                  </>
-                )
-                : "Target saved — ready to buy!"}
-        </div>
-      )}
       <div className="sec-label" style={{ marginTop: 16 }}>
-        Goal
+        Details
       </div>
+      <div className="goal-det">
       <div className="slab">
         <span className="s-label">
-          Estimated cost
+          Target
           <div className="s-sub">
             {g.actualAmount
               ? `Actual: ${rupees(g.actualAmount, hide)} · ${
@@ -513,63 +514,24 @@ export function GoalDetailSheet({ id }: { id: string }) {
         <span>{rupees(c.target, hide)}</span>
       </div>
       <div className="slab">
-        <span className="s-label">
-          Expected date
-          <div className="s-sub">
-            {monthsLeft === "past due" ? "Past due" : monthsLeft === "no date" ? "No date set" : monthsLeft + " month" + (monthsLeft === 1 ? "" : "s") + " left to save"}
-          </div>
-        </span>
+        <span className="s-label">Due date</span>
         <span>{dateTxt}</span>
       </div>
       <div className="slab">
-        <span className="s-label">
-          Monthly savings plan
-          <div className="s-sub">
-            {c.plan > 0
-              ? "Estimated completion: " +
-                (c.estDate ? c.estDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "—")
-              : "No monthly plan set"}
-          </div>
-        </span>
-        <span>{rupees(c.plan, hide)}/mo</span>
+        <span className="s-label">Monthly plan</span>
+        <span>{c.plan > 0 ? `${rupees(c.plan, hide)}/mo` : "Not set"}</span>
       </div>
       <div className="slab">
-        <span className="s-label">
-          Priority
-          <div className="s-sub">
-            {(g.priority ?? 2) === 1 ? "Fixed date — can't pause or extend" : "Flexible · can pause"}
-          </div>
-        </span>
+        <span className="s-label">Priority</span>
         <span className="pill">P{g.priority ?? 2}</span>
       </div>
       <div className="slab">
-        <span className="s-label">
-          Category
-          <div className="s-sub">Drives 50-30-20 for this goal's funding</div>
-        </span>
+        <span className="s-label">Category</span>
         <span>{(() => {
           const cat = g.categoryId ? (doc.categories || []).find((x) => x.id === g.categoryId) : null;
           return cat ? `${cat.emoji || ""} ${cat.name}`.trim() : "Uncategorized · counts as Savings";
         })()}</span>
       </div>
-      {(() => {
-        const exp = goalExpected(doc, g);
-        if (!exp.expectedKey) return null;
-        const lbl = new Date(
-          parseInt(exp.expectedKey.slice(0, 4), 10),
-          parseInt(exp.expectedKey.slice(5, 7), 10) - 1,
-          1
-        ).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
-        return (
-          <div className="slab">
-            <span className="s-label">
-              Expected completion
-              <div className="s-sub">At the current allocation rate</div>
-            </span>
-            <span>{lbl}</span>
-          </div>
-        );
-      })()}
       {!g.completed && (g.priority ?? 2) !== 1 && (
         <button className="set" style={{ marginTop: 8 }} onClick={togglePause}>
           <span className="s-label">
@@ -581,54 +543,55 @@ export function GoalDetailSheet({ id }: { id: string }) {
           <span className={"switch " + (g.paused ? "" : "on")} />
         </button>
       )}
-      <div className="sec-label" style={{ marginTop: 16 }}>
-        Savings Sources {srcTotal ? `· ${rupees(srcTotal, hide)}` : "· no source yet"}
       </div>
       {g.sources && g.sources.length ? (
-        g.sources.map((s) => (
-          <div key={s.id} className="slab">
-            <span className="s-label">{s.name}</span>
-            <span>{rupees(s.amount || 0, hide)}</span>
+        <>
+          <div className="sec-label" style={{ marginTop: 16 }}>
+            Savings Sources · {rupees(srcTotal, hide)}
           </div>
-        ))
+          {g.sources.map((s) => (
+            <div key={s.id} className="slab">
+              <span className="s-label">{s.name}</span>
+              <span>{rupees(s.amount || 0, hide)}</span>
+            </div>
+          ))}
+        </>
       ) : (
-        <div className="tsub" style={{ margin: "0 2px 4px", color: "var(--muted)" }}>
+        <div className="tsub" style={{ margin: "12px 2px 4px", color: "var(--muted)" }}>
           No savings source allocated yet.
         </div>
       )}
-      <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+      {!g.completed && (
+        <button className="btn" style={{ marginTop: 16 }} onClick={() => openSheet({ name: "goal-fund" })}>
+          Fund this goal
+        </button>
+      )}
+      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
         <button className="btn ghost" style={{ flex: 1 }} onClick={() => openSheet({ name: "goal-form", id: g.id })}>
           Edit
         </button>
+        <button
+          className="btn ghost"
+          style={{ flex: 1 }}
+          onClick={() => openSheet({ name: "goal-move", id: g.id })}
+        >
+          Move
+        </button>
         {!g.completed && (
-          <button className="btn" style={{ flex: 1 }} onClick={() => openSheet({ name: "goal-complete", id: g.id })}>
-            {IC.check} Purchased
+          <button className="btn ghost" style={{ flex: 1 }} onClick={() => openSheet({ name: "goal-complete", id: g.id })}>
+            Purchased
           </button>
         )}
       </div>
-      {!g.completed && (
-        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-          <button className="btn ghost" style={{ flex: 1 }} onClick={() => openSheet({ name: "goal-fund" })}>
-            Fund
-          </button>
-          <button
-            className="btn ghost"
-            style={{ flex: 1 }}
-            onClick={() => openSheet({ name: "goal-move", id: g.id })}
-          >
-            Move
-          </button>
-        </div>
-      )}
       {g.completed && (
         <div className="gd-note ok">
           Recorded as an expense{g.actualTxId ? " · tap the Activity tab to see it" : ""}
         </div>
       )}
       <button
-        className="btn ghost"
-        style={{ width: "100%", marginTop: 12, color: "var(--neg)", borderColor: "rgba(192,91,77,.35)" }}
+        type="button"
         onClick={del}
+        className="goal-del"
       >
         {IC.trash} {armed ? "Tap again to delete" : "Delete goal"}
       </button>
@@ -884,14 +847,18 @@ export function GoalMoveSheet({ fromId, toId }: { fromId?: string; toId?: string
   );
 }
 
-/* What-if simulator — recompute expected dates under a hypothetical
-   monthly rate. Pure preview, writes nothing. */
+/* What-if simulator — one monthly total for all goals, waterfalled
+   month by month. Pure preview, writes nothing. */
 export function GoalWhatIfSheet() {
   const { state } = useApp();
   const doc = state.doc!;
-  const [rate, setRate] = useState("");
-  const v = parseRupeesToPaise(rate || "");
+  const hide = !!doc.settings.hideBalances;
+  const [amount, setAmount] = useState("");
+  const v = parseRupeesToPaise(amount || "");
   const live = liveGoals(doc).slice().sort((a, b) => (a.priority ?? 2) - (b.priority ?? 2));
+  const sim = v > 0 ? simulateWaterfall(doc, v) : [];
+  const byId = new Map(sim.map((s) => [s.goalId, s]));
+  const floor = p1Floor(doc);
   const fmtKey = (k: string | null) =>
     k
       ? new Date(parseInt(k.slice(0, 4), 10), parseInt(k.slice(5, 7), 10) - 1, 1).toLocaleDateString("en-IN", {
@@ -899,47 +866,70 @@ export function GoalWhatIfSheet() {
           year: "numeric",
         })
       : "—";
+  const moDiff = (a: string | null, b: string | null): number | null => {
+    if (!a || !b) return null;
+    return (
+      (parseInt(a.slice(0, 4), 10) - parseInt(b.slice(0, 4), 10)) * 12 +
+      (parseInt(a.slice(5, 7), 10) - parseInt(b.slice(5, 7), 10))
+    );
+  };
   return (
     <>
       <Grab />
       <div className="sh-title">What-if simulator</div>
       <div className="tsub" style={{ margin: "0 2px 8px", color: "var(--muted)" }}>
-        If every goal received this much per month, when would each land?
+        If you put this much per month toward goals in total, when would each land?
       </div>
       <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-        Monthly rate per goal (₹)
+        Monthly total for goals (₹)
       </div>
       <input
         inputMode="decimal"
         placeholder="e.g. 5000"
-        value={rate}
-        onChange={(e) => setRate(e.target.value)}
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
         style={{ marginTop: 0 }}
-        aria-label="Hypothetical monthly rate"
+        aria-label="Hypothetical monthly total"
       />
+      {v > 0 && (
+        <div className={"tsub " + (v >= floor ? "" : "warn")} style={{ margin: "4px 2px 8px" }}>
+          P1 floor {rupees(floor, hide)}/mo — {v >= floor ? "covered" : "SHORT"}
+        </div>
+      )}
       {v > 0 ? (
         live.map((g) => {
-          const exp = goalExpected(doc, g, v);
+          const s = byId.get(g.id);
+          const cur = goalExpected(doc, g).expectedKey;
+          const d = moDiff(s ? s.expectedKey : null, cur);
           const tgt = g.date
             ? new Date(parseInt(g.date.slice(0, 4), 10), parseInt(g.date.slice(5, 7), 10) - 1, 1).toLocaleDateString(
                 "en-IN",
                 { month: "short", year: "numeric" }
               )
             : "No date";
-          const ok = exp.expectedKey && g.date ? exp.expectedKey <= g.date : null;
+          const ok = s && s.expectedKey && g.date ? s.expectedKey <= g.date : null;
           return (
             <div key={g.id} className="slab">
               <span className="s-label">
                 {g.name} <span className="pill">P{g.priority ?? 2}</span>
-                <div className="s-sub">Target {tgt}</div>
+                <div className="s-sub">
+                  Target {tgt}
+                  {d != null && d !== 0
+                    ? ` · ${Math.abs(d)} mo ${d < 0 ? "earlier" : "later"}`
+                    : d === 0
+                      ? " · same pace"
+                      : ""}
+                </div>
               </span>
-              <span className={"pill " + (ok == null ? "" : ok ? "ok" : "warn")}>{fmtKey(exp.expectedKey)}</span>
+              <span className={"pill " + (ok == null ? "" : ok ? "ok" : "warn")}>
+                {fmtKey(s ? s.expectedKey : null)}
+              </span>
             </div>
           );
         })
       ) : (
         <div className="tsub" style={{ margin: "0 2px 8px", color: "var(--muted)" }}>
-          Enter a rate to preview dates.
+          Enter a monthly total to preview dates.
         </div>
       )}
     </>

@@ -318,19 +318,10 @@ export function BudgetCard({ doc, b, mkey, onOpen }: { doc: Doc; b: Budget; mkey
   );
 }
 
-const GOAL_STATUS_LABEL: Record<string, string> = {
-  completed: "Completed",
-  "on-track": "On Track",
-  "needs-attention": "Needs Attention",
-  overdue: "Overdue",
-};
-
 export function GoalRow({ doc, g, color, onOpen }: { doc: Doc; g: Goal; color: string; onOpen: (id: string) => void }) {
   const hide = !!doc.settings.hideBalances;
   const c = goalProgress(doc, g);
   const st = c.status;
-  const stL = GOAL_STATUS_LABEL[st];
-  const stC = st === "on-track" ? "on" : st === "needs-attention" ? "warn" : st === "overdue" ? "err" : "ok";
   const chipC = st === "completed" || st === "on-track" ? "ok" : st === "overdue" ? "err" : "warn";
   const prio = g.priority ?? 2;
   const exp = !g.completed ? goalExpected(doc, g) : null;
@@ -352,9 +343,7 @@ export function GoalRow({ doc, g, color, onOpen }: { doc: Doc; g: Goal; color: s
           {init(g.name)}
         </span>
         <span className="goal-name">{g.name}</span>
-        <span className="pill">P{prio}</span>
         {g.paused && prio !== 1 ? <span className="pill">Paused</span> : null}
-        <span className={"pill " + stC}>{stL}</span>
       </div>
       <div className={"goal-pbar " + (st === "overdue" ? "err" : "")}>
         <div className="goal-pbar-track">
@@ -382,6 +371,7 @@ export function GoalRow({ doc, g, color, onOpen }: { doc: Doc; g: Goal; color: s
             </span>
           </>
         )}
+        <span className="pill">P{prio}</span>
       </div>
     </div>
   );

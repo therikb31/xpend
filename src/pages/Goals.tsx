@@ -15,16 +15,12 @@ export function GoalsPage() {
   const active = liveGoals(doc);
   const totalTarget = gs.reduce((s, g) => s + (g.target || 0), 0);
   const saved = gs.reduce((s, g) => s + goalProgress(doc, g).current, 0);
-  const totalRemaining = Math.max(0, totalTarget - saved);
   const onTrack = active.filter((g) => goalProgress(doc, g).status === "on-track").length;
   const needsAttention = active.filter((g) => goalProgress(doc, g).status === "needs-attention").length;
   const overdue = active.filter((g) => goalProgress(doc, g).status === "overdue").length;
   const completed = gs.filter((g) => g.completed).length;
   const monthlyReq = active.reduce((s, g) => s + (goalProgress(doc, g).required || 0), 0);
   const floor = p1Floor(doc);
-  const p1Bad = active.some(
-    (g) => (g.priority ?? 2) === 1 && ["needs-attention", "overdue"].includes(goalProgress(doc, g).status)
-  );
   const upcoming = active
     .slice()
     .sort(goalOrder)
@@ -48,11 +44,6 @@ export function GoalsPage() {
           </button>
         </div>
       </header>
-      {p1Bad && (
-        <div className="bud-strip">
-          A P1 goal is off track — fund it first to protect its date.
-        </div>
-      )}
       <div className="card">
         <div className="card-title">Overview</div>
         <div className="metrics-grid">
@@ -65,8 +56,8 @@ export function GoalsPage() {
             <span className="metric-lbl">Saved</span>
           </div>
           <div className="metric">
-            <span className="metric-val neg">{rupees(totalRemaining, hide)}</span>
-            <span className="metric-lbl">Remaining</span>
+            <span className="metric-val neg">{rupees(floor, hide)}</span>
+            <span className="metric-lbl">Minimum Due</span>
           </div>
           <div className="metric">
             <span className="metric-val">
@@ -76,11 +67,6 @@ export function GoalsPage() {
             <span className="metric-lbl">Monthly Required</span>
           </div>
         </div>
-        {floor > 0 && (
-          <div className="tsub" style={{ marginTop: 10, color: "var(--muted)" }}>
-            P1 floor · <b>{rupees(floor, hide)}/mo</b> minimum to keep P1 goals on schedule
-          </div>
-        )}
         <div className="status-pills" style={{ marginTop: 14 }}>
           <span className="pill on">{onTrack} On Track</span>
           <span className={"pill " + (needsAttention ? "warn" : "")}>{needsAttention} Need Attention</span>
