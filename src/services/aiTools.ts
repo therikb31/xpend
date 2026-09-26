@@ -288,7 +288,7 @@ export function runTool(name: string, rawArgs: unknown, doc: Doc): unknown {
             const exp = goalExpected(doc, g);
             const cat = g.categoryId ? catById(doc, g.categoryId) : null;
             return {
-              id: g.id, name: g.name, target: rs(c.target), current: rs(c.current),
+              id: g.id, name: g.name, icon: g.icon || null, target: rs(c.target), current: rs(c.current),
               remaining: rs(c.remaining), pct: Math.round(c.pct * 10) / 10,
               monthly_required: rs(c.required), date: g.date || null,
               expected_date: exp.expectedKey, status: c.status,

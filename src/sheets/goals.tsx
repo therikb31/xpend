@@ -4,10 +4,10 @@
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import {
-  accBalance, allocateWaterfall, expenseCats, goalCalc, goalCurrent, goalExpected,
-  goalProgress, liveGoals, p1Floor, simulateWaterfall,
+  accBalance, allocateWaterfall, expenseCats, goalCalc, goalCurrent,
+  goalProgress, liveGoals, nextKey, p1Floor, simulateWaterfall,
 } from "../data/finance";
-import { catEmoji, parseMk, parseRupeesToPaise, rupees, todayStr, uid } from "../lib/format";
+import { catEmoji, init, monthKey, parseMk, parseRupeesToPaise, rupees, todayStr, uid } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { Doc, GoalSource, Txn } from "../types";
@@ -43,6 +43,7 @@ export function GoalFormSheet({ id }: { id?: string }) {
   const [step, setStep] = useState<"main" | "sources" | "entry">("main");
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [name, setName] = useState(existing ? existing.name : "");
+  const [icon, setIcon] = useState(existing ? existing.icon || "" : "");
   const [target, setTarget] = useState(existing ? String(existing.target / 100) : "");
   const [date, setDate] = useState(existing ? existing.date || "" : "");
   const [curIn, setCurIn] = useState("");
@@ -134,7 +135,7 @@ export function GoalFormSheet({ id }: { id?: string }) {
     }
     const data = {
       name: n, target: t, date: (date || "").trim() || "", current, plan: planV, sources: srcs,
-      priority, categoryId,
+      priority, categoryId, icon: icon.trim().slice(0, 8) || null,
     };
     mutate((d) => {
       if (id) {
@@ -305,6 +306,29 @@ export function GoalFormSheet({ id }: { id?: string }) {
           onChange={(e) => setName(e.target.value)}
         />
       </label>
+      <div className="field">
+        <span className="ccircle">{icon.trim() || init(name) || "•"}</span>
+        <input
+          className="note-inline"
+          placeholder="Icon emoji, e.g. 🚲"
+          value={icon}
+          onChange={(e) => setIcon(e.target.value)}
+          maxLength={8}
+          aria-label="Goal icon"
+        />
+      </div>
+      <div className="chip-row" style={{ marginTop: 0 }} aria-label="Icon presets">
+        {["🎯", "💰", "🏠", "🚗", "✈️", "📱", "💊", "🎓", "👶", "🏥"].map((e) => (
+          <button
+            key={e}
+            type="button"
+            className={"chip " + (icon.trim() === e ? "on" : "")}
+            onClick={() => setIcon(e)}
+          >
+            {e}
+          </button>
+        ))}
+      </div>
       <label className="field note-field">
         <span className="ficon">₹</span>
         <input
@@ -859,6 +883,12 @@ export function GoalWhatIfSheet() {
   const sim = v > 0 ? simulateWaterfall(doc, v) : [];
   const byId = new Map(sim.map((s) => [s.goalId, s]));
   const floor = p1Floor(doc);
+  const startKey = nextKey(monthKey(new Date()));
+  const startLbl = new Date(
+    parseInt(startKey.slice(0, 4), 10),
+    parseInt(startKey.slice(5, 7), 10) - 1,
+    1
+  ).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
   const fmtKey = (k: string | null) =>
     k
       ? new Date(parseInt(k.slice(0, 4), 10), parseInt(k.slice(5, 7), 10) - 1, 1).toLocaleDateString("en-IN", {
@@ -866,13 +896,6 @@ export function GoalWhatIfSheet() {
           year: "numeric",
         })
       : "—";
-  const moDiff = (a: string | null, b: string | null): number | null => {
-    if (!a || !b) return null;
-    return (
-      (parseInt(a.slice(0, 4), 10) - parseInt(b.slice(0, 4), 10)) * 12 +
-      (parseInt(a.slice(5, 7), 10) - parseInt(b.slice(5, 7), 10))
-    );
-  };
   return (
     <>
       <Grab />
@@ -892,41 +915,66 @@ export function GoalWhatIfSheet() {
         aria-label="Hypothetical monthly total"
       />
       {v > 0 && (
+        <div className="tsub" style={{ margin: "4px 2px 8px" }}>
+          Starting {startLbl} · {rupees(v, hide)}/mo
+        </div>
+      )}
+      {v > 0 && (
         <div className={"tsub " + (v >= floor ? "" : "warn")} style={{ margin: "4px 2px 8px" }}>
           P1 floor {rupees(floor, hide)}/mo — {v >= floor ? "covered" : "SHORT"}
         </div>
       )}
       {v > 0 ? (
-        live.map((g) => {
+        live.length ? (
+          <div className="goal-duo-table">
+            <div className="goal-duo-line" aria-hidden="true" />
+            <div className="goal-duo-head" aria-hidden="true">
+              <span className="goal-duo-pills">
+                <span className="duo-col">
+                  <span className="duo-lbl">Expected</span>
+                </span>
+                <span className="duo-col">
+                  <span className="duo-lbl">Target</span>
+                </span>
+              </span>
+            </div>
+            {live.map((g) => {
           const s = byId.get(g.id);
-          const cur = goalExpected(doc, g).expectedKey;
-          const d = moDiff(s ? s.expectedKey : null, cur);
+          const ok = s && s.expectedKey && g.date ? s.expectedKey <= g.date : null;
           const tgt = g.date
             ? new Date(parseInt(g.date.slice(0, 4), 10), parseInt(g.date.slice(5, 7), 10) - 1, 1).toLocaleDateString(
                 "en-IN",
                 { month: "short", year: "numeric" }
               )
-            : "No date";
-          const ok = s && s.expectedKey && g.date ? s.expectedKey <= g.date : null;
+            : null;
           return (
             <div key={g.id} className="slab">
               <span className="s-label">
                 {g.name} <span className="pill">P{g.priority ?? 2}</span>
-                <div className="s-sub">
-                  Target {tgt}
-                  {d != null && d !== 0
-                    ? ` · ${Math.abs(d)} mo ${d < 0 ? "earlier" : "later"}`
-                    : d === 0
-                      ? " · same pace"
-                      : ""}
-                </div>
               </span>
-              <span className={"pill " + (ok == null ? "" : ok ? "ok" : "warn")}>
-                {fmtKey(s ? s.expectedKey : null)}
+              <span className="goal-duo-pills">
+                <span className="duo-col">
+                  {s && s.expectedKey ? (
+                    <span className={"pill " + (ok == null ? "" : ok ? "ok" : "warn")}>
+                      {fmtKey(s.expectedKey)}
+                    </span>
+                  ) : (
+                    <span className="duo-mute">—</span>
+                  )}
+                </span>
+                <span className="duo-col">
+                  {tgt ? (
+                    <span className="pill">{tgt}</span>
+                  ) : (
+                    <span className="duo-mute">No date</span>
+                  )}
+                </span>
               </span>
             </div>
           );
-        })
+        })}
+          </div>
+        ) : null
       ) : (
         <div className="tsub" style={{ margin: "0 2px 8px", color: "var(--muted)" }}>
           Enter a monthly total to preview dates.

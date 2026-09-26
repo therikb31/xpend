@@ -604,7 +604,7 @@ function claimForDate(remaining: number, dateKey: string, cursorKey: string): nu
   return Math.ceil(remaining / saveMonths / 100) * 100;
 }
 
-function nextKey(k: string): string {
+export function nextKey(k: string): string {
   const d = parseMk(k);
   d.setMonth(d.getMonth() + 1);
   return monthKey(d);
@@ -613,12 +613,16 @@ function nextKey(k: string): string {
 export interface SimulatedGoal {
   goalId: string;
   expectedKey: string | null; // YYYY-MM completion month
-  months: number | null; // months from now (0 = this month)
+  months: number | null; // months from now (0 = next month, funding starts there)
   contributed: number; // paise allocated across the simulation
 }
 
 /* Simulate funding `monthlyPaise`/mo through the waterfall, month by
-   month. Pure preview — reads progress, writes nothing. */
+   month. Pure preview — reads progress, writes nothing.
+   Rule of thumb: funding starts NEXT month (cursor = next month), i.e.
+   "adding money next month onwards, how much can I save". Live
+   allocateWaterfall intentionally differs: real deposits happening today
+   claim against this month's required. */
 export function simulateWaterfall(doc: Doc, monthlyPaise: number, maxMonths = 600): SimulatedGoal[] {
   const m = Math.max(0, Math.round(monthlyPaise || 0));
   const live = liveGoals(doc).filter((g) => !g.paused);
@@ -628,7 +632,7 @@ export function simulateWaterfall(doc: Doc, monthlyPaise: number, maxMonths = 60
   for (const g of live) {
     rem.set(g.id, Math.max(0, g.target - (goalCurrent(g) + goalFunded(doc, g.id))));
   }
-  let cursor = monthKey(new Date());
+  let cursor = nextKey(monthKey(new Date()));
   for (let i = 0; i < maxMonths; i++) {
     const items: WFItem[] = [];
     for (const g of live) {

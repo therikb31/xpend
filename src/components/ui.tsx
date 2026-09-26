@@ -340,7 +340,7 @@ export function GoalRow({ doc, g, color, onOpen }: { doc: Doc; g: Goal; color: s
     <div className="card goal-row" onClick={() => onOpen(g.id)} role="button">
       <div className="goal-head">
         <span className="ccircle" style={cssVar(color)}>
-          {init(g.name)}
+          {g.icon || init(g.name)}
         </span>
         <span className="goal-name">{g.name}</span>
         {g.paused && prio !== 1 ? <span className="pill">Paused</span> : null}

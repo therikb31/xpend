@@ -842,6 +842,13 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
 .goal-trio>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .gc-big{font-size:20px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
 .gc-big.inc{color:var(--inc)}
+.goal-duo-pills{flex:none;display:flex;align-items:stretch;gap:17px}
+.duo-col{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:86px}
+.duo-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted-2)}
+.goal-duo-head{display:flex;justify-content:flex-end;margin:8px 0 4px}
+.goal-duo-table{position:relative}
+.goal-duo-line{position:absolute;top:0;bottom:0;right:94px;width:1px;background:rgba(255,255,255,.12)}
+.duo-mute{font-size:13px;color:var(--muted-2)}
 .goal-det .slab{padding:12px 2px}
 .goal-det .slab .s-sub{margin-top:3px}
 .goal-det .set{margin-top:10px}

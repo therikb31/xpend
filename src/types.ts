@@ -92,6 +92,7 @@ export type GoalPriority = 1 | 2 | 3;
 export interface Goal {
   id: string;
   name: string;
+  icon?: string | null; // emoji avatar (falls back to initial letter)
   target: number; // paise
   current?: number; // legacy (replaced by sources)
   plan?: number; // paise/month
