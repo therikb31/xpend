@@ -399,6 +399,8 @@ html.is-standalone #app{height:100%}
 .ccircle.small{width:24px;height:24px;font-size:12.5px}
 .ccircle svg{width:17px;height:17px;color:#D6DADD}
 .ccircle.pic{background:#fff}
+.ccircle.emo{background:var(--control)}
+.ccircle .g-emo{display:inline-block;font-size:20px;line-height:1;transform:translate(-1px,0)}
 .ccircle .acc-ico{width:calc(66% * var(--ls,100) / 100);height:calc(66% * var(--ls,100) / 100);object-fit:contain;display:block;pointer-events:none;-webkit-user-drag:none}
 .sum-ic .acc-ico{width:30px;height:30px;object-fit:contain;display:block;pointer-events:none}
 .sum-ic.logo{background:#fff;width:44px;height:44px;border-radius:50%;overflow:hidden;box-shadow:0 0 0 1.5px rgba(10,13,15,.25)}

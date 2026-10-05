@@ -307,7 +307,13 @@ export function GoalFormSheet({ id }: { id?: string }) {
         />
       </label>
       <div className="field">
-        <span className="ccircle">{icon.trim() || init(name) || "•"}</span>
+        {icon.trim() ? (
+          <span className="ccircle emo">
+            <span className="g-emo">{icon.trim()}</span>
+          </span>
+        ) : (
+          <span className="ccircle">{init(name) || "•"}</span>
+        )}
         <input
           className="note-inline"
           placeholder="Icon emoji, e.g. 🚲"

@@ -131,6 +131,168 @@ export function savingsTally(doc: Doc, mkey: string, acc: string): SavingsTally 
   };
 }
 
+export type InsightGroup = "cat" | "merch" | "item" | "nws";
+
+const INSIGHT_LABEL: Record<InsightGroup, string> = {
+  cat: "Category",
+  merch: "Merchant",
+  item: "Items",
+  nws: "50-30-20",
+};
+
+export function insightLabel(group: InsightGroup): string {
+  return INSIGHT_LABEL[group];
+}
+
+function monthTxns(doc: Doc, mkey: string, acc: string): ExpenseTxn[] {
+  return doc.transactions.filter(
+    (t): t is ExpenseTxn =>
+      t.dir === "expense" && t.date.slice(0, 7) === mkey && (acc === "all" || t.accountId === acc)
+  );
+}
+
+function prevMonthKey(mkey: string): string {
+  const prev = parseMk(mkey);
+  prev.setMonth(prev.getMonth() - 1);
+  return monthKey(prev);
+}
+
+/* Category analytics — the exact body behind the Insights Category tab. */
+export function insightsCategory(doc: Doc, mkey: string, acc: string) {
+  const txs = monthTxns(doc, mkey, acc);
+  const map: Record<string, number> = {};
+  for (const t of txs) {
+    const k = t.categoryId;
+    map[k] = (map[k] || 0) + t.amount;
+  }
+  const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((s, e) => s + e[1], 0);
+  const prevSt = monthStats(doc, prevMonthKey(mkey));
+  const rows = entries.map(([k, amt], i) => {
+    const n = txs.filter((t) => t.categoryId === k).length;
+    const base = { amount: amt, count: n, pct: total > 0 ? +(amt / total * 100).toFixed(2) : 0, color: PAL[i % PAL.length] };
+    const c = catById(doc, k);
+    return { id: k, categoryId: k, name: c ? c.name : "Unknown", emoji: c?.emoji, ...base };
+  });
+  return { total, prevMonthSpent: prevSt.spent, entries: rows };
+}
+
+/* Merchant analytics — mirrors the Insights Merchant tab. */
+export function insightsMerchant(doc: Doc, mkey: string, acc: string) {
+  const txs = monthTxns(doc, mkey, acc);
+  const map: Record<string, number> = {};
+  for (const t of txs) {
+    const k = t.merchantId || "__none";
+    map[k] = (map[k] || 0) + t.amount;
+  }
+  const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((s, e) => s + e[1], 0);
+  const prevSt = monthStats(doc, prevMonthKey(mkey));
+  const rows = entries.map(([k, amt], i) => {
+    const n = txs.filter((t) => (t.merchantId || "__none") === k).length;
+    const m = k === "__none" ? null : merchById(doc, k);
+    return {
+      id: k, name: m ? m.name : "Unassigned",
+      icon: m?.icon || null, iconUrl: m?.iconUrl || null,
+      amount: amt, count: n, pct: total > 0 ? +(amt / total * 100).toFixed(2) : 0,
+      color: PAL[i % PAL.length],
+    };
+  });
+  return { total, prevMonthSpent: prevSt.spent, entries: rows };
+}
+
+/* Items analytics — same normalization/grouping as the Insights Items tab. */
+export function insightsItems(doc: Doc, mkey: string, acc: string, minCount: number) {
+  const txs = monthTxns(doc, mkey, acc);
+  const byKey = new Map<string, { freq: Record<string, number>; count: number; amt: number }>();
+  for (const t of txs) {
+    const raw = (t.note || "").trim();
+    if (!raw) continue;
+    const key = raw.toLowerCase().replace(/\s+/g, " ");
+    let g = byKey.get(key);
+    if (!g) {
+      g = { freq: {}, count: 0, amt: 0 };
+      byKey.set(key, g);
+    }
+    g.freq[raw] = (g.freq[raw] || 0) + 1;
+    g.count += 1;
+    g.amt += t.amount;
+  }
+  const groups = [...byKey.entries()]
+    .filter(([, g]) => g.count >= minCount)
+    .map(([key, g]) => ({
+      key,
+      display: Object.entries(g.freq).sort((a, b) => b[1] - a[1])[0][0],
+      count: g.count,
+      amt: g.amt,
+    }))
+    .sort((a, b) => b.amt - a.amt);
+  const total = groups.reduce((s, g) => s + g.amt, 0);
+  const rows = groups.map((g, i) => ({
+    ...g,
+    pct: total > 0 ? +(g.amt / total * 100).toFixed(2) : 0,
+    color: PAL[i % PAL.length],
+  }));
+  return { total, minCount, entries: rows };
+}
+
+/* 50-30-20 analytics — mirrors the Insights bucket math exactly. */
+export function insightsNws(doc: Doc, mkey: string, acc: string) {
+  const flow = (Object.keys(NW_META) as NwKey[])
+    .filter((k) => k !== "saving")
+    .map((k) => {
+      const list = bucketTxns(doc, k, mkey, acc);
+      return { key: k, count: list.length, amt: list.reduce((s, t) => s + t.amount, 0) };
+    });
+  const tal = savingsTally(doc, mkey, acc);
+  const buckets = [
+    ...flow,
+    {
+      key: "saving" as NwKey,
+      count: tal.savAccs.length + tal.movedTxns.length + tal.taggedTxns.length,
+      amt: tal.total,
+    },
+  ].filter((b) => b.amt > 0);
+  const total = buckets.reduce((s, b) => s + b.amt, 0);
+  const prevSaved = (doc.accounts || [])
+    .filter((a) => a.kind === "savings")
+    .reduce((s, a) => s + (a.prev || 0), 0);
+  const rows = buckets.map((b) => {
+    const meta = NW_META[b.key];
+    return {
+      key: b.key, name: meta.name, emoji: meta.emoji, color: meta.color, rule: meta.rule,
+      amount: b.amt, count: b.count,
+      pct: total > 0 ? +(b.amt / total * 100).toFixed(2) : 0,
+    };
+  });
+  return { total, prevSaved, entries: rows };
+}
+
+/* Full export envelope for one Insights group (same envelope as expData). */
+export function insightsExport(doc: Doc, group: InsightGroup, mkey: string, flt: Filters): Record<string, unknown> {
+  const mk = parseMk(mkey);
+  const now = new Date();
+  const monthLabel =
+    mk.getFullYear() === now.getFullYear() && mk.getMonth() === now.getMonth()
+      ? "This month"
+      : mk.toLocaleDateString("en-IN", { month: "long" });
+  const acc = flt.acc;
+  const data =
+    group === "cat"
+      ? insightsCategory(doc, mkey, acc)
+      : group === "merch"
+        ? insightsMerchant(doc, mkey, acc)
+        : group === "item"
+          ? insightsItems(doc, mkey, acc, doc.settings.itemMinCount ?? 2)
+          : insightsNws(doc, mkey, acc);
+  return {
+    app: "Xpend", version: APP_VER, view: "summary", group,
+    exportedAt: new Date().toISOString(),
+    month: mkey, monthLabel, filters: { ...flt }, stats: monthStats(doc, mkey),
+    data,
+  };
+}
+
 export function catById(doc: Doc, id: string): Category {
   return (
     doc.categories.find((c) => c.id === id) ||
@@ -476,7 +638,6 @@ export function liveGoals(doc: Doc): Goal[] {
 export function goalProgress(doc: Doc, g: Goal): GoalCalc {
   return goalCalc(g, goalFunded(doc, g.id));
 }
-
 export function goalOrder(a: Goal, b: Goal): number {
   const pa = a.priority ?? 2;
   const pb = b.priority ?? 2;
@@ -486,6 +647,20 @@ export function goalOrder(a: Goal, b: Goal): number {
     if (!b.date) return -1;
     return a.date < b.date ? -1 : 1;
   }
+  return (a.createdAt || 0) - (b.createdAt || 0);
+}
+
+/* Display order for the goals list: earliest target date first, undated
+   last. Funding order (goalOrder) is intentionally separate. */
+export function goalDateFirst(a: Goal, b: Goal): number {
+  if ((a.date || "") !== (b.date || "")) {
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return a.date < b.date ? -1 : 1;
+  }
+  const pa = a.priority ?? 2;
+  const pb = b.priority ?? 2;
+  if (pa !== pb) return pa - pb;
   return (a.createdAt || 0) - (b.createdAt || 0);
 }
 
@@ -758,25 +933,8 @@ export function expData(doc: Doc, view: View, mkey: string, flt: Filters): Recor
     return env;
   }
   if (view === "summary") {
-    const txs = doc.transactions.filter(
-      (t): t is ExpenseTxn =>
-        t.dir === "expense" && t.date.slice(0, 7) === mkey && (flt.acc === "all" || t.accountId === flt.acc)
-    );
-    const map: Record<string, number> = {};
-    for (const t of txs) {
-      const k = t.categoryId;
-      map[k] = (map[k] || 0) + t.amount;
-    }
-    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
-    const total = entries.reduce((s, e) => s + e[1], 0);
-    const prevSt = monthStats(doc, prevKey);
-    const rows = entries.map(([k, amt], i) => {
-      const n = txs.filter((t) => t.categoryId === k).length;
-      const base = { amount: amt, count: n, pct: total > 0 ? +(amt / total * 100).toFixed(2) : 0, color: PAL[i % PAL.length] };
-      const c = catById(doc, k);
-      return { id: k, categoryId: k, name: c ? c.name : "Unknown", emoji: c?.emoji, ...base };
-    });
-    env.data = { total, prevMonthSpent: prevSt.spent, entries: rows };
+    const r = insightsCategory(doc, mkey, flt.acc);
+    env.data = { total: r.total, prevMonthSpent: r.prevMonthSpent, entries: r.entries };
     return env;
   }
   if (view === "category" || view === "merchant") {

@@ -1,7 +1,7 @@
 // Goals — port of App.goals + goal rows.
 
 import { Empty, GoalRow } from "../components/ui";
-import { PAL, goalOrder, goalProgress, liveGoals, p1Floor } from "../data/finance";
+import { PAL, goalDateFirst, goalProgress, liveGoals, p1Floor } from "../data/finance";
 import { rupees } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
@@ -23,7 +23,7 @@ export function GoalsPage() {
   const floor = p1Floor(doc);
   const upcoming = active
     .slice()
-    .sort(goalOrder)
+    .sort(goalDateFirst)
     .slice(0, 8);
   const done = gs.filter((g) => g.completed);
   const colors: Record<string, string> = {};

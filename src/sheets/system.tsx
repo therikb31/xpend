@@ -3,7 +3,8 @@
 
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { expData, expLabel } from "../data/finance";
+import { expData, expLabel, insightLabel, insightsExport } from "../data/finance";
+import type { InsightGroup } from "../data/finance";
 import { C } from "../lib/crypto";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
@@ -12,31 +13,12 @@ import { Grab } from "./Sheet";
 
 /* ---------------- export JSON dump ---------------- */
 
-export function ExportSheet() {
-  const { state, closeSheet, toast } = useApp();
-  const doc = state.doc!;
-  const env = useMemo(
-    () => expData(doc, state.view, state.mkey, state.flt),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [doc, state.view, state.mkey, state.flt]
-  );
-  const label = expLabel(state.view);
-  const size = (new TextEncoder().encode(JSON.stringify(env)).length / 1024).toFixed(1) + " KB";
-  const dta = (env.data || {}) as { transactions?: unknown[]; entries?: unknown[]; budgets?: unknown[]; goals?: unknown[]; accounts?: unknown[] };
-  let count: number;
-  if (state.view === "overview" || state.view === "activity" || state.view === "category" || state.view === "merchant")
-    count = (dta.transactions || []).length;
-  else if (state.view === "summary") count = (dta.entries || []).length;
-  else if (state.view === "budget") count = (dta.budgets || []).length;
-  else if (state.view === "goals") count = (dta.goals || []).length;
-  else if (state.view === "accounts") count = (dta.accounts || []).length;
-  else count = dta.transactions ? dta.transactions.length : 0;
-
-  const copy = () => {
-    const txt = JSON.stringify(env, null, 2);
+function useCopy() {
+  const { closeSheet, toast } = useApp();
+  return (txt: string, what: string) => {
     const done = () => {
       closeSheet();
-      toast("Copied " + label + " JSON");
+      toast("Copied " + what + " JSON");
     };
     const fallback = () => {
       const ta = document.createElement("textarea");
@@ -57,6 +39,36 @@ export function ExportSheet() {
       navigator.clipboard.writeText(txt).then(done).catch(fallback);
     } else fallback();
   };
+}
+
+function kbOf(env: Record<string, unknown>): string {
+  return (new TextEncoder().encode(JSON.stringify(env)).length / 1024).toFixed(1) + " KB";
+}
+
+export function ExportSheet() {
+  const { state } = useApp();
+  const doc = state.doc!;
+  const copy = useCopy();
+  if (state.view === "summary") {
+    return <InsightsExportSheet />;
+  }
+  const env = useMemo(
+    () => expData(doc, state.view, state.mkey, state.flt),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [doc, state.view, state.mkey, state.flt]
+  );
+  const label = expLabel(state.view);
+  const size = (new TextEncoder().encode(JSON.stringify(env)).length / 1024).toFixed(1) + " KB";
+  const dta = (env.data || {}) as { transactions?: unknown[]; entries?: unknown[]; budgets?: unknown[]; goals?: unknown[]; accounts?: unknown[] };
+  let count: number;
+  if (state.view === "overview" || state.view === "activity" || state.view === "category" || state.view === "merchant")
+    count = (dta.transactions || []).length;
+  else if (state.view === "budget") count = (dta.budgets || []).length;
+  else if (state.view === "goals") count = (dta.goals || []).length;
+  else if (state.view === "accounts") count = (dta.accounts || []).length;
+  else count = dta.transactions ? dta.transactions.length : 0;
+
+  const onCopy = () => copy(JSON.stringify(env, null, 2), label);
 
   return (
     <>
@@ -66,13 +78,67 @@ export function ExportSheet() {
         Copies a JSON snapshot of everything shown on this screen — names, emojis, totals, counts
         and percentages resolved. Month: {String(env.monthLabel)} · {count} items · {size}.
       </div>
-      <button className="sh-row" onClick={copy}>
+      <button className="sh-row" onClick={onCopy}>
         <span className="ccircle" style={{ ["--c" as string]: "rgba(82,229,165,.16)" } as CSSProperties}>
           {IC.share}
         </span>
         <span className="rname">Copy {label} JSON</span>
         {IC.right}
       </button>
+    </>
+  );
+}
+
+/* Insights export — one copy row per analytics tab, current tab first. */
+const INSIGHT_GROUPS: InsightGroup[] = ["cat", "merch", "item", "nws"];
+
+function InsightsExportSheet() {
+  const { state } = useApp();
+  const doc = state.doc!;
+  const copy = useCopy();
+  const cur = (state.igrp || "cat") as InsightGroup;
+  const ordered = [...INSIGHT_GROUPS].sort((a, b) =>
+    a === cur ? -1 : b === cur ? 1 : 0
+  );
+  const payloads = useMemo(() => {
+    const out = {} as Record<InsightGroup, Record<string, unknown>>;
+    for (const g of INSIGHT_GROUPS) out[g] = insightsExport(doc, g, state.mkey, state.flt);
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc, state.mkey, state.flt]);
+  const entriesOf = (g: InsightGroup): unknown[] =>
+    ((payloads[g].data || {}) as { entries?: unknown[] }).entries || [];
+  const monthLabel = String(payloads[cur].monthLabel || "");
+  return (
+    <>
+      <Grab />
+      <div className="sh-title">Export Insights</div>
+      <div className="tsub" style={{ margin: "0 2px 14px", color: "var(--muted)" }}>
+        Copy any analytics tab as JSON — names, totals, counts and percentages resolved.
+        Month: {monthLabel}.
+      </div>
+      {ordered.map((g) => {
+        const env = payloads[g];
+        const n = entriesOf(g).length;
+        return (
+          <button
+            key={g}
+            className="sh-row"
+            onClick={() => copy(JSON.stringify(env, null, 2), "Insights " + insightLabel(g))}
+          >
+            <span className="ccircle" style={{ ["--c" as string]: "rgba(82,229,165,.16)" } as CSSProperties}>
+              {IC.share}
+            </span>
+            <span className="rname">
+              Copy {insightLabel(g)} JSON{g === cur ? " · this view" : ""}
+              <div className="s-sub">
+                {n} items · {kbOf(env)}
+              </div>
+            </span>
+            {IC.right}
+          </button>
+        );
+      })}
     </>
   );
 }
