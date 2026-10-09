@@ -38,7 +38,7 @@ export type SheetName =
   | "txn" | "note" | "more" | "shortcuts" | "category-manage"
   | "goal-form" | "goal-detail" | "goal-sources" | "source-entry" | "goal-complete"
   | "goal-fund" | "goal-move" | "goal-whatif" | "goal-delete"
-  | "account-add" | "account-edit" | "account-icon"
+  | "account-add" | "account-edit" | "account-icon" | "accounts-more"
   | "gist-setup" | "gist-unlock" | "gist-restore"
   | "export" | "pwa-help" | "budget-form" | "budget-detail"
   | "grocery-item" | "grocery-list" | "grocery-share" | "grocery-join" | "grocery-more"

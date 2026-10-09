@@ -6,7 +6,7 @@ import type { CSSProperties } from "react";
 import { AccountAvatar } from "../components/ui";
 import { accBalance, savSync } from "../data/finance";
 import { accById } from "../data/finance";
-import { parseRupeesToPaise, rupees, todayStr, uid } from "../lib/format";
+import { init, parseRupeesToPaise, rupees, todayStr, uid } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { Txn } from "../types";
@@ -152,21 +152,26 @@ export function SavMoveSheet({ id }: { id: string }) {
     <>
       <Grab />
       <div className="sh-title">Move savings · {a.name}</div>
-      <div className="txn-row">
-        <span className="ccircle lg" style={{ ["--c" as string]: "#5BB98C" } as CSSProperties}>
-          ⇄
+      <div className="bud-top">
+        <span className="ccircle" style={{ ["--c" as string]: "#5BB98C" } as CSSProperties}>
+          {init(a.name)}
         </span>
-        <span className="txn-meta">
-          <span className="txn-name">Current</span>
-          <span className="txn-sub">{rupees(accBalance(doc, id), hide)}</span>
+        <span className="bname-h">Current savings</span>
+        <span className="tamt gc-big">{rupees(accBalance(doc, id), hide)}</span>
+      </div>
+      <div className="sav-sep" />
+      <div className="bud-top">
+        <span className="ccircle" style={{ ["--c" as string]: "#7C9AA6" } as CSSProperties}>
+          {init(a.name)}
         </span>
-        <span className="txn-amt">{rupees(a.prev != null ? a.prev : 0, hide)}</span>
+        <span className="bname-h">Previous savings</span>
+        <span className="tamt gc-big">{rupees(a.prev != null ? a.prev : 0, hide)}</span>
       </div>
       <label className="field note-field">
         <span className="ficon">₹</span>
         <input
           id="sm-amt"
-          className="note-inline"
+          className="note-inline amt-big"
           inputMode="decimal"
           placeholder="Amount"
           value={amount}

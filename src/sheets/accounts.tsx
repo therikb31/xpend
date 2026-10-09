@@ -11,6 +11,35 @@ import { useApp } from "../services/store";
 import type { AccountKind } from "../types";
 import { Grab } from "./Sheet";
 
+export function AccountsMoreSheet() {
+  const { openSheet, closeSheet } = useApp();
+  return (
+    <>
+      <Grab />
+      <button className="sh-row" onClick={() => openSheet({ name: "transfer" })}>
+        <span className="ccircle">⇄</span>
+        <span className="rname">Move money</span>
+        {IC.right}
+      </button>
+      <button className="sh-row" onClick={() => openSheet({ name: "account-add" })}>
+        <span className="ccircle">{IC.plus}</span>
+        <span className="rname">New account</span>
+        {IC.right}
+      </button>
+      <button className="sh-row" onClick={() => openSheet({ name: "export" })}>
+        <span className="ccircle">{IC.share}</span>
+        <span className="rname">Export data</span>
+        {IC.right}
+      </button>
+      <button className="sh-row" onClick={closeSheet} style={{ color: "var(--neg)" }}>
+        <span className="ccircle">{IC.x}</span>
+        <span className="rname">Close</span>
+        {IC.right}
+      </button>
+    </>
+  );
+}
+
 function IconGrid({
   cur,
   onPick,
@@ -171,7 +200,7 @@ export function AccountEditSheet({ id }: { id: string }) {
 }
 
 function AccountEditBody({ id }: { id: string }) {
-  const { state, mutate, closeSheet, toast } = useApp();
+  const { state, mutate, closeSheet, openSheet, toast } = useApp();
   const doc = state.doc!;
   const a = accById(doc, id);
   const [step, setStep] = useState<"main" | "icon">("main");
@@ -264,10 +293,18 @@ function AccountEditBody({ id }: { id: string }) {
           </button>
         ))}
       </div>
-      <div className="tsub" style={{ margin: "6px 2px 10px", color: "var(--muted)" }}>
-        Balances come from transactions only. For savings, use "Move between current &amp; previous" on the
-        Accounts page.
+      <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
+        Balances come from transactions only.
       </div>
+      {kind === "savings" && (
+        <button className="set" style={{ marginTop: 8 }} onClick={() => openSheet({ name: "sav-move", id })}>
+          <span className="s-label">
+            Move between current &amp; previous
+            <div className="s-sub">Shift money between the two savings buckets</div>
+          </span>
+          {IC.chev}
+        </button>
+      )}
       <button
         className="set"
         onClick={() =>

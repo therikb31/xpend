@@ -713,6 +713,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
   font-size:16px;color:var(--text);padding:2px 0;
 }
 .note-inline::placeholder{color:var(--muted-2)}
+.note-inline.amt-big{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
 .field input[type=month]{
   flex:1;min-width:0;max-width:100%;width:100%;
   background:transparent;border:0;border-radius:0;outline:0;
@@ -797,13 +798,12 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
 
 /* budget card bits */
 .bud-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.sav-sep{height:.5px;background:rgba(255,255,255,.06);margin:0 0 12px}
 .bud-top .bname-h{font-size:17px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bud-meta{display:flex;justify-content:space-between;margin-top:8px;font-size:13.5px;color:var(--muted)}
 .bud-meta b{color:var(--text);font-variant-numeric:tabular-nums}
 .sav-line{display:flex;justify-content:space-between;margin-top:8px;font-size:13.5px;color:var(--muted)}
 .sav-line b{color:var(--text);font-variant-numeric:tabular-nums}
-.sav-mv{width:100%;margin-top:10px;padding:8px;border:.5px solid rgba(255,255,255,.12);border-radius:12px;text-align:center;color:var(--inc);font-size:13.5px;background:transparent;cursor:pointer;touch-action:manipulation}
-.sav-mv:active{background:rgba(255,255,255,.06)}
 
 /* ============================ GOALS ============================ */
 .pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;letter-spacing:.2px;white-space:nowrap;background:var(--control);color:var(--muted)}
