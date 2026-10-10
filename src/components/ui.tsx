@@ -38,21 +38,27 @@ export function TrendIcon({ down }: { down: boolean }) {
 export function AccountAvatar({ a }: { a: Account }) {
   const [err, setErr] = useState(false);
   const rec = a.icon ? ACC_ICONS[a.icon] : undefined;
-  if (!rec || err)
-    return (
-      <span className="ccircle" style={cssVar(a.color)}>
-        {init(a.name)}
-      </span>
-    );
+  const badge = a.kind === "card" ? IC.walletBadge : IC.bankBadge;
   return (
-    <span className="ccircle pic" style={cssVar(a.color)}>
-      <img
-        className="acc-ico"
-        src={rec.src}
-        alt={rec.name}
-        loading="lazy"
-        onError={() => setErr(true)}
-      />
+    <span className="acc-av">
+      {!rec || err ? (
+        <span className="ccircle" style={cssVar(a.color)}>
+          {init(a.name)}
+        </span>
+      ) : (
+        <span className="ccircle pic" style={cssVar(a.color)}>
+          <img
+            className="acc-ico"
+            src={rec.src}
+            alt={rec.name}
+            loading="lazy"
+            onError={() => setErr(true)}
+          />
+        </span>
+      )}
+      <span className="acc-badge" aria-hidden="true">
+        {badge}
+      </span>
     </span>
   );
 }

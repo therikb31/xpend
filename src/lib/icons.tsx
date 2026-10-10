@@ -34,6 +34,13 @@ export const IC: Record<string, ReactNode> = {
   wallet: (
     <Svg><rect x="3" y="6" width="18" height="12.5" rx="3" /><path d="M3 10h18" /><circle cx="16" cy="14.8" r="1.1" /></Svg>
   ),
+  // Optically centered badge variants (nudged art; shared icons above stay pristine).
+  walletBadge: (
+    <Svg><g transform="translate(0,0.75)"><rect x="3" y="6" width="18" height="12.5" rx="3" /><path d="M3 10h18" /><circle cx="16" cy="14.8" r="1.1" /></g></Svg>
+  ),
+  bankBadge: (
+    <Svg><g transform="translate(0,-0.5)"><path d="M3 9.5 12 5l9 4.5" /><path d="M3 20h18" /><path d="M5 20v-9M9.5 20v-9M12 20v-9M14.5 20v-9M19 20v-9" /></g></Svg>
+  ),
   gear: (
     <Svg><circle cx="12" cy="12" r="3" /><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M18 6l-1.4 1.4M7.4 16.6 6 18" /></Svg>
   ),
