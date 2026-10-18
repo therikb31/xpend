@@ -137,17 +137,32 @@ export function SheetRoot() {
   const [up, setUp] = useState(false);
   const [dragY, setDragY] = useState<number | null>(null);
   const dragRef = useRef<{ startY: number; dy: number; t: number } | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (state.sheet) {
+      // New sheet opening — clear any pending close timer
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
       setVisible(state.sheet);
       setUp(false);
       const t = setTimeout(() => setUp(true), 30);
       return () => clearTimeout(t);
     } else if (visible) {
+      // Sheet closing — start close animation timer
       setUp(false);
-      const t = setTimeout(() => setVisible(null), 320);
-      return () => clearTimeout(t);
+      closeTimerRef.current = setTimeout(() => {
+        setVisible(null);
+        closeTimerRef.current = null;
+      }, 320);
+      return () => {
+        if (closeTimerRef.current) {
+          clearTimeout(closeTimerRef.current);
+          closeTimerRef.current = null;
+        }
+      };
     }
   }, [state.sheet, visible]);
 
