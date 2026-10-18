@@ -2,6 +2,17 @@
 
 export type TxnDir = "expense" | "income";
 
+export type AutopayInterval = "monthly" | "custom";
+
+export interface AutopayConfig {
+  interval: AutopayInterval;
+  dayOfMonth: number;              // 1-31 (clamped to month end)
+  customIntervalMonths?: number;   // for "custom" (e.g., 3 = quarterly)
+  startDate: string;               // YYYY-MM-DD (first occurrence)
+  endDate?: string | null;         // YYYY-MM-DD (optional, null = forever)
+  isActive: boolean;               // pause/resume
+}
+
 export interface TxnBase {
   id: string;
   date: string; // YYYY-MM-DD
@@ -9,6 +20,7 @@ export interface TxnBase {
   note?: string;
   name?: string;
   createdAt: number;
+  autopay?: AutopayConfig; // if present, this txn is an autopay template
 }
 
 export interface ExpenseTxn extends TxnBase {
@@ -244,7 +256,7 @@ export interface Filters {
 }
 
 /** Insights tab — kept in global store so drill round-trips restore it. */
-export type InsightGrp = "cat" | "merch" | "item" | "nws";
+export type InsightGrp = "cat" | "merch" | "item" | "nws" | "autopay";
 
 export interface AddDraft {
   amount: string; // raw keypad string — must stay a string

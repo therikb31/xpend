@@ -4,6 +4,7 @@
 import { APP_VER, monthKey, parseMk, rupees } from "../lib/format";
 import type {
   Account,
+  AutopayConfig,
   Budget,
   Category,
   Doc,
@@ -131,13 +132,14 @@ export function savingsTally(doc: Doc, mkey: string, acc: string): SavingsTally 
   };
 }
 
-export type InsightGroup = "cat" | "merch" | "item" | "nws";
+export type InsightGroup = "cat" | "merch" | "item" | "nws" | "autopay";
 
 const INSIGHT_LABEL: Record<InsightGroup, string> = {
   cat: "Category",
   merch: "Merchant",
   item: "Items",
   nws: "50-30-20",
+  autopay: "Autopay",
 };
 
 export function insightLabel(group: InsightGroup): string {
@@ -284,13 +286,126 @@ export function insightsExport(doc: Doc, group: InsightGroup, mkey: string, flt:
         ? insightsMerchant(doc, mkey, acc)
         : group === "item"
           ? insightsItems(doc, mkey, acc, doc.settings.itemMinCount ?? 2)
-          : insightsNws(doc, mkey, acc);
+          : group === "autopay"
+            ? insightsAutopay(doc, mkey, acc)
+            : insightsNws(doc, mkey, acc);
   return {
     app: "Xpend", version: APP_VER, view: "summary", group,
     exportedAt: new Date().toISOString(),
     month: mkey, monthLabel, filters: { ...flt }, stats: monthStats(doc, mkey),
     data,
   };
+}
+
+/* ---------- Autopay helpers ---------- */
+
+function clampDay(year: number, month: number, day: number): number {
+  const dim = new Date(year, month + 1, 0).getDate();
+  return Math.min(day, dim);
+}
+
+function occurrencesInMonth(cfg: AutopayConfig, mkey: string): boolean {
+  if (!cfg.isActive) return false;
+  const [sy, sm] = cfg.startDate.slice(0, 7).split("-").map(Number);
+  const startYM = sy * 12 + (sm - 1);
+  const [ty, tm] = mkey.split("-").map(Number);
+  const targetYM = ty * 12 + (tm - 1);
+  if (targetYM < startYM) return false;
+  if (cfg.endDate) {
+    const [ey, em] = cfg.endDate.slice(0, 7).split("-").map(Number);
+    const endYM = ey * 12 + (em - 1);
+    if (targetYM > endYM) return false;
+  }
+  const step = cfg.interval === "custom" ? (cfg.customIntervalMonths || 1) : 1;
+  return (targetYM - startYM) % step === 0;
+}
+
+function getAccountIdOfTxn(t: Txn): string {
+  if (t.dir === "trans") return t.from;
+  return t.accountId;
+}
+
+function getFromToOfTxn(t: Txn): { from: string; to: string } | null {
+  if (t.dir === "trans") return { from: t.from, to: t.to };
+  return null;
+}
+
+type AutopayTemplate = Txn & { autopay: AutopayConfig };
+type AutopayWithDate = AutopayTemplate & { occDate: string };
+
+export function getAutopayTemplates(doc: Doc): AutopayTemplate[] {
+  return doc.transactions.filter((t): t is AutopayTemplate =>
+    !!t.autopay && t.autopay.isActive
+  );
+}
+
+export function getAutopayForMonth(doc: Doc, mkey: string, acc: string) {
+  const templates = getAutopayTemplates(doc).filter(t =>
+    acc === "all" || getAccountIdOfTxn(t) === acc || (t.dir === "trans" && getFromToOfTxn(t) && (getFromToOfTxn(t)!.from === acc || getFromToOfTxn(t)!.to === acc))
+  );
+  const upcoming: AutopayWithDate[] = [];
+  const completed: AutopayTemplate[] = [];
+  const overdue: AutopayWithDate[] = [];
+  const now = new Date();
+  const nowKey = monthKey(now);
+  const nowDay = now.getDate();
+  for (const t of templates) {
+    if (!occurrencesInMonth(t.autopay, mkey)) continue;
+    const occDay = clampDay(parseInt(mkey.slice(0, 4), 10), parseInt(mkey.slice(5, 7), 10) - 1, t.autopay.dayOfMonth);
+    const occDate = `${mkey}-${String(occDay).padStart(2, "0")}`;
+    const posted = doc.transactions.some(x =>
+      x.id !== t.id &&
+      x.date === occDate &&
+      x.amount === t.amount &&
+      x.dir === t.dir &&
+      (getAccountIdOfTxn(x) === getAccountIdOfTxn(t) || (t.dir === "trans" && getFromToOfTxn(x) && getFromToOfTxn(t) && getFromToOfTxn(x)!.from === getFromToOfTxn(t)!.from && getFromToOfTxn(x)!.to === getFromToOfTxn(t)!.to))
+    );
+    if (posted) {
+      completed.push(t);
+    } else if (mkey === nowKey && occDay < nowDay) {
+      overdue.push({ ...t, occDate });
+    } else {
+      upcoming.push({ ...t, occDate });
+    }
+  }
+  return { upcoming, completed, overdue };
+}
+
+export function insightsAutopay(doc: Doc, mkey: string, acc: string) {
+  const { upcoming, completed, overdue } = getAutopayForMonth(doc, mkey, acc);
+  const byAccount = new Map<string, { upcoming: typeof upcoming; completed: typeof completed; overdue: typeof overdue }>();
+  for (const t of upcoming) {
+    const a = accById(doc, getAccountIdOfTxn(t)).name;
+    const e = byAccount.get(a) || { upcoming: [], completed: [], overdue: [] };
+    e.upcoming.push(t);
+    byAccount.set(a, e);
+  }
+  for (const t of completed) {
+    const a = accById(doc, getAccountIdOfTxn(t)).name;
+    const e = byAccount.get(a) || { upcoming: [], completed: [], overdue: [] };
+    e.completed.push(t);
+    byAccount.set(a, e);
+  }
+  for (const t of overdue) {
+    const a = accById(doc, getAccountIdOfTxn(t)).name;
+    const e = byAccount.get(a) || { upcoming: [], completed: [], overdue: [] };
+    e.overdue.push(t);
+    byAccount.set(a, e);
+  }
+  const totalUpcoming = upcoming.reduce((s, t) => s + t.amount, 0);
+  const totalCompleted = completed.reduce((s, t) => s + t.amount, 0);
+  const totalOverdue = overdue.reduce((s, t) => s + t.amount, 0);
+  return {
+    totalUpcoming, totalCompleted, totalOverdue,
+    byAccount: Array.from(byAccount.entries()).map(([account, v]) => ({
+      account, upcoming: v.upcoming, completed: v.completed, overdue: v.overdue
+    }))
+  };
+}
+
+export function upcomingAutopayTotal(doc: Doc, mkey: string, acc: string): number {
+  const { upcoming } = getAutopayForMonth(doc, mkey, acc);
+  return upcoming.reduce((s, t) => s + t.amount, 0);
 }
 
 export function catById(doc: Doc, id: string): Category {

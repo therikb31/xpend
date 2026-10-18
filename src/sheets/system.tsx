@@ -90,7 +90,7 @@ export function ExportSheet() {
 }
 
 /* Insights export — one copy row per analytics tab, current tab first. */
-const INSIGHT_GROUPS: InsightGroup[] = ["cat", "merch", "item", "nws"];
+const INSIGHT_GROUPS: InsightGroup[] = ["cat", "merch", "item", "nws", "autopay"];
 
 function InsightsExportSheet() {
   const { state } = useApp();

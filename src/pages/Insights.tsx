@@ -5,16 +5,52 @@
 import { DonutHero } from "../components/charts";
 import type { DonutDetail } from "../components/charts";
 import { CatSumCard, Empty, ItemSumCard, MerchSumCard, MerchantLogoImg, TrendIcon } from "../components/ui";
-import { NW_META, PAL, accById, bucketTxns, catById, merchById, monthStats, savingsTally } from "../data/finance";
+import { NW_META, PAL, accById, bucketTxns, catById, merchById, monthStats, savingsTally, insightsAutopay } from "../data/finance";
 import type { NwKey } from "../data/finance";
 import { catEmoji, fallbackEmoji, monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
-import type { ExpenseTxn } from "../types";
+import type { ExpenseTxn, AutopayConfig, Txn } from "../types";
 import type { CSSProperties } from "react";
 
 const MIN_OPTS = [1, 2, 3, 5];
 const DONUT_TOP = 10;
+
+function isExpense(t: Txn): t is ExpenseTxn {
+  return t.dir !== "trans";
+}
+
+type AutopayRowTxn = Txn & { autopay: AutopayConfig; occDate?: string };
+function AutopayRow({ t, doc, hide, status }: { t: AutopayRowTxn; doc: any; hide: boolean; status?: string }) {
+  const tp = t as AutopayRowTxn;
+  const c = isExpense(tp) ? catById(doc, tp.categoryId) : { color: "#31C4F3", name: "Transfer" };
+  const a = accById(doc, isExpense(tp) ? tp.accountId : tp.from);
+  const m = isExpense(tp) && tp.merchantId ? merchById(doc, tp.merchantId) : null;
+  const pd = tp.occDate ? new Date(tp.occDate.slice(0, 10)) : null;
+  const intervalLabel = tp.autopay.interval === "custom"
+    ? `Every ${tp.autopay.customIntervalMonths} months`
+    : "Monthly";
+  return (
+    <div className="ap-row" style={{ opacity: status === "completed" ? 0.6 : 1 }}>
+      <div className="ap-row-main">
+        <span className="ccircle" style={{ ["--c" as string]: c.color } as CSSProperties}>
+          {catEmoji(c as any)}
+        </span>
+        <div className="ap-row-meta">
+          <span className="ap-row-name">{tp.note || c.name}</span>
+          <span className="ap-row-sub">
+            {a.name} · {intervalLabel} · {pd ? pd.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}
+            {m && " · " + m.name}
+          </span>
+        </div>
+      </div>
+      <span className={"ap-row-amt " + (tp.dir === "income" ? "inc" : "")}>
+        {rupees(tp.amount, hide)}
+        {status && <span className="ap-badge">{status}</span>}
+      </span>
+    </div>
+  );
+}
 
 interface NwBucket {
   key: NwKey;
@@ -110,9 +146,20 @@ export function InsightsPage() {
       .reduce((s, a) => s + (a.prev || 0), 0);
   }
 
+  let autopayData: ReturnType<typeof insightsAutopay> | null = null;
+  if (grp === "autopay") {
+    autopayData = insightsAutopay(doc, mkey, flt.acc);
+  }
+
   const agg: Record<string, number> = {};
   if (grp === "nws") {
     for (const b of nwBuckets) agg[b.key] = b.amt;
+  } else if (grp === "autopay") {
+    if (autopayData) {
+      agg.upcoming = autopayData.totalUpcoming;
+      agg.completed = autopayData.totalCompleted;
+      agg.overdue = autopayData.totalOverdue;
+    }
   } else if (grp !== "item") {
     for (const t of txs) {
       const k = grp === "cat" ? t.categoryId : t.merchantId || "__none";
@@ -133,6 +180,10 @@ export function InsightsPage() {
   const colors: Record<string, string> = {};
   if (grp === "nws") {
     for (const b of nwBuckets) colors[b.key] = NW_META[b.key].color;
+  } else if (grp === "autopay") {
+    colors.upcoming = "#52E5A5";
+    colors.completed = "#31C4F3";
+    colors.overdue = "#FF5A5A";
   } else if (grp === "item") {
     // Every group needs a color for its card, not just donut entries.
     itemGroups.forEach((g, i) => {
@@ -191,6 +242,14 @@ export function InsightsPage() {
         amount: shortTotal(amt),
         sub: <span className="dc-trend">{p}% of total</span>,
       };
+    } else if (grp === "autopay") {
+      const label = id === "upcoming" ? "Upcoming" : id === "completed" ? "Completed" : "Overdue";
+      const emoji = id === "upcoming" ? "⏳" : id === "completed" ? "✅" : "⚠️";
+      details[id] = {
+        title: <><span>{emoji}</span> {label}</>,
+        amount: shortTotal(amt),
+        sub: <span className="dc-trend">{p}% of total</span>,
+      };
     } else {
       const g = itemGroups.find((x) => x.key === id);
       details[id] = {
@@ -220,6 +279,24 @@ export function InsightsPage() {
     } else if (grp === "nws" && (id === "need" || id === "want" || id === "saving")) {
       setFilter({ bucket: id });
       go("bucket", state.view);
+    } else if (grp === "autopay" && autopayData) {
+      // Drill to activity filtered by autopay transactions
+      const status = id === "upcoming" ? "upcoming" : id === "completed" ? "completed" : "overdue";
+      const allTxns = [
+        ...autopayData.byAccount.flatMap(a => a.upcoming),
+        ...autopayData.byAccount.flatMap(a => a.completed),
+        ...autopayData.byAccount.flatMap(a => a.overdue)
+      ] as (Txn & { autopay: AutopayConfig; occDate?: string })[];
+      const matching = allTxns.filter(t => {
+        if (status === "upcoming") return autopayData!.byAccount.some(a => a.upcoming.some(u => u.id === t.id));
+        if (status === "completed") return autopayData!.byAccount.some(a => a.completed.some(u => u.id === t.id));
+        return autopayData!.byAccount.some(a => a.overdue.some(u => u.id === t.id));
+      });
+      if (matching.length) {
+        const notes = matching.map(t => t.note || "").filter(Boolean);
+        setFilter({ q: notes.join(" ") || matching[0].id });
+        go("activity", state.view);
+      }
     }
   };
   const countFor = (id: string) =>
@@ -234,9 +311,11 @@ export function InsightsPage() {
         ? "Tag a merchant when adding an expense"
         : grp === "nws"
           ? "Tag categories in Settings → Manage → Categories"
-          : txs.some((t) => (t.note || "").trim())
-            ? "Nothing repeats " + minCount + "+ times — lower the filter"
-            : "Add notes to expenses to track items";
+          : grp === "autopay"
+            ? "Mark expenses as autopay in the transaction sheet"
+            : txs.some((t) => (t.note || "").trim())
+              ? "Nothing repeats " + minCount + "+ times — lower the filter"
+              : "Add notes to expenses to track items";
   const listBody =
     grp === "nws"
       ? (Object.keys(NW_META) as NwKey[]).map((k) => {
@@ -257,6 +336,36 @@ export function InsightsPage() {
             />
           );
         })
+      : grp === "autopay"
+      ? (autopayData?.byAccount.map((section) => (
+          <div key={section.account} className="ap-section">
+            <div className="ap-section-title">{section.account}</div>
+            {section.upcoming.length > 0 && (
+              <div className="ap-group">
+                <div className="ap-group-label">Upcoming</div>
+                {section.upcoming.map((t) => (
+                  <AutopayRow key={t.id + "-" + t.occDate} t={t as AutopayRowTxn} doc={doc} hide={hide} />
+                ))}
+              </div>
+            )}
+            {section.completed.length > 0 && (
+              <div className="ap-group">
+                <div className="ap-group-label">Completed</div>
+                {section.completed.map((t) => (
+                  <AutopayRow key={t.id + "-done"} t={{ ...t, occDate: undefined } as AutopayRowTxn} doc={doc} hide={hide} status="completed" />
+                ))}
+              </div>
+            )}
+            {section.overdue.length > 0 && (
+              <div className="ap-group">
+                <div className="ap-group-label">Overdue</div>
+                {section.overdue.map((t) => (
+                  <AutopayRow key={t.id + "-overdue"} t={t as AutopayRowTxn} doc={doc} hide={hide} status="overdue" />
+                ))}
+              </div>
+            )}
+          </div>
+        )) || [])
       : grp === "item"
       ? itemGroups.map((g) => (
           <ItemSumCard
@@ -344,6 +453,15 @@ export function InsightsPage() {
           onClick={() => setGrp("nws")}
         >
           50-30-20
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={grp === "autopay"}
+          className={"chip " + (grp === "autopay" ? "on" : "")}
+          onClick={() => setGrp("autopay")}
+        >
+          Autopay
         </button>
       </div>
       {grp === "item" && (

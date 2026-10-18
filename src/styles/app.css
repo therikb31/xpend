@@ -959,3 +959,19 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
   #toast{bottom:34px}
 }
 @media (min-width:768px) and (display-mode: standalone){}
+
+/* ============================ AUTOPAY (Insights tab) ============================ */
+.ap-section{margin-bottom:16px}
+.ap-section-title{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:0 0 8px;padding:0 2px}
+.ap-group{margin-bottom:12px}
+.ap-group-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted-2);margin:0 0 6px;padding:0 2px}
+.ap-row{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:16px;padding:12px 14px;margin-bottom:6px;gap:12px;transition:opacity .15s}
+.ap-row-main{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
+.ap-row-meta{display:flex;flex-direction:column;min-width:0}
+.ap-row-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ap-row-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ap-row-amt{font-size:16px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.ap-row-amt.inc{color:var(--inc)}
+.ap-badge{font-size:10px;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.1);color:var(--muted-2);text-transform:capitalize}
+.ap-badge:empty{display:none}
+.ap-section:last-child{margin-bottom:0}
