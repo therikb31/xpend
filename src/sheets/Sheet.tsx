@@ -32,6 +32,7 @@ import {
   GistUnlockSheet,
   MoreSheet,
   PwaHelpSheet,
+  AutopaySheet,
 } from "./system";
 import { TxnSheet } from "./txn";
 
@@ -123,6 +124,8 @@ function Content({ sheet }: { sheet: SheetSpec }) {
       return <ImportMergeSheet />;
     case "budget-detail":
       return <BudgetDetailSheet id={sheet.id!} />;
+    case "autopay":
+      return <AutopaySheet />;
     default:
       return null;
   }
