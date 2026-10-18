@@ -975,3 +975,8 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
 .ap-badge{font-size:10px;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.1);color:var(--muted-2);text-transform:capitalize}
 .ap-badge:empty{display:none}
 .ap-section:last-child{margin-bottom:0}
+
+/* Accounts net worth adjustment */
+.ap-nw-adjust{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--faint)}
+.ap-nw-adjust span:first-child{font-size:13px;color:var(--muted)}
+.ap-nw-adj-amt{font-size:22px;font-weight:700;color:var(--neg)}

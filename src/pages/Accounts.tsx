@@ -1,8 +1,8 @@
 // Accounts — port of App.accounts: net worth + account cards.
 
 import { AccountAvatar } from "../components/ui";
-import { accBalance } from "../data/finance";
-import { rupees } from "../lib/format";
+import { accBalance, upcomingAutopayTotal } from "../data/finance";
+import { rupees, monthKey } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { Account } from "../types";
@@ -17,6 +17,9 @@ export function AccountsPage() {
     (s, a) => s + (a.kind === "savings" || a.kind === "goal" || a.secondary ? 0 : accBalance(doc, a.id)),
     0
   );
+  const currentMonth = monthKey(new Date());
+  const autopayDeduction = upcomingAutopayTotal(doc, currentMonth, "all");
+  const adjustedNet = net - autopayDeduction;
   const openAcc = (a: Account) => openSheet({ name: "account-edit", id: a.id });
   const cards = accs.filter((a) => a.kind === "card");
   const rest = accs.filter((a) => a.kind !== "card");
@@ -78,6 +81,12 @@ export function AccountsPage() {
         <div className="dc-main" style={{ fontSize: 38, margin: "2px 0 4px" }}>
           {rupees(net, hide)}
         </div>
+        {autopayDeduction > 0 && (
+          <div className="ap-nw-adjust">
+            <span>After autopays this month</span>
+            <span className="ap-nw-adj-amt">{rupees(adjustedNet, hide)}</span>
+          </div>
+        )}
       </div>
       {cards.length > 0 && (
         <>
