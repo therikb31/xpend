@@ -9,7 +9,7 @@ import { useApp } from "../services/store";
 import { Grab } from "./Sheet";
 
 export function TxnSheet({ id }: { id: string }) {
-  const { state, mutate, closeSheet, startEdit, toast } = useApp();
+  const { state, mutate, closeSheet, startEdit, toast, openSheet } = useApp();
   const doc = state.doc!;
   const hide = !!doc.settings.hideBalances;
   const [armed, setArmed] = useState(false);
@@ -78,7 +78,7 @@ export function TxnSheet({ id }: { id: string }) {
         </span>
         <span className={"txn-amt " + (t.dir === "income" ? "inc" : "")}>{rupees(t.amount, hide)}</span>
       </div>
-      <button
+<button
         className="sh-row"
         onClick={() => startEdit(t)}
       >
@@ -86,6 +86,19 @@ export function TxnSheet({ id }: { id: string }) {
           {IC.pen}
         </span>
         <span className="rname">Edit</span>
+        {IC.right}
+      </button>
+      <button
+        className="sh-row"
+        onClick={() => {
+          closeSheet();
+          openSheet({ name: "autopay" });
+        }}
+      >
+        <span className="ccircle" style={{ ["--c" as string]: "#2B3339" } as CSSProperties}>
+          {IC.repeat}
+        </span>
+        <span className="rname">{t.autopay ? "Edit autopay" : "Make autopay"}</span>
         {IC.right}
       </button>
       <button

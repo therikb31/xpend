@@ -65,6 +65,9 @@ export const IC: Record<string, ReactNode> = {
   refresh: (
     <Svg><path d="M20 11.5a8 8 0 1 0-2.2 5.6" /><path d="M20.5 4.5v7h-7" /></Svg>
   ),
+  repeat: (
+    <Svg><path d="M4 11a8 8 0 0 1 12.5-7.5L19 7" /><path d="M20 13a8 8 0 0 1-12.5 7.5L5 17" /></Svg>
+  ),
   star: (
     <Svg><path d="M12 4l1.9 4.5 4.9.5-3.7 3.3 1.1 4.8L12 14.8l-4.2 2.3 1.1-4.8-3.7-3.3 4.9-.5z" /></Svg>
   ),

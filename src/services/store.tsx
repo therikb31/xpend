@@ -42,7 +42,8 @@ export type SheetName =
   | "gist-setup" | "gist-unlock" | "gist-restore"
   | "export" | "pwa-help" | "budget-form" | "budget-detail"
   | "grocery-item" | "grocery-list" | "grocery-share" | "grocery-join" | "grocery-more"
-  | "friend-add" | "github-link" | "import-merge" | "open-in-app" | "day-txns";
+  | "friend-add" | "github-link" | "import-merge" | "open-in-app" | "day-txns"
+  | "autopay";
 
 export interface SheetSpec {
   name: SheetName;
@@ -93,6 +94,7 @@ export function freshAdd(doc: Doc): AddDraft {
     date: (s && s.lastDate) || todayStr(),
     note: "",
     merchantId: mid,
+    autopay: undefined,
   };
 }
 
@@ -276,6 +278,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           date: t.date,
           note: t.note || "",
           merchantId: t.merchantId || "",
+          autopay: t.autopay,
         },
       });
     };
@@ -315,6 +318,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             date: a.date, dir: a.dir, amount: Math.round(v * 100),
             categoryId: a.categoryId, accountId: a.accountId,
             note: a.note, merchantId: a.merchantId,
+            autopay: a.autopay,
           });
           savSync(doc, prev, t);
           doc.settings.lastDate = a.date;
@@ -331,6 +335,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         id: uid(), date: a.date, dir: a.dir, amount: Math.round(v * 100),
         categoryId: a.categoryId, accountId: a.accountId, merchantId: a.merchantId,
         name: "", note: a.note, createdAt: Date.now(),
+        autopay: a.autopay,
       };
       mutate((doc) => {
         doc.transactions.push(txn);

@@ -266,6 +266,7 @@ export interface AddDraft {
   date: string; // YYYY-MM-DD
   note: string;
   merchantId: string; // "" = none
+  autopay?: AutopayConfig;
 }
 
 export interface TransferDraft {

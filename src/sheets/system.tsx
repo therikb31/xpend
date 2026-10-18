@@ -10,6 +10,7 @@ import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import { Gist, gistCfg } from "../services/gist";
 import { Grab } from "./Sheet";
+import type { AutopayConfig } from "../types";
 
 /* ---------------- export JSON dump ---------------- */
 
@@ -310,7 +311,7 @@ export function GistRestoreSheet() {
 /* ---------------- add-screen overflow menu ---------------- */
 
 export function MoreSheet() {
-  const { state, setAdd, mutate, closeSheet, toast } = useApp();
+  const { state, setAdd, mutate, closeSheet, toast, openSheet } = useApp();
   const a = state.add;
   return (
     <>
@@ -365,6 +366,19 @@ export function MoreSheet() {
         <span className="rname">Save as shortcut</span>
         {IC.right}
       </button>
+      <button
+        className="sh-row"
+        onClick={() => {
+          closeSheet();
+          openSheet({ name: "autopay" });
+        }}
+      >
+        <span className="ccircle" style={{ ["--c" as string]: "#2B3339" } as CSSProperties}>
+          {IC.repeat}
+        </span>
+        <span className="rname">{a.autopay ? "Edit autopay" : "Make autopay"}</span>
+        {IC.right}
+      </button>
       <button className="sh-row" onClick={closeSheet} style={{ color: "var(--neg)" }}>
         <span className="ccircle" style={{ ["--c" as string]: "rgba(192,91,77,.16)" } as CSSProperties}>
           {IC.x}
@@ -372,6 +386,152 @@ export function MoreSheet() {
         <span className="rname">Close</span>
         {IC.right}
       </button>
+    </>
+  );
+}
+
+/* ---------------- Autopay config sheet ---------------- */
+
+export function AutopaySheet() {
+  const { state, setAdd, closeSheet, toast } = useApp();
+  const a = state.add;
+
+  const existing = a.autopay || {
+    interval: "monthly" as const,
+    dayOfMonth: parseInt(a.date.slice(8, 10), 10) || 1,
+    customIntervalMonths: undefined,
+    startDate: a.date,
+    endDate: null,
+    isActive: true,
+  };
+
+  const [interval, setInterval] = useState<"monthly" | "custom">(existing.interval);
+  const [dayOfMonth, setDayOfMonth] = useState(existing.dayOfMonth);
+  const [customIntervalMonths, setCustomIntervalMonths] = useState(existing.customIntervalMonths ?? 3);
+  const [startDate, setStartDate] = useState(existing.startDate);
+  const [endDate, setEndDate] = useState(existing.endDate || "");
+  const [isActive, setIsActive] = useState(existing.isActive);
+
+  const save = () => {
+    if (dayOfMonth < 1 || dayOfMonth > 31) {
+      toast("Day must be 1-31");
+      return;
+    }
+    if (interval === "custom" && (!customIntervalMonths || customIntervalMonths < 2 || customIntervalMonths > 12)) {
+      toast("Custom interval must be 2-12 months");
+      return;
+    }
+    const cfg: AutopayConfig = {
+      interval,
+      dayOfMonth,
+      customIntervalMonths: interval === "custom" ? customIntervalMonths : undefined,
+      startDate,
+      endDate: endDate || null,
+      isActive,
+    };
+    setAdd({ autopay: cfg });
+    closeSheet();
+    toast("Autopay configured");
+  };
+
+  const clear = () => {
+    setAdd({ autopay: undefined });
+    closeSheet();
+    toast("Autopay removed");
+  };
+
+  return (
+    <>
+      <Grab />
+      <div className="sh-title">Autopay settings</div>
+      <div className="tsub" style={{ margin: "0 2px 12px", color: "var(--muted)" }}>
+        This transaction will recur automatically. A virtual entry appears in Insights → Autopay.
+      </div>
+      <div className="set">
+        <label className="set-label">Recurrence</label>
+        <div className="seg" style={{ marginTop: 8 }}>
+          <button
+            className={interval === "monthly" ? "on" : ""}
+            onClick={() => setInterval("monthly")}
+          >
+            Monthly
+          </button>
+          <button
+            className={interval === "custom" ? "on" : ""}
+            onClick={() => setInterval("custom")}
+          >
+            Custom
+          </button>
+        </div>
+      </div>
+      <div className="set">
+        <label className="set-label">Day of month</label>
+        <input
+          type="number"
+          min="1"
+          max="31"
+          value={dayOfMonth}
+          onChange={(e) => setDayOfMonth(parseInt(e.target.value, 10) || 1)}
+          style={{ width: 80, marginTop: 8 }}
+        />
+        <div className="tsub" style={{ marginTop: 4, color: "var(--muted-2)" }}>
+          Uses last day of month for 29/30/31 in shorter months
+        </div>
+      </div>
+      {interval === "custom" && (
+        <div className="set">
+          <label className="set-label">Every N months</label>
+          <input
+            type="number"
+            min="2"
+            max="12"
+            value={customIntervalMonths}
+            onChange={(e) => setCustomIntervalMonths(parseInt(e.target.value, 10) || 3)}
+            style={{ width: 80, marginTop: 8 }}
+          />
+        </div>
+      )}
+      <div className="set">
+        <label className="set-label">Start date</label>
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          style={{ marginTop: 8 }}
+        />
+      </div>
+      <div className="set">
+        <label className="set-label">End date (optional)</label>
+        <input
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          style={{ marginTop: 8 }}
+        />
+        <div className="tsub" style={{ marginTop: 4, color: "var(--muted-2)" }}>
+          Empty = forever
+        </div>
+      </div>
+      <div className="set">
+        <label className="set-label" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <input
+            type="checkbox"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+          />
+          Active (pause to skip without deleting)
+        </label>
+      </div>
+      <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+        <button className="btn" style={{ flex: 1 }} onClick={save}>
+          {IC.check} Save
+        </button>
+        {a.autopay && (
+          <button className="btn" style={{ flex: 1, background: "var(--neg)", color: "white" }} onClick={clear}>
+            {IC.trash} Remove
+          </button>
+        )}
+      </div>
     </>
   );
 }
