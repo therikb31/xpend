@@ -10,7 +10,30 @@ import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import { Gist, gistCfg } from "../services/gist";
 import { Grab } from "./Sheet";
+import { CalGrid } from "./pickers";
 import type { AutopayConfig } from "../types";
+
+/* Module-level date picker config (set by AutopaySheet before opening) */
+interface DatePickerConfig {
+  field: "startDate" | "endDate";
+  value: string;
+  onPick: (key: string) => void;
+  title: string;
+}
+
+let datePickerConfig: DatePickerConfig | null = null;
+
+export function setDatePickerConfig(cfg: DatePickerConfig) {
+  datePickerConfig = cfg;
+}
+
+export function getDatePickerConfig(): DatePickerConfig | null {
+  return datePickerConfig;
+}
+
+export function clearDatePickerConfig() {
+  datePickerConfig = null;
+}
 
 /* ---------------- export JSON dump ---------------- */
 
@@ -393,7 +416,7 @@ export function MoreSheet() {
 /* ---------------- Autopay config sheet ---------------- */
 
 export function AutopaySheet() {
-  const { state, setAdd, closeSheet, toast } = useApp();
+  const { state, setAdd, closeSheet, toast, openSheet } = useApp();
   const a = state.add;
 
   const existing = a.autopay || {
@@ -411,6 +434,19 @@ export function AutopaySheet() {
   const [startDate, setStartDate] = useState(existing.startDate);
   const [endDate, setEndDate] = useState(existing.endDate || "");
   const [isActive, setIsActive] = useState(existing.isActive);
+
+  const openDatePicker = (field: "startDate" | "endDate") => {
+    setDatePickerConfig({
+      field,
+      value: field === "startDate" ? startDate : endDate,
+      onPick: (key: string) => {
+        if (field === "startDate") setStartDate(key);
+        else setEndDate(key);
+      },
+      title: field === "startDate" ? "Start date" : "End date",
+    });
+    openSheet({ name: "date-picker" });
+  };
 
   const save = () => {
     if (dayOfMonth < 1 || dayOfMonth > 31) {
@@ -447,6 +483,8 @@ export function AutopaySheet() {
       <div className="tsub" style={{ margin: "0 2px 12px", color: "var(--muted)" }}>
         This transaction will recur automatically. A virtual entry appears in Insights → Autopay.
       </div>
+
+      {/* Recurrence */}
       <div className="set">
         <label className="set-label">Recurrence</label>
         <div className="seg" style={{ marginTop: 8 }}>
@@ -464,74 +502,143 @@ export function AutopaySheet() {
           </button>
         </div>
       </div>
+
+      {/* Day of month */}
       <div className="set">
-        <label className="set-label">Day of month</label>
+        <label className="set-label" htmlFor="dayOfMonth">Day of month</label>
         <input
+          id="dayOfMonth"
+          className="sheet-input input-number"
           type="number"
           min="1"
           max="31"
           value={dayOfMonth}
           onChange={(e) => setDayOfMonth(parseInt(e.target.value, 10) || 1)}
-          style={{ width: 80, marginTop: 8 }}
         />
         <div className="tsub" style={{ marginTop: 4, color: "var(--muted-2)" }}>
           Uses last day of month for 29/30/31 in shorter months
         </div>
       </div>
+
+      {/* Custom interval months */}
       {interval === "custom" && (
         <div className="set">
-          <label className="set-label">Every N months</label>
+          <label className="set-label" htmlFor="customIntervalMonths">Every N months</label>
           <input
+            id="customIntervalMonths"
+            className="sheet-input input-number"
             type="number"
             min="2"
             max="12"
             value={customIntervalMonths}
             onChange={(e) => setCustomIntervalMonths(parseInt(e.target.value, 10) || 3)}
-            style={{ width: 80, marginTop: 8 }}
           />
         </div>
       )}
+
+      {/* Start date - opens date picker sheet */}
       <div className="set">
-        <label className="set-label">Start date</label>
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          style={{ marginTop: 8 }}
-        />
+        <label className="set-label" htmlFor="startDate">Start date</label>
+        <button
+          id="startDate"
+          className="sheet-input date-input"
+          type="button"
+          onClick={() => openDatePicker("startDate")}
+        >
+          <span>{startDate}</span>
+          {IC.cal}
+        </button>
       </div>
+
+      {/* End date (optional) - opens date picker sheet */}
       <div className="set">
-        <label className="set-label">End date (optional)</label>
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          style={{ marginTop: 8 }}
-        />
-        <div className="tsub" style={{ marginTop: 4, color: "var(--muted-2)" }}>
-          Empty = forever
+        <label className="set-label" htmlFor="endDate">End date <span className="muted">(optional)</span></label>
+        <button
+          id="endDate"
+          className="sheet-input date-input"
+          type="button"
+          onClick={() => openDatePicker("endDate")}
+        >
+          <span>{endDate || "No end date"}</span>
+          {IC.cal}
+        </button>
+      </div>
+
+      {/* Active toggle switch */}
+      <div className="set">
+        <label className="set-label" htmlFor="activeToggle">Status</label>
+        <div className="form-control">
+          <div
+            id="activeToggle"
+            role="switch"
+            tabIndex={0}
+            aria-checked={isActive}
+            className={`toggle-switch ${isActive ? "is-on" : ""}`}
+            onClick={() => setIsActive(!isActive)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setIsActive(!isActive);
+              }
+            }}
+          >
+            <div className="toggle-track" aria-hidden="true">
+              <div className="toggle-thumb" aria-hidden="true"></div>
+            </div>
+            <span className="toggle-text">{isActive ? "Active" : "Paused"}</span>
+          </div>
+          <div className="tsub" style={{ marginTop: 4, color: "var(--muted-2)" }}>
+            Pause to skip without deleting
+          </div>
         </div>
       </div>
-      <div className="set">
-        <label className="set-label" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-          />
-          Active (pause to skip without deleting)
-        </label>
-      </div>
-      <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
-        <button className="btn" style={{ flex: 1 }} onClick={save}>
+
+      {/* Button row with Cancel */}
+      <div className="button-row">
+        <button className="btn btn-cancel" onClick={closeSheet}>
+          Cancel
+        </button>
+        <button className="btn" onClick={save}>
           {IC.check} Save
         </button>
         {a.autopay && (
-          <button className="btn" style={{ flex: 1, background: "var(--neg)", color: "white" }} onClick={clear}>
+          <button className="btn btn-danger" onClick={clear}>
             {IC.trash} Remove
           </button>
         )}
       </div>
+    </>
+  );
+}
+
+/* ---------------- Date picker sheet (reusable for any local state) ---------------- */
+
+export function DatePickerSheet() {
+  const { closeSheet } = useApp();
+  const cfg = getDatePickerConfig();
+
+  if (!cfg) {
+    closeSheet();
+    return null;
+  }
+
+  return (
+    <>
+      <Grab />
+      <div className="dp-head">
+        <div className="dp-title">{cfg.title}</div>
+        <button className="cbtn small" onClick={() => { clearDatePickerConfig(); closeSheet(); }} aria-label="Close">
+          {IC.x}
+        </button>
+      </div>
+      <CalGrid
+        value={cfg.value}
+        onPick={(key) => {
+          cfg.onPick(key);
+          clearDatePickerConfig();
+          closeSheet();
+        }}
+      />
     </>
   );
 }
