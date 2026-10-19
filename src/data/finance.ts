@@ -404,8 +404,11 @@ export function insightsAutopay(doc: Doc, mkey: string, acc: string) {
 }
 
 export function upcomingAutopayTotal(doc: Doc, mkey: string, acc: string): number {
-  const { upcoming } = getAutopayForMonth(doc, mkey, acc);
-  return upcoming.reduce((s, t) => s + t.amount, 0);
+  const { upcoming, overdue } = getAutopayForMonth(doc, mkey, acc);
+  const nowKey = monthKey(new Date());
+  // For current month, include overdue autopays (bills that still need to be paid)
+  const includeOverdue = mkey === nowKey;
+  return upcoming.reduce((s, t) => s + t.amount, 0) + (includeOverdue ? overdue.reduce((s, t) => s + t.amount, 0) : 0);
 }
 
 export function catById(doc: Doc, id: string): Category {
