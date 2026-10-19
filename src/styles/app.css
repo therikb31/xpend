@@ -1015,6 +1015,11 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
   padding-right: 40px;
   text-align: left;
 }
+.date-input svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
 
 /* Toggle switch (replaces checkbox) */
 .toggle-switch {
