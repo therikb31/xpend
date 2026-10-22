@@ -613,17 +613,17 @@ export function DatePickerSheet() {
         value={cfg.value}
         onPick={(key) => {
           cfg.onPick(key);
-          // Defer to next tick to avoid race condition with parent state update
-          setTimeout(() => {
+          // Use requestAnimationFrame for reliable DOM updates after state changes
+          requestAnimationFrame(() => {
             clearDatePickerConfig();
             closeSheet();
             // Reopen AutopaySheet if requested
             if (cfg.reopenAutopay) {
-              setTimeout(() => {
+              requestAnimationFrame(() => {
                 openSheet({ name: "autopay" });
-              }, 0);
+              });
             }
-          }, 0);
+          });
         }}
       />
     </>
