@@ -439,6 +439,7 @@ export function AutopaySheet() {
         setAdd({ autopay: { ...ap, [field]: key } });
       },
       title: field === "startDate" ? "Start date" : "End date",
+      reopenAutopay: true,
     });
     openSheet({ name: "date-picker" });
   };
@@ -591,7 +592,7 @@ export function AutopaySheet() {
 /* ---------------- Date picker sheet (reusable for any local state) ---------------- */
 
 export function DatePickerSheet() {
-  const { closeSheet } = useApp();
+  const { closeSheet, openSheet } = useApp();
   const cfg = getDatePickerConfig();
 
   if (!cfg) {
@@ -616,6 +617,12 @@ export function DatePickerSheet() {
           setTimeout(() => {
             clearDatePickerConfig();
             closeSheet();
+            // Reopen AutopaySheet if requested
+            if (cfg.reopenAutopay) {
+              setTimeout(() => {
+                openSheet({ name: "autopay" });
+              }, 0);
+            }
           }, 0);
         }}
       />
