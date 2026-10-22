@@ -1,7 +1,7 @@
 // Pure domain logic — ports of the App.* query/calc methods.
 // Every function takes the doc explicitly; nothing here touches React or storage.
 
-import { APP_VER, monthKey, parseMk, rupees } from "../lib/format";
+import { getAppVersion, monthKey, parseMk, rupees } from "../lib/format";
 import type {
   Account,
   AutopayConfig,
@@ -290,7 +290,7 @@ export function insightsExport(doc: Doc, group: InsightGroup, mkey: string, flt:
             ? insightsAutopay(doc, mkey, acc)
             : insightsNws(doc, mkey, acc);
   return {
-    app: "Xpend", version: APP_VER, view: "summary", group,
+    app: "Xpend", version: getAppVersion(), view: "summary", group,
     exportedAt: new Date().toISOString(),
     month: mkey, monthLabel, filters: { ...flt }, stats: monthStats(doc, mkey),
     data,
@@ -1039,7 +1039,7 @@ export function expData(doc: Doc, view: View, mkey: string, flt: Filters): Recor
   prev.setMonth(prev.getMonth() - 1);
   const prevKey = monthKey(prev);
   const env: Record<string, unknown> = {
-    app: "Xpend", version: APP_VER, view, exportedAt: new Date().toISOString(),
+    app: "Xpend", version: getAppVersion(), view, exportedAt: new Date().toISOString(),
     month: mkey, monthLabel, filters: { ...flt }, stats: monthStats(doc, mkey),
   };
   if (view === "overview") {
