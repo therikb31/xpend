@@ -415,6 +415,12 @@ export function MoreSheet() {
 
 /* ---------------- Autopay config sheet ---------------- */
 
+function formatDateLabel(dateStr: string): string {
+  if (!dateStr) return "Select date";
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+}
+
 export function AutopaySheet() {
   const { state, setAdd, closeSheet, toast, openSheet } = useApp();
   const a = state.add;
@@ -484,7 +490,7 @@ export function AutopaySheet() {
         This transaction will recur automatically. A virtual entry appears in Insights → Autopay.
       </div>
 
-      {/* Recurrence */}
+      {/* Recurrence - match Add Expense .seg style */}
       <div className="set">
         <label className="set-label">Recurrence</label>
         <div className="seg" style={{ marginTop: 8 }}>
@@ -515,9 +521,7 @@ export function AutopaySheet() {
           value={dayOfMonth}
           onChange={(e) => setDayOfMonth(parseInt(e.target.value, 10) || 1)}
         />
-        <div className="tsub" style={{ marginTop: 4, color: "var(--muted-2)" }}>
-          Uses last day of month for 29/30/31 in shorter months
-        </div>
+        <div className="field-hint">Uses last day of month for 29/30/31 in shorter months</div>
       </div>
 
       {/* Custom interval months */}
@@ -545,21 +549,23 @@ export function AutopaySheet() {
           type="button"
           onClick={() => openDatePicker("startDate")}
         >
-          <span>{startDate}</span>
+          <span>{formatDateLabel(startDate)}</span>
           {IC.cal}
         </button>
       </div>
 
       {/* End date (optional) - opens date picker sheet */}
       <div className="set">
-        <label className="set-label" htmlFor="endDate">End date <span className="muted">(optional)</span></label>
+        <label className="set-label" htmlFor="endDate">
+          End date <span className="muted">(optional)</span>
+        </label>
         <button
           id="endDate"
           className="sheet-input date-input"
           type="button"
           onClick={() => openDatePicker("endDate")}
         >
-          <span>{endDate || "No end date"}</span>
+          <span>{endDate ? formatDateLabel(endDate) : "No end date"}</span>
           {IC.cal}
         </button>
       </div>
@@ -587,9 +593,7 @@ export function AutopaySheet() {
             </div>
             <span className="toggle-text">{isActive ? "Active" : "Paused"}</span>
           </div>
-          <div className="tsub" style={{ marginTop: 4, color: "var(--muted-2)" }}>
-            Pause to skip without deleting
-          </div>
+          <div className="field-hint">Pause to skip without deleting</div>
         </div>
       </div>
 
