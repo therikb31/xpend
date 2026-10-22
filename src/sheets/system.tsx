@@ -494,7 +494,7 @@ export function AutopaySheet() {
     toast("Autopay removed");
   };
 
-  // Render inline date picker popover
+// Render inline date picker (shown below the date buttons)
   const renderDatePicker = () => {
     if (!datePickerField) return null;
     const { y, m } = datePickerMonth;
@@ -516,7 +516,7 @@ export function AutopaySheet() {
     }
 
     return (
-      <div className="date-picker-popover">
+      <div className="date-picker-inline">
         <div className="dp-head">
           <div className="dp-title">{title}</div>
           <button className="cbtn small" onClick={() => setDatePickerField(null)} aria-label="Close">
@@ -525,9 +525,7 @@ export function AutopaySheet() {
         </div>
         <div className="cal-grid">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
-            <span key={w} className="wd">
-              {w}
-            </span>
+            <span key={w} className="wd">{w}</span>
           ))}
           {cells}
         </div>

@@ -1140,7 +1140,7 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
 }
 
 /* Inline date picker popover */
-.date-picker-popover {
+.date-picker-inline {
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -1155,7 +1155,7 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
   animation: popover-in 150ms ease-out;
 }
 
-@keyframes popover-in {
+@keyframes inline-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
@@ -1172,17 +1172,17 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
   font-weight: 600;
 }
 
-.date-picker-popover .cbtn.small {
+.date-picker-inline .cbtn.small {
   padding: 6px 10px;
 }
 
-.date-picker-popover .cal-grid {
+.date-picker-inline .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
 }
 
-.date-picker-popover .wd {
+.date-picker-inline .wd {
   text-align: center;
   font-size: 11px;
   font-weight: 600;
@@ -1190,7 +1190,7 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
   padding: 4px 0;
 }
 
-.date-picker-popover .cal-day {
+.date-picker-inline .cal-day {
   aspect-ratio: 1;
   display: flex;
   align-items: center;
@@ -1205,20 +1205,20 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
   transition: background 100ms, color 100ms;
 }
 
-.date-picker-popover .cal-day:hover {
+.date-picker-inline .cal-day:hover {
   background: var(--faint);
 }
 
-.date-picker-popover .cal-day.sel {
+.date-picker-inline .cal-day.sel {
   background: var(--inc);
   color: #fff;
 }
 
-.date-picker-popover .cal-day.today {
+.date-picker-inline .cal-day.today {
   font-weight: 700;
 }
 
-.date-picker-popover .cal-day.today::after {
+.date-picker-inline .cal-day.today::after {
   content: "";
   position: absolute;
   bottom: 2px;
@@ -1230,11 +1230,11 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
   background: var(--inc);
 }
 
-.date-picker-popover .cal-day.sel.today::after {
+.date-picker-inline .cal-day.sel.today::after {
   background: #fff;
 }
 
-.date-picker-popover .cal-grid i {
+.date-picker-inline .cal-grid i {
   aspect-ratio: 1;
 }
 
@@ -1245,7 +1245,7 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
   margin-bottom: 12px;
 }
 
-.date-picker-popover .dp-title {
+.date-picker-inline .dp-title {
   font-size: 16px;
   font-weight: 700;
   margin-right: auto;
