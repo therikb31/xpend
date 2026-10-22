@@ -492,46 +492,7 @@ export function AutopaySheet() {
     setAdd({ autopay: undefined });
     closeSheet();
     toast("Autopay removed");
-  };
-
-// Render inline date picker (shown below the date buttons)
-  const renderDatePicker = () => {
-    if (!datePickerField) return null;
-    const { y, m } = datePickerMonth;
-    const d = new Date(y, m, 1);
-    const title = d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
-    const first = (d.getDay() + 6) % 7;
-    const dim = new Date(y, m + 1, 0).getDate();
-    const today = todayStr();
-    const cells: React.ReactNode[] = [];
-    for (let i = 0; i < first; i++) cells.push(<i key={"b" + i}></i>);
-    for (let day = 1; day <= dim; day++) {
-      const key = y + "-" + pad(m + 1) + "-" + pad(day);
-      const cls = "cal-day" + (key === (datePickerField === "startDate" ? startDate : endDate) ? " sel" : "") + (key === todayStr() ? " today" : "");
-      cells.push(
-        <button key={key} type="button" className={cls} onClick={() => onDatePick(key)}>
-          {day}
-        </button>
-      );
-    }
-
-    return (
-      <div className="date-picker-inline">
-        <div className="dp-head">
-          <div className="dp-title">{title}</div>
-          <button className="cbtn small" onClick={() => setDatePickerField(null)} aria-label="Close">
-            {IC.x}
-          </button>
-        </div>
-        <div className="cal-grid">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
-            <span key={w} className="wd">{w}</span>
-          ))}
-          {cells}
-        </div>
-      </div>
-    );
-  };
+};
 
   return (
     <>
@@ -632,8 +593,43 @@ export function AutopaySheet() {
         </div>
       </button>
 
-      {/* Inline date picker popover */}
-      {renderDatePicker()}
+      {/* Inline date picker (rendered inline when a date field is focused) */}
+      {datePickerField && (
+        <div className="date-picker-inline">
+          <div className="dp-head">
+            <div className="dp-title">
+              {datePickerField === "startDate" ? "Start date" : "End date"}
+            </div>
+            <button className="cbtn small" onClick={() => setDatePickerField(null)} aria-label="Close">
+              {IC.x}
+            </button>
+          </div>
+          <div className="cal-grid">
+            {(() => {
+              const { y, m } = datePickerMonth;
+              const d = new Date(y, m, 1);
+              const first = (d.getDay() + 6) % 7;
+              const dim = new Date(y, m + 1, 0).getDate();
+              const today = todayStr();
+              const cells: React.ReactNode[] = [];
+              for (let i = 0; i < first; i++) cells.push(<i key={"b" + i}></i>);
+              for (let day = 1; day <= dim; day++) {
+                const key = y + "-" + pad(m + 1) + "-" + pad(day);
+                const cls = "cal-day" + (key === (datePickerField === "startDate" ? startDate : endDate) ? " sel" : "") + (key === todayStr() ? " today" : "");
+                cells.push(
+                  <button key={key} type="button" className={cls} onClick={() => {
+                    setAdd({ autopay: { ...ap, [datePickerField!]: key } });
+                    setDatePickerField(null);
+                  }}>
+                    {day}
+                  </button>
+                );
+              }
+              return cells;
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Button row with Cancel */}
       <div className="button-row">
