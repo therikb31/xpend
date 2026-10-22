@@ -613,13 +613,13 @@ export function DatePickerSheet() {
         value={cfg.value}
         onPick={(key) => {
           cfg.onPick(key);
-          // Use requestAnimationFrame for reliable DOM updates after state changes
-          requestAnimationFrame(() => {
+          // Use Promise.resolve().then() for reliable async execution after state updates
+          Promise.resolve().then(() => {
             clearDatePickerConfig();
             closeSheet();
             // Reopen AutopaySheet if requested
             if (cfg.reopenAutopay) {
-              requestAnimationFrame(() => {
+              Promise.resolve().then(() => {
                 openSheet({ name: "autopay" });
               });
             }
