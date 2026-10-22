@@ -720,6 +720,29 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
   padding:11px 4px;text-align:left;flex:none;
 }
 .field+.field{border-top:.5px solid rgba(255,255,255,.06)}
+
+/* Field row for inputs with icon + label + input (e.g., day of month) */
+.field-row{
+  display:flex;align-items:center;gap:14px;width:100%;
+  padding:11px 4px;text-align:left;flex:none;
+}
+.field-row+.field-row,.field-row+.field,.field+.field-row{
+  border-top:.5px solid rgba(255,255,255,.06);
+}
+.field-row .ficon{
+  width:40px;height:40px;border-radius:13px;flex:none;
+  display:grid;place-items:center;
+  background:rgba(255,255,255,.06);
+  border:.5px solid rgba(255,255,255,.09);
+  -webkit-backdrop-filter:blur(14px) saturate(160%);
+  backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:0 4px 14px rgba(0,0,0,.12);
+  font-size:18px;line-height:1;color:var(--text);
+}
+.field-row .f-name{flex:1;font-size:16px}
+.field-row input.sheet-input{
+  width:auto;min-width:80px;max-width:120px;margin-left:auto;
+}
 .field .f-name{flex:1;font-size:16px}
 .field .f-name.mute{color:var(--muted-2)}
 .field .f-val{color:var(--muted-2);font-size:15px;font-variant-numeric:tabular-nums}

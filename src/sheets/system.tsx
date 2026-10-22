@@ -419,30 +419,24 @@ export function MoreSheet() {
 export function AutopaySheet() {
   const { state, setAdd, closeSheet, toast, openSheet } = useApp();
   const a = state.add;
+  const ap = a.autopay;
 
-  const existing = a.autopay || {
-    interval: "monthly" as const,
-    dayOfMonth: parseInt(a.date.slice(8, 10), 10) || 1,
-    customIntervalMonths: undefined,
-    startDate: a.date,
-    endDate: null,
-    isActive: true,
-  };
-
-  const [interval, setInterval] = useState<"monthly" | "custom">(existing.interval);
-  const [dayOfMonth, setDayOfMonth] = useState(existing.dayOfMonth);
-  const [customIntervalMonths, setCustomIntervalMonths] = useState(existing.customIntervalMonths ?? 3);
-  const [startDate, setStartDate] = useState(existing.startDate);
-  const [endDate, setEndDate] = useState(existing.endDate || "");
-  const [isActive, setIsActive] = useState(existing.isActive);
+  // Read all values from global store (persists when sheet unmounts)
+  const interval = ap?.interval || "monthly";
+  const dayOfMonth = ap?.dayOfMonth || parseInt(a.date.slice(8, 10), 10) || 1;
+  const customIntervalMonths = ap?.customIntervalMonths ?? 3;
+  const startDate = ap?.startDate || a.date;
+  const endDate = ap?.endDate || "";
+  const isActive = ap?.isActive ?? true;
 
   const openDatePicker = (field: "startDate" | "endDate") => {
+    const currentValue = field === "startDate" ? startDate : endDate;
     setDatePickerConfig({
       field,
-      value: field === "startDate" ? startDate : endDate,
+      value: currentValue,
       onPick: (key: string) => {
-        if (field === "startDate") setStartDate(key);
-        else setEndDate(key);
+        // Update global store directly - persists when sheet unmounts
+        setAdd({ autopay: { ...ap, [field]: key } });
       },
       title: field === "startDate" ? "Start date" : "End date",
     });
@@ -491,26 +485,33 @@ export function AutopaySheet() {
         <div className="seg" style={{ marginTop: 8 }}>
           <button
             className={interval === "monthly" ? "on" : ""}
-            onClick={() => setInterval("monthly")}
+            onClick={() => setAdd({ autopay: { ...ap, interval: "monthly" } })}
           >
             Monthly
           </button>
           <button
             className={interval === "custom" ? "on" : ""}
-            onClick={() => setInterval("custom")}
+            onClick={() => setAdd({ autopay: { ...ap, interval: "custom" } })}
           >
             Custom
           </button>
         </div>
       </div>
 
-      {/* Day of month - match Add Expense .field style */}
-      <button className="field" onClick={() => setDayOfMonth(dayOfMonth === 31 ? 1 : dayOfMonth + 1)} style={{ cursor: "default" }}>
+      {/* Day of month - proper number input (match Add Expense style) */}
+      <div className="field-row">
         <span className="ficon">📅</span>
         <span className="f-name">Day of month</span>
-        <span className="f-val">{dayOfMonth}</span>
-        {IC.right}
-      </button>
+        <input
+          className="sheet-input input-number"
+          type="number"
+          min="1"
+          max="31"
+          value={dayOfMonth}
+          onChange={(e) => setAdd({ autopay: { ...ap, dayOfMonth: parseInt(e.target.value, 10) || 1 } })}
+          style={{ width: "80px", marginLeft: "auto" }}
+        />
+      </div>
 
       {/* Custom interval months */}
       {interval === "custom" && (
@@ -523,7 +524,7 @@ export function AutopaySheet() {
             min="2"
             max="12"
             value={customIntervalMonths}
-            onChange={(e) => setCustomIntervalMonths(parseInt(e.target.value, 10) || 3)}
+            onChange={(e) => setAdd({ autopay: { ...ap, customIntervalMonths: parseInt(e.target.value, 10) || 3 } })}
           />
         </div>
       )}
@@ -545,7 +546,7 @@ export function AutopaySheet() {
       </button>
 
       {/* Active toggle switch - match Add Expense .field style */}
-      <button className="field" onClick={() => setIsActive(!isActive)} style={{ cursor: "default" }}>
+      <button className="field" onClick={() => setAdd({ autopay: { ...ap, isActive: !isActive } })} style={{ cursor: "default" }}>
         <span className="ficon">⚙️</span>
         <span className="f-name">Status</span>
         <div className="toggle-switch-wrapper">
@@ -554,11 +555,11 @@ export function AutopaySheet() {
             tabIndex={0}
             aria-checked={isActive}
             className={`toggle-switch ${isActive ? "is-on" : ""}`}
-            onClick={(e) => { e.stopPropagation(); setIsActive(!isActive); }}
+            onClick={(e) => { e.stopPropagation(); setAdd({ autopay: { ...ap, isActive: !isActive } }); }}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                setIsActive(!isActive);
+                setAdd({ autopay: { ...ap, isActive: !isActive } });
               }
             }}
           >
@@ -577,7 +578,7 @@ export function AutopaySheet() {
         <button className="btn" onClick={save}>
           {IC.check} Save
         </button>
-        {a.autopay && (
+        {ap && (
           <button className="btn btn-danger" onClick={clear}>
             {IC.trash} Remove
           </button>
