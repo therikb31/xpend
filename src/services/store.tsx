@@ -298,7 +298,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       dispatch({ t: "SET_ADD", patch: { amount: a.amount } });
     };
-    const saveAdd = () => {
+const saveAdd = () => {
       const cur = s();
       const d = cur.doc;
       if (!d) return;
@@ -306,6 +306,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const v = parseFloat(a.amount);
       if (!isFinite(v) || v <= 0) {
         toast("Enter an amount");
+        return;
+      }
+      // Validate autopay: only save if isActive is explicitly true
+      if (a.autopay && a.autopay.isActive !== true) {
+        toast("Autopay must be active to save");
         return;
       }
       const existing = cur.editingId && d.transactions.find((x) => x.id === cur.editingId);
@@ -319,7 +324,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             date: a.date, dir: a.dir, amount: Math.round(v * 100),
             categoryId: a.categoryId, accountId: a.accountId,
             note: a.note, merchantId: a.merchantId,
-            autopay: a.autopay,
+            autopay: autopayToSave,
           });
           savSync(doc, prev, t);
           doc.settings.lastDate = a.date;
@@ -336,7 +341,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         id: uid(), date: a.date, dir: a.dir, amount: Math.round(v * 100),
         categoryId: a.categoryId, accountId: a.accountId, merchantId: a.merchantId,
         name: "", note: a.note, createdAt: Date.now(),
-        autopay: a.autopay,
+        autopay: autopayToSave,
       };
       mutate((doc) => {
         doc.transactions.push(txn);

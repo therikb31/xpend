@@ -340,9 +340,13 @@ export function getAutopayTemplates(doc: Doc): AutopayTemplate[] {
 }
 
 export function getAutopayForMonth(doc: Doc, mkey: string, acc: string) {
-  const templates = getAutopayTemplates(doc).filter(t =>
+  let templates = getAutopayTemplates(doc).filter(t =>
     acc === "all" || getAccountIdOfTxn(t) === acc || (t.dir === "trans" && getFromToOfTxn(t) && (getFromToOfTxn(t)!.from === acc || getFromToOfTxn(t)!.to === acc))
   );
+  // Fallback: if filtering by account yields no templates but there are active autopay templates overall, retry with "all"
+  if (templates.length === 0 && acc !== "all") {
+    templates = getAutopayTemplates(doc);
+  }
   const upcoming: AutopayWithDate[] = [];
   const completed: AutopayTemplate[] = [];
   const overdue: AutopayWithDate[] = [];

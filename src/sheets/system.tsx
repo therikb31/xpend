@@ -426,7 +426,7 @@ export function AutopaySheet() {
   const customIntervalMonths = ap?.customIntervalMonths ?? 3;
   const startDate = ap?.startDate || a.date;
   const endDate = ap?.endDate || "";
-  const isActive = ap?.isActive ?? true;
+  const [isActive, setIsActive] = useState(ap?.isActive ?? true);
 
   // Inline date picker state (never unmounts AutopaySheet)
   const [datePickerField, setDatePickerField] = useState<"startDate" | "endDate" | null>(null);
@@ -569,7 +569,7 @@ export function AutopaySheet() {
       </button>
 
       {/* Active toggle switch - match Add Expense .field style */}
-      <button className="field" onClick={() => setAdd({ autopay: { ...ap, isActive: !isActive } })} style={{ cursor: "default" }}>
+      <button className="field" onClick={() => setIsActive(!isActive)} style={{ cursor: "default" }}>
         <span className="ficon">⚙️</span>
         <span className="f-name">Status</span>
         <div className="toggle-switch-wrapper">
@@ -578,11 +578,11 @@ export function AutopaySheet() {
             tabIndex={0}
             aria-checked={isActive}
             className={`toggle-switch ${isActive ? "is-on" : ""}`}
-            onClick={(e) => { e.stopPropagation(); setAdd({ autopay: { ...ap, isActive: !isActive } }); }}
+            onClick={(e) => { e.stopPropagation(); setIsActive(!isActive); }}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                setAdd({ autopay: { ...ap, isActive: !isActive } });
+                setIsActive(!isActive);
               }
             }}
           >
