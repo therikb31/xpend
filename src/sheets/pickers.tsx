@@ -103,7 +103,9 @@ export function CalGrid({ value, onPick }: { value: string; onPick: (d: string) 
   for (let i = 0; i < first; i++) cells.push(<i key={"b" + i}></i>);
   for (let day = 1; day <= dim; day++) {
     const key = cur.y + "-" + pad(cur.m + 1) + "-" + pad(day);
-    const cls = "cal-day" + (key === value ? " sel" : "") + (key === today ? " today" : "");
+    const isSel = value && key === value;
+    const isToday = key === today;
+    const cls = "cal-day" + (isSel ? " sel" : "") + (isToday ? " today" : "");
     cells.push(
       <button key={key} type="button" className={cls} onClick={() => onPick(key)}>
         {day}

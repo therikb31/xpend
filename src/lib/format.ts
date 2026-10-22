@@ -10,6 +10,7 @@ export function dstr(d: Date): string {
 }
 
 export function parseD(s: string): Date {
+  if (!s) return new Date();
   const a = s.split("-").map(Number);
   return new Date(a[0], a[1] - 1, a[2]);
 }

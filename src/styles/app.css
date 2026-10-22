@@ -1020,17 +1020,10 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
   margin: 0;
 }
 
-/* Date picker button (full-width, calendar suffix) */
-.date-input {
-  display: flex;
+/* Toggle switch wrapper for .field layout */
+.toggle-switch-wrapper {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  padding-right: 40px;
-  text-align: left;
-}
-.date-input svg {
-  width: var(--icon-s);
-  height: var(--icon-s);
   flex-shrink: 0;
 }
 

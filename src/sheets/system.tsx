@@ -11,6 +11,7 @@ import { useApp } from "../services/store";
 import { Gist, gistCfg } from "../services/gist";
 import { Grab } from "./Sheet";
 import { CalGrid } from "./pickers";
+import { dayLabel } from "../lib/format";
 import type { AutopayConfig } from "../types";
 
 /* Module-level date picker config (set by AutopaySheet before opening) */
@@ -415,12 +416,6 @@ export function MoreSheet() {
 
 /* ---------------- Autopay config sheet ---------------- */
 
-function formatDateLabel(dateStr: string): string {
-  if (!dateStr) return "Select date";
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
-}
-
 export function AutopaySheet() {
   const { state, setAdd, closeSheet, toast, openSheet } = useApp();
   const a = state.add;
@@ -509,20 +504,13 @@ export function AutopaySheet() {
         </div>
       </div>
 
-      {/* Day of month */}
-      <div className="set">
-        <label className="set-label" htmlFor="dayOfMonth">Day of month</label>
-        <input
-          id="dayOfMonth"
-          className="sheet-input input-number"
-          type="number"
-          min="1"
-          max="31"
-          value={dayOfMonth}
-          onChange={(e) => setDayOfMonth(parseInt(e.target.value, 10) || 1)}
-        />
-        <div className="field-hint">Uses last day of month for 29/30/31 in shorter months</div>
-      </div>
+      {/* Day of month - match Add Expense .field style */}
+      <button className="field" onClick={() => setDayOfMonth(dayOfMonth === 31 ? 1 : dayOfMonth + 1)} style={{ cursor: "default" }}>
+        <span className="ficon">📅</span>
+        <span className="f-name">Day of month</span>
+        <span className="f-val">{dayOfMonth}</span>
+        {IC.right}
+      </button>
 
       {/* Custom interval months */}
       {interval === "custom" && (
@@ -540,47 +528,33 @@ export function AutopaySheet() {
         </div>
       )}
 
-      {/* Start date - opens date picker sheet */}
-      <div className="set">
-        <label className="set-label" htmlFor="startDate">Start date</label>
-        <button
-          id="startDate"
-          className="sheet-input date-input"
-          type="button"
-          onClick={() => openDatePicker("startDate")}
-        >
-          <span>{formatDateLabel(startDate)}</span>
-          {IC.cal}
-        </button>
-      </div>
+      {/* Start date - opens date picker sheet, match Add Expense .field style */}
+      <button className="field" onClick={() => openDatePicker("startDate")}>
+        <span className="ficon">🗓️</span>
+        <span className="f-name">{dayLabel(startDate)}</span>
+        <span className="f-val">Start date</span>
+        {IC.right}
+      </button>
 
-      {/* End date (optional) - opens date picker sheet */}
-      <div className="set">
-        <label className="set-label" htmlFor="endDate">
-          End date <span className="muted">(optional)</span>
-        </label>
-        <button
-          id="endDate"
-          className="sheet-input date-input"
-          type="button"
-          onClick={() => openDatePicker("endDate")}
-        >
-          <span>{endDate ? formatDateLabel(endDate) : "No end date"}</span>
-          {IC.cal}
-        </button>
-      </div>
+      {/* End date (optional) - opens date picker sheet, match Add Expense .field style */}
+      <button className="field" onClick={() => openDatePicker("endDate")}>
+        <span className="ficon">🗓️</span>
+        <span className="f-name">{endDate ? dayLabel(endDate) : "No end date"}</span>
+        <span className="f-val muted">End date <span className="muted">(optional)</span></span>
+        {IC.right}
+      </button>
 
-      {/* Active toggle switch */}
-      <div className="set">
-        <label className="set-label" htmlFor="activeToggle">Status</label>
-        <div className="form-control">
+      {/* Active toggle switch - match Add Expense .field style */}
+      <button className="field" onClick={() => setIsActive(!isActive)} style={{ cursor: "default" }}>
+        <span className="ficon">⚙️</span>
+        <span className="f-name">Status</span>
+        <div className="toggle-switch-wrapper">
           <div
-            id="activeToggle"
             role="switch"
             tabIndex={0}
             aria-checked={isActive}
             className={`toggle-switch ${isActive ? "is-on" : ""}`}
-            onClick={() => setIsActive(!isActive)}
+            onClick={(e) => { e.stopPropagation(); setIsActive(!isActive); }}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
@@ -591,11 +565,9 @@ export function AutopaySheet() {
             <div className="toggle-track" aria-hidden="true">
               <div className="toggle-thumb" aria-hidden="true"></div>
             </div>
-            <span className="toggle-text">{isActive ? "Active" : "Paused"}</span>
           </div>
-          <div className="field-hint">Pause to skip without deleting</div>
         </div>
-      </div>
+      </button>
 
       {/* Button row with Cancel */}
       <div className="button-row">
@@ -639,8 +611,11 @@ export function DatePickerSheet() {
         value={cfg.value}
         onPick={(key) => {
           cfg.onPick(key);
-          clearDatePickerConfig();
-          closeSheet();
+          // Defer to next tick to avoid race condition with parent state update
+          setTimeout(() => {
+            clearDatePickerConfig();
+            closeSheet();
+          }, 0);
         }}
       />
     </>
