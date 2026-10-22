@@ -10,7 +10,7 @@ import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import { Gist, gistCfg } from "../services/gist";
 import { Grab } from "./Sheet";
-import { dayLabel, pad } from "../lib/format";
+import { dayLabel, pad, todayStr } from "../lib/format";
 import type { AutopayConfig } from "../types";
 
 /* Module-level date picker config (set by AutopaySheet before opening) */
