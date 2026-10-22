@@ -33,7 +33,6 @@ import {
   MoreSheet,
   PwaHelpSheet,
   AutopaySheet,
-  DatePickerSheet,
 } from "./system";
 import { TxnSheet } from "./txn";
 
@@ -127,8 +126,6 @@ function Content({ sheet }: { sheet: SheetSpec }) {
       return <BudgetDetailSheet id={sheet.id!} />;
     case "autopay":
       return <AutopaySheet />;
-    case "date-picker":
-      return <DatePickerSheet />;
     default:
       return null;
   }

@@ -10,8 +10,7 @@ import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import { Gist, gistCfg } from "../services/gist";
 import { Grab } from "./Sheet";
-import { CalGrid } from "./pickers";
-import { dayLabel } from "../lib/format";
+import { dayLabel, pad } from "../lib/format";
 import type { AutopayConfig } from "../types";
 
 /* Module-level date picker config (set by AutopaySheet before opening) */
@@ -417,11 +416,11 @@ export function MoreSheet() {
 /* ---------------- Autopay config sheet ---------------- */
 
 export function AutopaySheet() {
-  const { state, setAdd, closeSheet, toast, openSheet } = useApp();
+  const { state, setAdd, closeSheet, toast } = useApp();
   const a = state.add;
   const ap = a.autopay;
 
-  // Read all values from global store (persists when sheet unmounts)
+  // Read all values from global store
   const interval = ap?.interval || "monthly";
   const dayOfMonth = ap?.dayOfMonth || parseInt(a.date.slice(8, 10), 10) || 1;
   const customIntervalMonths = ap?.customIntervalMonths ?? 3;
@@ -429,19 +428,40 @@ export function AutopaySheet() {
   const endDate = ap?.endDate || "";
   const isActive = ap?.isActive ?? true;
 
+  // Inline date picker state (never unmounts AutopaySheet)
+  const [datePickerField, setDatePickerField] = useState<"startDate" | "endDate" | null>(null);
+  const [datePickerMonth, setDatePickerMonth] = useState(() => {
+    const d = new Date(startDate);
+    return { y: d.getFullYear(), m: d.getMonth() };
+  });
+
   const openDatePicker = (field: "startDate" | "endDate") => {
     const currentValue = field === "startDate" ? startDate : endDate;
-    setDatePickerConfig({
-      field,
-      value: currentValue,
-      onPick: (key: string) => {
-        // Update global store directly - persists when sheet unmounts
-        setAdd({ autopay: { ...ap, [field]: key } });
-      },
-      title: field === "startDate" ? "Start date" : "End date",
-      reopenAutopay: true,
+    const d = new Date(currentValue);
+    setDatePickerMonth({ y: d.getFullYear(), m: d.getMonth() });
+    setDatePickerField(field);
+  };
+
+  const closeDatePicker = () => setDatePickerField(null);
+
+  const onDatePick = (key: string) => {
+    setAdd({ autopay: { ...ap, [datePickerField!]: key } });
+    setDatePickerField(null);
+  };
+
+  const handleMonthStep = (dm: number) => {
+    setDatePickerMonth((c) => {
+      let m = c.m + dm;
+      let y = c.y;
+      if (m < 0) { m = 11; y--; }
+      if (m > 11) { m = 0; y++; }
+      return { y, m };
     });
-    openSheet({ name: "date-picker" });
+  };
+
+  const handleToday = () => {
+    const n = new Date();
+    setDatePickerMonth({ y: n.getFullYear(), m: n.getMonth() });
   };
 
   const save = () => {
@@ -470,6 +490,47 @@ export function AutopaySheet() {
     setAdd({ autopay: undefined });
     closeSheet();
     toast("Autopay removed");
+  };
+
+  // Render inline date picker popover
+  const renderDatePicker = () => {
+    if (!datePickerField) return null;
+    const { y, m } = datePickerMonth;
+    const d = new Date(y, m, 1);
+    const title = d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+    const first = (d.getDay() + 6) % 7;
+    const dim = new Date(y, m + 1, 0).getDate();
+    const today = todayStr();
+    const cells: React.ReactNode[] = [];
+    for (let i = 0; i < first; i++) cells.push(<i key={"b" + i}></i>);
+    for (let day = 1; day <= dim; day++) {
+      const key = y + "-" + pad(m + 1) + "-" + pad(day);
+      const cls = "cal-day" + (key === (datePickerField === "startDate" ? startDate : endDate) ? " sel" : "") + (key === todayStr() ? " today" : "");
+      cells.push(
+        <button key={key} type="button" className={cls} onClick={() => onDatePick(key)}>
+          {day}
+        </button>
+      );
+    }
+
+    return (
+      <div className="date-picker-popover">
+        <div className="dp-head">
+          <div className="dp-title">{title}</div>
+          <button className="cbtn small" onClick={() => setDatePickerField(null)} aria-label="Close">
+            {IC.x}
+          </button>
+        </div>
+        <div className="cal-grid">
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
+            <span key={w} className="wd">
+              {w}
+            </span>
+          ))}
+          {cells}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -530,16 +591,16 @@ export function AutopaySheet() {
         </div>
       )}
 
-      {/* Start date - opens date picker sheet, match Add Expense .field style */}
-      <button className="field" onClick={() => openDatePicker("startDate")}>
+      {/* Start date - inline date picker popover, match Add Expense .field style */}
+      <button className="field" onClick={() => setDatePickerField("startDate")}>
         <span className="ficon">🗓️</span>
         <span className="f-name">{dayLabel(startDate)}</span>
         <span className="f-val">Start date</span>
         {IC.right}
       </button>
 
-      {/* End date (optional) - opens date picker sheet, match Add Expense .field style */}
-      <button className="field" onClick={() => openDatePicker("endDate")}>
+      {/* End date (optional) - inline date picker popover, match Add Expense .field style */}
+      <button className="field" onClick={() => setDatePickerField("endDate")}>
         <span className="ficon">🗓️</span>
         <span className="f-name">{endDate ? dayLabel(endDate) : "No end date"}</span>
         <span className="f-val muted">End date <span className="muted">(optional)</span></span>
@@ -571,6 +632,9 @@ export function AutopaySheet() {
         </div>
       </button>
 
+      {/* Inline date picker popover */}
+      {renderDatePicker()}
+
       {/* Button row with Cancel */}
       <div className="button-row">
         <button className="btn btn-cancel" onClick={closeSheet}>
@@ -585,47 +649,6 @@ export function AutopaySheet() {
           </button>
         )}
       </div>
-    </>
-  );
-}
-
-/* ---------------- Date picker sheet (reusable for any local state) ---------------- */
-
-export function DatePickerSheet() {
-  const { closeSheet, openSheet } = useApp();
-  const cfg = getDatePickerConfig();
-
-  if (!cfg) {
-    closeSheet();
-    return null;
-  }
-
-  return (
-    <>
-      <Grab />
-      <div className="dp-head">
-        <div className="dp-title">{cfg.title}</div>
-        <button className="cbtn small" onClick={() => { clearDatePickerConfig(); closeSheet(); }} aria-label="Close">
-          {IC.x}
-        </button>
-      </div>
-      <CalGrid
-        value={cfg.value}
-        onPick={(key) => {
-          cfg.onPick(key);
-          // Use Promise.resolve().then() for reliable async execution after state updates
-          Promise.resolve().then(() => {
-            clearDatePickerConfig();
-            closeSheet();
-            // Reopen AutopaySheet if requested
-            if (cfg.reopenAutopay) {
-              Promise.resolve().then(() => {
-                openSheet({ name: "autopay" });
-              });
-            }
-          });
-        }}
-      />
     </>
   );
 }
