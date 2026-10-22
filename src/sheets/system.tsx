@@ -434,6 +434,8 @@ export function AutopaySheet() {
     const d = new Date(startDate);
     return { y: d.getFullYear(), m: d.getMonth() };
   });
+  // Prevent tree-shaking of todayStr (used in renderDatePicker)
+  const _todayStr = todayStr;
 
   const openDatePicker = (field: "startDate" | "endDate") => {
     const currentValue = field === "startDate" ? startDate : endDate;
