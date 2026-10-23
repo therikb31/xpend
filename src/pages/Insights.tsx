@@ -441,6 +441,15 @@ export function InsightsPage() {
         <button
           type="button"
           role="tab"
+          aria-selected={grp === "autopay"}
+          className={"chip " + (grp === "autopay" ? "on" : "")}
+          onClick={() => setGrp("autopay")}
+        >
+          Autopay
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={grp === "merch"}
           className={"chip " + (grp === "merch" ? "on" : "")}
           onClick={() => setGrp("merch")}
@@ -464,15 +473,6 @@ export function InsightsPage() {
           onClick={() => setGrp("nws")}
         >
           50-30-20
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={grp === "autopay"}
-          className={"chip " + (grp === "autopay" ? "on" : "")}
-          onClick={() => setGrp("autopay")}
-        >
-          Autopay
         </button>
       </div>
       {grp === "item" && (
