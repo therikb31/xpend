@@ -31,7 +31,7 @@ function AutopayRow({ t, doc, hide, status, onTogglePaid }: { t: AutopayRowTxn; 
     ? `Every ${tp.autopay.customIntervalMonths} months`
     : "Monthly";
   return (
-    <div className="ap-row" style={{ opacity: status === "completed" || status === "paid" ? 0.6 : 1 }}>
+    <div className="ap-row">
       <div className="ap-row-main">
         <span className="ccircle" style={{ ["--c" as string]: c.color } as CSSProperties}>
           {catEmoji(c as any)}
