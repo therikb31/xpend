@@ -92,7 +92,7 @@ export function freshAdd(doc: Doc): AddDraft {
     dir: "expense",
     categoryId: doc.categories.some((c) => c.id === cid) ? cid : "cat-gro",
     accountId: doc.accounts[0] ? doc.accounts[0].id : "",
-    date: todayStr(),
+    date: s.lastDate || todayStr(),
     note: "",
     merchantId: mid,
     autopay: undefined,
@@ -329,7 +329,6 @@ const saveAdd = () => {
             autopay: autopayToSave,
           });
           savSync(doc, prev, t);
-          doc.settings.lastDate = a.date;
           doc.settings.lastCategoryId = a.categoryId;
           doc.settings.lastMerchantId = a.merchantId;
         });
