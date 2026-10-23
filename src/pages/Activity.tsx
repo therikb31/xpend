@@ -1,18 +1,20 @@
 // Activity list — port of App.activity: search + filter chips + day groups.
 
 import { Empty, TxnRow } from "../components/ui";
-import { catName, trNames, sortedTxs } from "../data/finance";
-import { parseD, rupees } from "../lib/format";
+import { catName, trNames, sortedTxs, getUpcomingAutopaysForActivity, setAutopayPaid } from "../data/finance";
+import { monthKey, parseD, rupees, todayStr } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { Txn } from "../types";
 import type { CSSProperties } from "react";
 
 export function ActivityPage() {
-  const { state, openSheet, setFilter, go, back } = useApp();
+  const { state, openSheet, setFilter, go, back, mutate } = useApp();
   const doc = state.doc!;
   const flt = state.flt;
   const hide = !!doc.settings.hideBalances;
+  const pending = getUpcomingAutopaysForActivity(doc, monthKey(new Date()), flt.acc);
+  const pendingTotal = pending.reduce((s, t) => s + t.amount, 0);
 
   let list = sortedTxs(doc);
   if (flt.dir !== "all") list = list.filter((t) => t.dir === flt.dir);
@@ -102,6 +104,40 @@ export function ActivityPage() {
             </button>
           ))}
       </div>
+
+      {pending.length > 0 && (
+        <div className="ap-pending">
+          <div className="ap-pending-head">
+            <span>Pending autopays</span>
+            <span>{rupees(pendingTotal, hide)}</span>
+          </div>
+          {pending.map((t) => {
+            const occ = parseD(t.occDate);
+            const overdue = t.occDate < todayStr();
+            return (
+              <div key={t.id + "-" + t.occDate} className="ap-pending-row" onClick={() => openTxn(t.id)}>
+                <div className="ap-pending-meta">
+                  <span className="ap-pending-name">{t.note || "Autopay"}</span>
+                  <span className={"ap-pending-sub" + (overdue ? " overdue" : "")}>
+                    {occ.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    {overdue ? " · overdue" : ""}
+                  </span>
+                </div>
+                <span className="ap-pending-amt">{rupees(t.amount, hide)}</span>
+                <button
+                  className="ap-paid-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    mutate((d) => setAutopayPaid(d, t.id, t.occDate, true));
+                  }}
+                >
+                  Mark paid
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {groups.length ? (
         groups.map((g) => {

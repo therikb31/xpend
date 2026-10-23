@@ -434,36 +434,27 @@ export function AutopaySheet() {
     const [year, month] = startDate.split("-").map(Number);
     return { y: year, m: month - 1 };
   });
-  // Prevent tree-shaking of todayStr (used in renderDatePicker)
-  const _todayStr = todayStr;
 
-  const openDatePicker = (field: "startDate" | "endDate") => {
-    const currentValue = field === "startDate" ? startDate : endDate;
-    const [year, month] = currentValue.split("-").map(Number);
-    setDatePickerMonth({ y: year, m: month - 1 });
-    setDatePickerField(field);
-  };
-
-  const closeDatePicker = () => setDatePickerField(null);
-
-  const onDatePick = (key: string) => {
-    setAdd({ autopay: { ...ap, [datePickerField!]: key } });
-    setDatePickerField(null);
-  };
-
-  const handleMonthStep = (dm: number) => {
-    setDatePickerMonth((c) => {
-      let m = c.m + dm;
-      let y = c.y;
-      if (m < 0) { m = 11; y--; }
-      if (m > 11) { m = 0; y++; }
-      return { y, m };
+  const patchAutopay = (patch: Partial<AutopayConfig>) => {
+    setAdd({
+      autopay: {
+        interval,
+        dayOfMonth,
+        customIntervalMonths,
+        startDate,
+        endDate: endDate || null,
+        isActive,
+        paidDates: ap?.paidDates,
+        ...patch,
+      },
     });
   };
 
-  const handleToday = () => {
-    const n = new Date();
-    setDatePickerMonth({ y: n.getFullYear(), m: n.getMonth() });
+  const openDatePicker = (field: "startDate" | "endDate") => {
+    const currentValue = (field === "startDate" ? startDate : endDate) || startDate;
+    const [year, month] = currentValue.split("-").map(Number);
+    setDatePickerMonth({ y: year, m: month - 1 });
+    setDatePickerField(field);
   };
 
   const save = () => {
@@ -482,6 +473,7 @@ export function AutopaySheet() {
       startDate,
       endDate: endDate || null,
       isActive,
+      paidDates: ap?.paidDates,
     };
     setAdd({ autopay: cfg });
     closeSheet();
@@ -508,13 +500,13 @@ return (
         <div className="seg" style={{ marginTop: 8 }}>
           <button
             className={interval === "monthly" ? "on" : ""}
-            onClick={() => setAdd({ autopay: { ...ap, interval: "monthly" } })}
+            onClick={() => patchAutopay({ interval: "monthly" })}
           >
             Monthly
           </button>
           <button
             className={interval === "custom" ? "on" : ""}
-            onClick={() => setAdd({ autopay: { ...ap, interval: "custom" } })}
+            onClick={() => patchAutopay({ interval: "custom" })}
           >
             Custom
           </button>
@@ -531,7 +523,7 @@ return (
           min="1"
           max="31"
           value={dayOfMonth}
-          onChange={(e) => setAdd({ autopay: { ...ap, dayOfMonth: parseInt(e.target.value, 10) || 1 } })}
+          onChange={(e) => patchAutopay({ dayOfMonth: parseInt(e.target.value, 10) || 1 })}
           style={{ width: "80px", marginLeft: "auto" }}
         />
       </div>
@@ -547,13 +539,13 @@ return (
             min="2"
             max="12"
             value={customIntervalMonths}
-            onChange={(e) => setAdd({ autopay: { ...ap, customIntervalMonths: parseInt(e.target.value, 10) || 3 } })}
+            onChange={(e) => patchAutopay({ customIntervalMonths: parseInt(e.target.value, 10) || 3 })}
           />
         </div>
       )}
 
       {/* Start date - inline date picker popover, match Add Expense .field style */}
-      <button className="field" onClick={() => setDatePickerField("startDate")}>
+      <button className="field" onClick={() => openDatePicker("startDate")}>
         <span className="ficon">🗓️</span>
         <span className="f-name">{dayLabel(startDate)}</span>
         <span className="f-val">Start date</span>
@@ -561,7 +553,7 @@ return (
       </button>
 
       {/* End date (optional) - inline date picker popover, match Add Expense .field style */}
-      <button className="field" onClick={() => setDatePickerField("endDate")}>
+      <button className="field" onClick={() => openDatePicker("endDate")}>
         <span className="ficon">🗓️</span>
         <span className="f-name">{endDate ? dayLabel(endDate) : "No end date"}</span>
         <span className="f-val muted">End date <span className="muted">(optional)</span></span>
@@ -610,7 +602,6 @@ return (
               const d = new Date(y, m, 1);
               const first = (d.getDay() + 6) % 7;
               const dim = new Date(y, m + 1, 0).getDate();
-              const today = todayStr();
               const cells: React.ReactNode[] = [];
               for (let i = 0; i < first; i++) cells.push(<i key={"b" + i}></i>);
               for (let day = 1; day <= dim; day++) {
@@ -618,7 +609,7 @@ return (
                 const cls = "cal-day" + (key === (datePickerField === "startDate" ? startDate : endDate) ? " sel" : "") + (key === todayStr() ? " today" : "");
                 cells.push(
                   <button key={key} type="button" className={cls} onClick={() => {
-                    setAdd({ autopay: { ...ap, [datePickerField!]: key } });
+                    patchAutopay({ [datePickerField!]: key });
                     setDatePickerField(null);
                   }}>
                     {day}

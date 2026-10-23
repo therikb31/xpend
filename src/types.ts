@@ -11,6 +11,7 @@ export interface AutopayConfig {
   startDate: string;               // YYYY-MM-DD (first occurrence)
   endDate?: string | null;         // YYYY-MM-DD (optional, null = forever)
   isActive: boolean;               // pause/resume
+  paidDates?: string[];            // YYYY-MM-DD strings for paid occurrences
 }
 
 export interface TxnBase {

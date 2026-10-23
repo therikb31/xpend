@@ -348,8 +348,9 @@ export function getAutopayForMonth(doc: Doc, mkey: string, acc: string) {
     templates = getAutopayTemplates(doc);
   }
   const upcoming: AutopayWithDate[] = [];
-  const completed: AutopayTemplate[] = [];
+  const completed: AutopayWithDate[] = [];
   const overdue: AutopayWithDate[] = [];
+  const paid: AutopayWithDate[] = [];
   const now = new Date();
   const nowKey = monthKey(now);
   const nowDay = now.getDate();
@@ -357,6 +358,10 @@ export function getAutopayForMonth(doc: Doc, mkey: string, acc: string) {
     if (!occurrencesInMonth(t.autopay, mkey)) continue;
     const occDay = clampDay(parseInt(mkey.slice(0, 4), 10), parseInt(mkey.slice(5, 7), 10) - 1, t.autopay.dayOfMonth);
     const occDate = `${mkey}-${String(occDay).padStart(2, "0")}`;
+    if (t.autopay.paidDates?.includes(occDate)) {
+      paid.push({ ...t, occDate });
+      continue;
+    }
     const posted = doc.transactions.some(x =>
       x.id !== t.id &&
       x.date === occDate &&
@@ -365,46 +370,81 @@ export function getAutopayForMonth(doc: Doc, mkey: string, acc: string) {
       (getAccountIdOfTxn(x) === getAccountIdOfTxn(t) || (t.dir === "trans" && getFromToOfTxn(x) && getFromToOfTxn(t) && getFromToOfTxn(x)!.from === getFromToOfTxn(t)!.from && getFromToOfTxn(x)!.to === getFromToOfTxn(t)!.to))
     );
     if (posted) {
-      completed.push(t);
+      completed.push({ ...t, occDate });
     } else if (mkey === nowKey && occDay < nowDay) {
       overdue.push({ ...t, occDate });
     } else {
       upcoming.push({ ...t, occDate });
     }
   }
-  return { upcoming, completed, overdue };
+  return { upcoming, completed, overdue, paid };
+}
+
+/* Mark one autopay occurrence paid/unpaid. Mutates the doc (call inside mutate). */
+export function setAutopayPaid(doc: Doc, templateId: string, occDate: string, paid: boolean): void {
+  const t = doc.transactions.find((x) => x.id === templateId);
+  if (!t || !t.autopay) return;
+  const list = t.autopay.paidDates || [];
+  t.autopay.paidDates = paid
+    ? (list.includes(occDate) ? list : [...list, occDate])
+    : list.filter((d) => d !== occDate);
+}
+
+/* Current-month occurrence date for an autopay template (null if none). */
+export function currentAutopayOccurrence(t: AutopayTemplate, now = new Date()): string | null {
+  const mkey = monthKey(now);
+  if (!occurrencesInMonth(t.autopay, mkey)) return null;
+  const day = clampDay(now.getFullYear(), now.getMonth(), t.autopay.dayOfMonth);
+  return `${mkey}-${String(day).padStart(2, "0")}`;
+}
+
+export function isAutopayOccurrencePaid(t: AutopayTemplate, occDate: string): boolean {
+  return !!t.autopay.paidDates?.includes(occDate);
 }
 
 export function insightsAutopay(doc: Doc, mkey: string, acc: string) {
-  const { upcoming, completed, overdue } = getAutopayForMonth(doc, mkey, acc);
-  const byAccount = new Map<string, { upcoming: typeof upcoming; completed: typeof completed; overdue: typeof overdue }>();
+  const { upcoming, completed, overdue, paid } = getAutopayForMonth(doc, mkey, acc);
+  const byAccount = new Map<string, { upcoming: typeof upcoming; completed: typeof completed; overdue: typeof overdue; paid: typeof paid }>();
   for (const t of upcoming) {
     const a = accById(doc, getAccountIdOfTxn(t)).name;
-    const e = byAccount.get(a) || { upcoming: [], completed: [], overdue: [] };
+    const e = byAccount.get(a) || { upcoming: [], completed: [], overdue: [], paid: [] };
     e.upcoming.push(t);
     byAccount.set(a, e);
   }
   for (const t of completed) {
     const a = accById(doc, getAccountIdOfTxn(t)).name;
-    const e = byAccount.get(a) || { upcoming: [], completed: [], overdue: [] };
+    const e = byAccount.get(a) || { upcoming: [], completed: [], overdue: [], paid: [] };
     e.completed.push(t);
     byAccount.set(a, e);
   }
   for (const t of overdue) {
     const a = accById(doc, getAccountIdOfTxn(t)).name;
-    const e = byAccount.get(a) || { upcoming: [], completed: [], overdue: [] };
+    const e = byAccount.get(a) || { upcoming: [], completed: [], overdue: [], paid: [] };
     e.overdue.push(t);
+    byAccount.set(a, e);
+  }
+  for (const t of paid) {
+    const a = accById(doc, getAccountIdOfTxn(t)).name;
+    const e = byAccount.get(a) || { upcoming: [], completed: [], overdue: [], paid: [] };
+    e.paid.push(t);
     byAccount.set(a, e);
   }
   const totalUpcoming = upcoming.reduce((s, t) => s + t.amount, 0);
   const totalCompleted = completed.reduce((s, t) => s + t.amount, 0);
   const totalOverdue = overdue.reduce((s, t) => s + t.amount, 0);
+  const totalPaid = paid.reduce((s, t) => s + t.amount, 0);
   return {
-    totalUpcoming, totalCompleted, totalOverdue,
+    totalUpcoming, totalCompleted, totalOverdue, totalPaid,
     byAccount: Array.from(byAccount.entries()).map(([account, v]) => ({
-      account, upcoming: v.upcoming, completed: v.completed, overdue: v.overdue
+      account, upcoming: v.upcoming, completed: v.completed, overdue: v.overdue, paid: v.paid
     }))
   };
+}
+
+/* Unpaid autopay occurrences that still need attention (this month, past or future). */
+export function getUpcomingAutopaysForActivity(doc: Doc, mkey: string, acc: string): AutopayWithDate[] {
+  const { upcoming, overdue } = getAutopayForMonth(doc, mkey, acc);
+  return [...overdue, ...upcoming].sort((a, b) => a.occDate.localeCompare(b.occDate));
 }
 
 export function upcomingAutopayTotal(doc: Doc, mkey: string, acc: string): number {

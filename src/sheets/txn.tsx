@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { catById, accById, savSync, trNames } from "../data/finance";
+import { catById, accById, savSync, trNames, currentAutopayOccurrence, isAutopayOccurrencePaid, setAutopayPaid } from "../data/finance";
 import { catEmoji, parseD, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
+import type { AutopayConfig, Txn } from "../types";
 import { Grab } from "./Sheet";
 
 export function TxnSheet({ id }: { id: string }) {
@@ -62,6 +63,9 @@ export function TxnSheet({ id }: { id: string }) {
   const c = catById(doc, t.categoryId);
   const a = accById(doc, t.accountId);
   const pd = parseD(t.date);
+  const apT = t.autopay ? (t as Txn & { autopay: AutopayConfig }) : null;
+  const occDate = apT ? currentAutopayOccurrence(apT) : null;
+  const occPaid = apT && occDate ? isAutopayOccurrencePaid(apT, occDate) : false;
   return (
     <>
       <Grab />
@@ -78,7 +82,7 @@ export function TxnSheet({ id }: { id: string }) {
         </span>
         <span className={"txn-amt " + (t.dir === "income" ? "inc" : "")}>{rupees(t.amount, hide)}</span>
       </div>
-<button
+      <button
         className="sh-row"
         onClick={() => startEdit(t)}
       >
@@ -88,6 +92,22 @@ export function TxnSheet({ id }: { id: string }) {
         <span className="rname">Edit</span>
         {IC.right}
       </button>
+      {apT && occDate && (
+        <button
+          className="sh-row"
+          onClick={() => {
+            const next = !isAutopayOccurrencePaid(apT, occDate);
+            mutate((d) => setAutopayPaid(d, apT.id, occDate, next));
+            toast(next ? "Marked as paid" : "Marked as unpaid");
+          }}
+        >
+          <span className="ccircle" style={{ ["--c" as string]: "#2B3339" } as CSSProperties}>
+            {IC.check}
+          </span>
+          <span className="rname">{occPaid ? "Mark as unpaid" : "Mark as paid"}</span>
+          {IC.right}
+        </button>
+      )}
       <button
         className="sh-row"
         onClick={() => {

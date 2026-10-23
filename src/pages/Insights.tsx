@@ -5,7 +5,7 @@
 import { DonutHero } from "../components/charts";
 import type { DonutDetail } from "../components/charts";
 import { CatSumCard, Empty, ItemSumCard, MerchSumCard, MerchantLogoImg, TrendIcon } from "../components/ui";
-import { NW_META, PAL, accById, bucketTxns, catById, merchById, monthStats, savingsTally, insightsAutopay } from "../data/finance";
+import { NW_META, PAL, accById, bucketTxns, catById, merchById, monthStats, savingsTally, insightsAutopay, setAutopayPaid } from "../data/finance";
 import type { NwKey } from "../data/finance";
 import { catEmoji, fallbackEmoji, monthKey, parseMk, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
@@ -21,7 +21,7 @@ function isExpense(t: Txn): t is ExpenseTxn {
 }
 
 type AutopayRowTxn = Txn & { autopay: AutopayConfig; occDate?: string };
-function AutopayRow({ t, doc, hide, status }: { t: AutopayRowTxn; doc: any; hide: boolean; status?: string }) {
+function AutopayRow({ t, doc, hide, status, onTogglePaid }: { t: AutopayRowTxn; doc: any; hide: boolean; status?: string; onTogglePaid?: () => void }) {
   const tp = t as AutopayRowTxn;
   const c = isExpense(tp) ? catById(doc, tp.categoryId) : { color: "#31C4F3", name: "Transfer" };
   const a = accById(doc, isExpense(tp) ? tp.accountId : tp.from);
@@ -31,7 +31,7 @@ function AutopayRow({ t, doc, hide, status }: { t: AutopayRowTxn; doc: any; hide
     ? `Every ${tp.autopay.customIntervalMonths} months`
     : "Monthly";
   return (
-    <div className="ap-row" style={{ opacity: status === "completed" ? 0.6 : 1 }}>
+    <div className="ap-row" style={{ opacity: status === "completed" || status === "paid" ? 0.6 : 1 }}>
       <div className="ap-row-main">
         <span className="ccircle" style={{ ["--c" as string]: c.color } as CSSProperties}>
           {catEmoji(c as any)}
@@ -46,7 +46,15 @@ function AutopayRow({ t, doc, hide, status }: { t: AutopayRowTxn; doc: any; hide
       </div>
       <span className={"ap-row-amt " + (tp.dir === "income" ? "inc" : "")}>
         {rupees(tp.amount, hide)}
-        {status && <span className="ap-badge">{status}</span>}
+        {status && !onTogglePaid && <span className="ap-badge">{status}</span>}
+        {onTogglePaid && (
+          <button
+            className={"ap-paid-btn" + (status === "paid" ? " on" : "")}
+            onClick={(e) => { e.stopPropagation(); onTogglePaid(); }}
+          >
+            {status === "paid" ? "Unpaid" : "Mark paid"}
+          </button>
+        )}
       </span>
     </div>
   );
@@ -74,6 +82,9 @@ export function InsightsPage() {
   const grp = state.igrp;
   const setGrp = setIgrp;
   const minCount = doc.settings.itemMinCount ?? 2;
+  const toggleAutopayPaid = (id: string, occDate: string, paid: boolean) => {
+    mutate((d) => setAutopayPaid(d, id, occDate, paid));
+  };
 
   const mk = parseMk(mkey);
   const prev = new Date(mk);
@@ -344,15 +355,8 @@ export function InsightsPage() {
               <div className="ap-group">
                 <div className="ap-group-label">Upcoming</div>
                 {section.upcoming.map((t) => (
-                  <AutopayRow key={t.id + "-" + t.occDate} t={t as AutopayRowTxn} doc={doc} hide={hide} />
-                ))}
-              </div>
-            )}
-            {section.completed.length > 0 && (
-              <div className="ap-group">
-                <div className="ap-group-label">Completed</div>
-                {section.completed.map((t) => (
-                  <AutopayRow key={t.id + "-done"} t={{ ...t, occDate: undefined } as AutopayRowTxn} doc={doc} hide={hide} status="completed" />
+                  <AutopayRow key={t.id + "-" + t.occDate} t={t as AutopayRowTxn} doc={doc} hide={hide}
+                    onTogglePaid={() => toggleAutopayPaid(t.id, t.occDate, true)} />
                 ))}
               </div>
             )}
@@ -360,7 +364,25 @@ export function InsightsPage() {
               <div className="ap-group">
                 <div className="ap-group-label">Overdue</div>
                 {section.overdue.map((t) => (
-                  <AutopayRow key={t.id + "-overdue"} t={t as AutopayRowTxn} doc={doc} hide={hide} status="overdue" />
+                  <AutopayRow key={t.id + "-overdue"} t={t as AutopayRowTxn} doc={doc} hide={hide} status="overdue"
+                    onTogglePaid={() => toggleAutopayPaid(t.id, t.occDate, true)} />
+                ))}
+              </div>
+            )}
+            {section.completed.length > 0 && (
+              <div className="ap-group">
+                <div className="ap-group-label">Completed</div>
+                {section.completed.map((t) => (
+                  <AutopayRow key={t.id + "-done"} t={t as AutopayRowTxn} doc={doc} hide={hide} status="completed" />
+                ))}
+              </div>
+            )}
+            {section.paid.length > 0 && (
+              <div className="ap-group">
+                <div className="ap-group-label">Paid</div>
+                {section.paid.map((t) => (
+                  <AutopayRow key={t.id + "-paid"} t={t as AutopayRowTxn} doc={doc} hide={hide} status="paid"
+                    onTogglePaid={() => toggleAutopayPaid(t.id, t.occDate, false)} />
                 ))}
               </div>
             )}
