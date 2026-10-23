@@ -494,8 +494,8 @@ export function AutopaySheet() {
     toast("Autopay removed");
 };
 
-  return (
-    <>
+return (
+    <div className="autopay-sheet-container">
       <Grab />
       <div className="sh-title">Autopay settings</div>
       <div className="tsub" style={{ margin: "0 2px 12px", color: "var(--muted)" }}>
@@ -645,7 +645,7 @@ export function AutopaySheet() {
           </button>
         )}
       </div>
-    </>
+    </div>
   );
 }
 

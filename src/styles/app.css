@@ -1139,6 +1139,11 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
   font-size: 13px;
 }
 
+/* Autopay sheet container - provides positioned ancestor for inline date picker */
+.autopay-sheet-container {
+  position: relative;
+}
+
 /* Inline date picker popover */
 .date-picker-inline {
   position: absolute;
