@@ -91,7 +91,7 @@ export function TxnSheet({ id }: { id: string }) {
       <button
         className="sh-row"
         onClick={() => {
-          closeSheet();
+          startEdit(t);
           openSheet({ name: "autopay" });
         }}
       >
