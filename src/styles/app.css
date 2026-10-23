@@ -516,7 +516,7 @@ html.is-standalone #app{height:100%}
 
 /* ============================ CHIPS & SEARCH ============================ */
 .chip-row{display:flex;gap:8px;overflow-x:auto;padding:6px 2px 12px;-webkit-overflow-scrolling:touch}
-.chip-row.center{justify-content:center}
+/* .chip-row.center{justify-content:center} */
 .chip{
   flex:none;padding:8px 16px;border-radius:var(--r-pill);
   background:var(--control);color:var(--muted-2);font-size:13.5px;font-weight:600;white-space:nowrap;
