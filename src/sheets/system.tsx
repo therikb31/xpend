@@ -431,16 +431,16 @@ export function AutopaySheet() {
   // Inline date picker state (never unmounts AutopaySheet)
   const [datePickerField, setDatePickerField] = useState<"startDate" | "endDate" | null>(null);
   const [datePickerMonth, setDatePickerMonth] = useState(() => {
-    const d = new Date(startDate);
-    return { y: d.getFullYear(), m: d.getMonth() };
+    const [year, month] = startDate.split("-").map(Number);
+    return { y: year, m: month - 1 };
   });
   // Prevent tree-shaking of todayStr (used in renderDatePicker)
   const _todayStr = todayStr;
 
   const openDatePicker = (field: "startDate" | "endDate") => {
     const currentValue = field === "startDate" ? startDate : endDate;
-    const d = new Date(currentValue);
-    setDatePickerMonth({ y: d.getFullYear(), m: d.getMonth() });
+    const [year, month] = currentValue.split("-").map(Number);
+    setDatePickerMonth({ y: year, m: month - 1 });
     setDatePickerField(field);
   };
 
