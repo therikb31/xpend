@@ -167,9 +167,8 @@ export function InsightsPage() {
     for (const b of nwBuckets) agg[b.key] = b.amt;
   } else if (grp === "autopay") {
     if (autopayData) {
-      agg.upcoming = autopayData.totalUpcoming;
-      agg.completed = autopayData.totalCompleted;
-      agg.overdue = autopayData.totalOverdue;
+      agg.settled = autopayData.totalCompleted + autopayData.totalPaid;
+      agg.pending = autopayData.totalUpcoming + autopayData.totalOverdue;
     }
   } else if (grp !== "item") {
     for (const t of txs) {
@@ -192,9 +191,8 @@ export function InsightsPage() {
   if (grp === "nws") {
     for (const b of nwBuckets) colors[b.key] = NW_META[b.key].color;
   } else if (grp === "autopay") {
-    colors.upcoming = "#52E5A5";
-    colors.completed = "#31C4F3";
-    colors.overdue = "#FF5A5A";
+    colors.settled = "#31C4F3";
+    colors.pending = "#FF9F43";
   } else if (grp === "item") {
     // Every group needs a color for its card, not just donut entries.
     itemGroups.forEach((g, i) => {
@@ -254,12 +252,11 @@ export function InsightsPage() {
         sub: <span className="dc-trend">{p}% of total</span>,
       };
     } else if (grp === "autopay") {
-      const label = id === "upcoming" ? "Upcoming" : id === "completed" ? "Completed" : "Overdue";
-      const emoji = id === "upcoming" ? "⏳" : id === "completed" ? "✅" : "⚠️";
+      const settled = id === "settled";
       details[id] = {
-        title: <><span>{emoji}</span> {label}</>,
+        title: <><span>{settled ? "✅" : "⏳"}</span> {settled ? "Settled" : "Pending"}</>,
         amount: shortTotal(amt),
-        sub: <span className="dc-trend">{p}% of total</span>,
+        sub: <span className="dc-trend">{p}% · {settled ? "paid + completed" : "upcoming + overdue"}</span>,
       };
     } else {
       const g = itemGroups.find((x) => x.key === id);
@@ -292,19 +289,11 @@ export function InsightsPage() {
       go("bucket", state.view);
     } else if (grp === "autopay" && autopayData) {
       // Drill to activity filtered by autopay transactions
-      const status = id === "upcoming" ? "upcoming" : id === "completed" ? "completed" : "overdue";
-      const allTxns = [
-        ...autopayData.byAccount.flatMap(a => a.upcoming),
-        ...autopayData.byAccount.flatMap(a => a.completed),
-        ...autopayData.byAccount.flatMap(a => a.overdue)
-      ] as (Txn & { autopay: AutopayConfig; occDate?: string })[];
-      const matching = allTxns.filter(t => {
-        if (status === "upcoming") return autopayData!.byAccount.some(a => a.upcoming.some(u => u.id === t.id));
-        if (status === "completed") return autopayData!.byAccount.some(a => a.completed.some(u => u.id === t.id));
-        return autopayData!.byAccount.some(a => a.overdue.some(u => u.id === t.id));
-      });
+      const matching = autopayData.byAccount.flatMap((a) =>
+        id === "settled" ? [...a.completed, ...a.paid] : [...a.upcoming, ...a.overdue]
+      );
       if (matching.length) {
-        const notes = matching.map(t => t.note || "").filter(Boolean);
+        const notes = matching.map((t) => t.note || "").filter(Boolean);
         setFilter({ q: notes.join(" ") || matching[0].id });
         go("activity", state.view);
       }
