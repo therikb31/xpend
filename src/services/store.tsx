@@ -92,7 +92,7 @@ export function freshAdd(doc: Doc): AddDraft {
     dir: "expense",
     categoryId: doc.categories.some((c) => c.id === cid) ? cid : "cat-gro",
     accountId: doc.accounts[0] ? doc.accounts[0].id : "",
-    date: (s && s.lastDate) || todayStr(),
+    date: todayStr(),
     note: "",
     merchantId: mid,
     autopay: undefined,
