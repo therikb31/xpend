@@ -422,10 +422,10 @@ export function AutopaySheet() {
 
   // Read all values from global store
   const interval = ap?.interval || "monthly";
-  const dayOfMonth = ap?.dayOfMonth || parseInt(a.date.slice(8, 10), 10) || 1;
+  const dayOfMonth = ap?.dayOfMonth ?? (parseInt(a.date.slice(8, 10), 10) || 1);
   const customIntervalMonths = ap?.customIntervalMonths ?? 3;
-  const startDate = ap?.startDate || a.date;
-  const endDate = ap?.endDate || "";
+  const startDate = ap?.startDate ?? a.date;
+  const endDate = ap?.endDate ?? "";
   const [isActive, setIsActive] = useState(ap?.isActive ?? true);
 
   // Inline date picker state (never unmounts AutopaySheet)
