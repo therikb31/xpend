@@ -313,6 +313,8 @@ const saveAdd = () => {
         toast("Autopay must be active to save");
         return;
       }
+      // Only persist autopay if it's active
+      const autopayToSave = a.autopay?.isActive ? a.autopay : undefined;
       const existing = cur.editingId && d.transactions.find((x) => x.id === cur.editingId);
       if (existing) {
         const before = { ...existing };
