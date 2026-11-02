@@ -136,8 +136,11 @@ export function TxnRow({ doc, t, onOpen }: { doc: Doc; t: Txn; onOpen: (id: stri
   return (
     <button className="trow" onClick={() => onOpen(t.id)}>
       <span className="temoji">{catEmoji(c)}</span>
-      <span className="trow-body">
+      <span className="trow-meta">
         <span className="tname">{t.note || c.name}</span>
+        {(t.note || c.name) !== t.note && t.note && (
+          <span className="t-sub-excerpt">{t.note}</span>
+        )}
       </span>
       <span
         className={
@@ -148,8 +151,8 @@ export function TxnRow({ doc, t, onOpen }: { doc: Doc; t: Txn; onOpen: (id: stri
       >
         {rupees(t.amount, hide)}
       </span>
-    </button>
-  );
+        </button>
+    );
 }
 
 export function OvCard({ doc, t, onOpen }: { doc: Doc; t: Txn; onOpen: (id: string) => void }) {

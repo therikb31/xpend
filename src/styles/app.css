@@ -497,6 +497,8 @@ html.is-standalone #app{height:100%}
   .trow .tamt{font-size:13px;font-weight:500;color:var(--muted)}
   .trow .tamt.inc{color:var(--inc);font-weight:600}
   .trow .tamt.nom{color:var(--warn);font-weight:600}
+.trow-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.t-sub-excerpt{font-size:11px;color:var(--muted-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2}
 
 /* txn detail sheet */
 .txn-row{display:flex;align-items:center;gap:12px;padding:2px 0 14px}

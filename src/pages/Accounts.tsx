@@ -79,14 +79,8 @@ export function AccountsPage() {
       <div className="card">
         <div className="card-title">Net worth</div>
         <div className="dc-main" style={{ fontSize: 38, margin: "2px 0 4px" }}>
-          {rupees(net, hide)}
+          {rupees(adjustedNet, hide)}
         </div>
-        {autopayDeduction > 0 && (
-          <div className="ap-nw-adjust">
-            <span>After autopays this month</span>
-            <span className="ap-nw-adj-amt">{rupees(adjustedNet, hide)}</span>
-          </div>
-        )}
       </div>
       {cards.length > 0 && (
         <>
@@ -94,6 +88,16 @@ export function AccountsPage() {
           {cards.map(renderCard)}
         </>
       )}
+      <div className="sec-label">Autopay</div>
+      <div className="card">
+        <div className="card-title">Upcoming autopays this month</div>
+        <div className="dc-main" style={{ fontSize: 38, margin: "2px 0 4px" }}>
+          {rupees(autopayDeduction, hide)}
+        </div>
+        <div className="tsub">
+          {autopayDeduction > 0 ? "Upcoming and overdue payments" : "No pending autopays"}
+        </div>
+      </div>
       <div className="sec-label">Accounts</div>
       {rest.map(renderCard)}
     </div>
