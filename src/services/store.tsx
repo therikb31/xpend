@@ -43,7 +43,7 @@ export type SheetName =
   | "export" | "pwa-help" | "budget-form" | "budget-detail"
   | "grocery-item" | "grocery-list" | "grocery-share" | "grocery-join" | "grocery-more"
   | "friend-add" | "github-link" | "import-merge" | "open-in-app" | "day-txns"
-  | "autopay"
+  | "autopay" | "autopay-detail"
   | "date-picker";
 
 export interface SheetSpec {

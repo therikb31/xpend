@@ -16,22 +16,13 @@ import type { CSSProperties } from "react";
 const MIN_OPTS = [1, 2, 3, 5];
 const DONUT_TOP = 10;
 
-function isExpense(t: Txn): t is ExpenseTxn {
-  return t.dir !== "trans";
-}
-
 type AutopayRowTxn = Txn & { autopay: AutopayConfig; occDate?: string };
-function AutopayRow({ t, doc, hide, status, onTogglePaid }: { t: AutopayRowTxn; doc: any; hide: boolean; status?: string; onTogglePaid?: () => void }) {
+function AutopayRow({ t, doc, hide, status, onTogglePaid, openSheet }: { t: AutopayRowTxn; doc: any; hide: boolean; status?: string; onTogglePaid?: () => void; openSheet: (sheet: any) => void }) {
   const tp = t as AutopayRowTxn;
-  const c = isExpense(tp) ? catById(doc, tp.categoryId) : { color: "#31C4F3", name: "Transfer" };
-  const a = accById(doc, isExpense(tp) ? tp.accountId : tp.from);
-  const m = isExpense(tp) && tp.merchantId ? merchById(doc, tp.merchantId) : null;
+  const c = tp.dir === "expense" ? catById(doc, tp.categoryId) : { color: "#31C4F3", name: "Transfer" };
   const pd = tp.occDate ? new Date(tp.occDate.slice(0, 10)) : null;
-  const intervalLabel = tp.autopay.interval === "custom"
-    ? `Every ${tp.autopay.customIntervalMonths} months`
-    : "Monthly";
   return (
-    <div className="ap-row">
+    <div className="ap-row" onClick={() => openSheet({ name: "autopay-detail", id: t.id })}>
       <div className="ap-row-main">
         <span className="ccircle" style={{ ["--c" as string]: c.color } as CSSProperties}>
           {catEmoji(c as any)}
@@ -39,8 +30,7 @@ function AutopayRow({ t, doc, hide, status, onTogglePaid }: { t: AutopayRowTxn; 
         <div className="ap-row-meta">
           <span className="ap-row-name">{tp.note || c.name}</span>
           <span className="ap-row-sub">
-            {a.name} · {intervalLabel} · {pd ? pd.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}
-            {m && " · " + m.name}
+            {pd ? pd.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}
           </span>
         </div>
       </div>
@@ -345,7 +335,7 @@ export function InsightsPage() {
                 <div className="ap-group-label">Upcoming</div>
                 {section.upcoming.map((t) => (
                   <AutopayRow key={t.id + "-" + t.occDate} t={t as AutopayRowTxn} doc={doc} hide={hide}
-                    onTogglePaid={() => toggleAutopayPaid(t.id, t.occDate, true)} />
+                    onTogglePaid={() => toggleAutopayPaid(t.id, t.occDate, true)} openSheet={openSheet} />
                 ))}
               </div>
             )}
@@ -354,7 +344,7 @@ export function InsightsPage() {
                 <div className="ap-group-label">Overdue</div>
                 {section.overdue.map((t) => (
                   <AutopayRow key={t.id + "-overdue"} t={t as AutopayRowTxn} doc={doc} hide={hide} status="overdue"
-                    onTogglePaid={() => toggleAutopayPaid(t.id, t.occDate, true)} />
+                    onTogglePaid={() => toggleAutopayPaid(t.id, t.occDate, true)} openSheet={openSheet} />
                 ))}
               </div>
             )}
@@ -362,7 +352,7 @@ export function InsightsPage() {
               <div className="ap-group">
                 <div className="ap-group-label">Completed</div>
                 {section.completed.map((t) => (
-                  <AutopayRow key={t.id + "-done"} t={t as AutopayRowTxn} doc={doc} hide={hide} status="completed" />
+                  <AutopayRow key={t.id + "-done"} t={t as AutopayRowTxn} doc={doc} hide={hide} status="completed" openSheet={openSheet} />
                 ))}
               </div>
             )}
@@ -371,7 +361,7 @@ export function InsightsPage() {
                 <div className="ap-group-label">Paid</div>
                 {section.paid.map((t) => (
                   <AutopayRow key={t.id + "-paid"} t={t as AutopayRowTxn} doc={doc} hide={hide} status="paid"
-                    onTogglePaid={() => toggleAutopayPaid(t.id, t.occDate, false)} />
+                    onTogglePaid={() => toggleAutopayPaid(t.id, t.occDate, false)} openSheet={openSheet} />
                 ))}
               </div>
             )}

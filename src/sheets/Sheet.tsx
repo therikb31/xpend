@@ -33,6 +33,7 @@ import {
   MoreSheet,
   PwaHelpSheet,
   AutopaySheet,
+  AutopayDetailSheet,
 } from "./system";
 import { TxnSheet } from "./txn";
 
@@ -126,6 +127,8 @@ function Content({ sheet }: { sheet: SheetSpec }) {
       return <BudgetDetailSheet id={sheet.id!} />;
     case "autopay":
       return <AutopaySheet />;
+    case "autopay-detail":
+      return <AutopayDetailSheet id={sheet.id!} />;
     default:
       return null;
   }

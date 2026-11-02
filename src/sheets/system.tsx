@@ -3,14 +3,14 @@
 
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { expData, expLabel, insightLabel, insightsExport } from "../data/finance";
+import { expData, expLabel, insightLabel, insightsExport, setAutopayPaid, accById, merchById } from "../data/finance";
 import type { InsightGroup } from "../data/finance";
 import { C } from "../lib/crypto";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import { Gist, gistCfg } from "../services/gist";
 import { Grab } from "./Sheet";
-import { dayLabel, pad, todayStr } from "../lib/format";
+import { dayLabel, pad, todayStr, monthKey, rupees } from "../lib/format";
 import type { AutopayConfig } from "../types";
 
 /* Module-level date picker config (set by AutopaySheet before opening) */
@@ -637,6 +637,106 @@ return (
         )}
       </div>
     </div>
+  );
+}
+
+/* ---------------- Autopay detail sheet ---------------- */
+
+export function AutopayDetailSheet({ id }: { id: string }) {
+  const { state, closeSheet, mutate, toast } = useApp();
+  const doc = state.doc!;
+  const hide = !!doc.settings.hideBalances;
+  const t = doc.transactions.find((x) => x.id === id);
+  if (!t || !t.autopay) return null;
+  const cfg = t.autopay!;
+  const isExp = t.dir === "expense";
+  const accId = isExp ? (t as { accountId: string }).accountId : (t as { from: string }).from;
+  const a = accById(doc, accId);
+  const m = isExp && (t as { merchantId?: string }).merchantId ? merchById(doc, (t as { merchantId: string }).merchantId) : null;
+  const intervalLabel =
+    t.autopay.interval === "custom"
+      ? `Every ${t.autopay.customIntervalMonths} months`
+      : "Monthly";
+  const paidCount = cfg.paidDates?.length ?? 0;
+  const dirLabel =
+    t.dir === "income" ? "Income" : t.dir === "trans" ? "Transfer" : "Expense";
+
+  const togglePaid = () => {
+    const cfg = t.autopay!;
+    const occDate = `${monthKey(new Date())}-${String(cfg.dayOfMonth).padStart(2, "0")}`;
+    mutate((d) => setAutopayPaid(d, t.id, occDate, !cfg.paidDates?.includes(occDate)));
+    closeSheet();
+    toast(cfg.paidDates?.includes(occDate) ? "Marked unpaid" : "Marked paid");
+  };
+
+  return (
+    <>
+      <Grab />
+      <div className="sh-title">Autopay details</div>
+      <div className="slab">
+        <span className="s-label">Account</span>
+        <span className="s-sub">{a?.name || "—"}</span>
+      </div>
+      <div className="slab">
+        <span className="s-label">Frequency</span>
+        <span className="s-sub">{intervalLabel}</span>
+      </div>
+      <div className="slab">
+        <span className="s-label">Day of month</span>
+        <span className="s-sub">{cfg.dayOfMonth}</span>
+      </div>
+      <div className="slab">
+        <span className="s-label">Start date</span>
+        <span className="s-sub">{cfg.startDate}</span>
+      </div>
+      {cfg.endDate && (
+        <div className="slab">
+          <span className="s-label">End date</span>
+          <span className="s-sub">{cfg.endDate}</span>
+        </div>
+      )}
+      <div className="slab">
+        <span className="s-label">Merchant</span>
+        <span className="s-sub">{m ? m.name : "—"}</span>
+      </div>
+      <div className="slab">
+        <span className="s-label">Type</span>
+        <span className="s-sub">{dirLabel}</span>
+      </div>
+      <div className="slab">
+        <span className="s-label">Amount</span>
+        <span className="s-sub">{rupees(t.amount, hide)}</span>
+      </div>
+      <div className="slab">
+        <span className="s-label">Paid occurrences</span>
+        <span className="s-sub">{paidCount}</span>
+      </div>
+      <div className="slab">
+        <span className="s-label">Active</span>
+        <span className="s-sub">{t.autopay.isActive ? "Yes" : "No"}</span>
+      </div>
+      <div className="slab">
+        <span className="s-label">This month</span>
+        <span className="s-sub">
+          {cfg.paidDates?.includes(`${monthKey(new Date())}-${String(cfg.dayOfMonth).padStart(2, "0")}`)
+            ? "Paid"
+            : "Pending"}
+        </span>
+      </div>
+      <div className="button-row">
+        <button className="btn btn-cancel" onClick={closeSheet}>
+          Done
+        </button>
+        <button
+          className="btn"
+          onClick={togglePaid}
+        >
+          {cfg.paidDates?.includes(`${monthKey(new Date())}-${String(cfg.dayOfMonth).padStart(2, "0")}`)
+            ? "Mark unpaid"
+            : "Mark paid"}
+        </button>
+      </div>
+    </>
   );
 }
 
