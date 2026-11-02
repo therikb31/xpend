@@ -8,7 +8,7 @@ import { useApp } from "../services/store";
 import type { Account } from "../types";
 
 export function AccountsPage() {
-  const { state, openSheet } = useApp();
+  const { state, openSheet, go, setIgrp } = useApp();
   const doc = state.doc!;
   const hide = !!doc.settings.hideBalances;
 
@@ -89,13 +89,30 @@ export function AccountsPage() {
         </>
       )}
       <div className="sec-label">Autopay</div>
-      <div className="card">
-        <div className="card-title">Upcoming autopays this month</div>
-        <div className="dc-main" style={{ fontSize: 38, margin: "2px 0 4px" }}>
-          {rupees(autopayDeduction, hide)}
+      <div className="card" role="button" onClick={() => { go("summary"); setIgrp("autopay"); }}>
+        <div className="bud-top">
+          <span className="acc-av">
+            <span className="ccircle pic" style={{ ["--c" as string]: "#7C9AA6" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="acc-ico">
+                <path d="M3 9.5 12 5l9 4.5" />
+                <path d="M3 20h18M5 20v-9M9.5 20v-9M12 20v-9M14.5 20v-9M19 20v-9" />
+              </svg>
+            </span>
+            <span className="acc-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <g transform="translate(0,0.75)">
+                  <rect x="3" y="6" width="18" height="12.5" rx="3" />
+                  <path d="M3 10h18" />
+                  <circle cx="16" cy="14.8" r="1.1" />
+                </g>
+              </svg>
+            </span>
+          </span>
+          <span className="bname-h">Autopay</span>
+          <span className="tamt">{rupees(autopayDeduction, hide)}</span>
         </div>
-        <div className="tsub">
-          {autopayDeduction > 0 ? "Upcoming and overdue payments" : "No pending autopays"}
+        <div className="tsub" style={{ textTransform: "capitalize" }}>
+          Card · Autopay
         </div>
       </div>
       <div className="sec-label">Accounts</div>
