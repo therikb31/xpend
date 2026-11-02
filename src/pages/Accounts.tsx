@@ -109,7 +109,7 @@ export function AccountsPage() {
             </span>
           </span>
           <span className="bname-h">Autopay</span>
-          <span className="tamt">{rupees(autopayDeduction, hide)}</span>
+          <span className="tamt">-{rupees(autopayDeduction, hide)}</span>
         </div>
         <div className="tsub" style={{ textTransform: "capitalize" }}>
           Card · Autopay
