@@ -1,7 +1,7 @@
 // Pure domain logic — ports of the App.* query/calc methods.
 // Every function takes the doc explicitly; nothing here touches React or storage.
 
-import { getAppVersion, monthKey, parseMk, rupees } from "../lib/format";
+import { getAppVersion, monthKey, parseMk, rupees, uid } from "../lib/format";
 import type {
   Account,
   AutopayConfig,
@@ -380,14 +380,62 @@ export function getAutopayForMonth(doc: Doc, mkey: string, acc: string) {
   return { upcoming, completed, overdue, paid };
 }
 
-/* Mark one autopay occurrence paid/unpaid. Mutates the doc (call inside mutate). */
+/* Mark one autopay occurrence paid/unpaid. Mutates the doc (call inside mutate).
+   When marking paid, creates an actual expense transaction so the amount
+   is deducted from the account balance and shows up in Activity/Insights.
+   When marking unpaid, removes the created transaction. */
 export function setAutopayPaid(doc: Doc, templateId: string, occDate: string, paid: boolean): void {
   const t = doc.transactions.find((x) => x.id === templateId);
   if (!t || !t.autopay) return;
-  const list = t.autopay.paidDates || [];
-  t.autopay.paidDates = paid
-    ? (list.includes(occDate) ? list : [...list, occDate])
-    : list.filter((d) => d !== occDate);
+  const cfg = t.autopay;
+
+  if (paid) {
+    // Only create if not already paid
+    if (cfg.paidDates?.includes(occDate)) return;
+
+    // Create an actual expense transaction for this occurrence
+    if (t.dir === "expense" || t.dir === "income") {
+      const et = t as ExpenseTxn;
+      const txn: ExpenseTxn = {
+        id: uid(),
+        date: occDate,
+        dir: "expense",
+        amount: t.amount,
+        categoryId: et.categoryId,
+        accountId: et.accountId,
+        merchantId: et.merchantId,
+        name: "",
+        note: `Autopay: ${t.note || "Autopay"}`,
+        createdAt: Date.now(),
+        autopayOccurrence: occDate,
+      };
+      doc.transactions.push(txn);
+    } else if (t.dir === "trans") {
+      // Transfer autopay — create expense using `from` as account
+      const txn: ExpenseTxn = {
+        id: uid(),
+        date: occDate,
+        dir: "expense",
+        amount: t.amount,
+        categoryId: "",
+        accountId: t.from,
+        merchantId: undefined,
+        name: "",
+        note: `Autopay: ${t.note || "Autopay"}`,
+        createdAt: Date.now(),
+        autopayOccurrence: occDate,
+      };
+      doc.transactions.push(txn);
+    }
+
+    cfg.paidDates = cfg.paidDates ? [...cfg.paidDates, occDate] : [occDate];
+  } else {
+    // Remove the created transaction(s) for this occurrence
+    doc.transactions = doc.transactions.filter(
+      (x) => !(x.autopayOccurrence === occDate && x.id !== templateId)
+    );
+    cfg.paidDates = (cfg.paidDates || []).filter((d) => d !== occDate);
+  }
 }
 
 /* Current-month occurrence date for an autopay template (null if none). */

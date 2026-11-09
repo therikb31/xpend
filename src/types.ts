@@ -22,6 +22,7 @@ export interface TxnBase {
   name?: string;
   createdAt: number;
   autopay?: AutopayConfig; // if present, this txn is an autopay template
+  autopayOccurrence?: string; // YYYY-MM-DD of the autopay occurrence this txn pays
 }
 
 export interface ExpenseTxn extends TxnBase {
