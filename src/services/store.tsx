@@ -23,6 +23,9 @@ import {
   migrateNeeds,
   migrateSav,
 } from "../data/migrate";
+import {
+  currentAutopayOccurrence,
+} from "../data/finance";
 import { monthKey, parseMk, rupees, todayStr, uid } from "../lib/format";
 import { savSync } from "../data/finance";
 import { attachGist, Gist, gistConnected, gistDirty } from "./gist";
@@ -350,6 +353,20 @@ const saveAdd = () => {
         doc.settings.lastDate = a.date;
         doc.settings.lastCategoryId = a.categoryId;
         doc.settings.lastMerchantId = a.merchantId;
+        // Auto-mark current month's autopay occurrence as paid
+        if (txn.autopay?.isActive) {
+          const occDate = currentAutopayOccurrence(
+            txn as unknown as Parameters<typeof currentAutopayOccurrence>[0]
+          );
+          if (occDate) {
+            const t = doc.transactions.find((x) => x.id === txn.id);
+            if (t?.autopay) {
+              t.autopay.paidDates = t.autopay.paidDates
+                ? [...t.autopay.paidDates, occDate]
+                : [occDate];
+            }
+          }
+        }
       });
       dispatch({ t: "OPEN_ADD", add: freshAdd(d), editingId: null });
       dispatch({ t: "CLOSE_ADD", view: cur.prevView });
