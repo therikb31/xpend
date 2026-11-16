@@ -318,6 +318,17 @@ const saveAdd = () => {
       }
       // Only persist autopay if it's active
       const autopayToSave = a.autopay?.isActive ? a.autopay : undefined;
+      // A transaction that already exists and is (now) autopay satisfies this
+      // month's occurrence, so mark it paid from the start.
+      const markAutopayPaidForMonth = (t: Txn) => {
+        if (!t.autopay?.isActive) return;
+        const occDate = currentAutopayOccurrence(
+          t as unknown as Parameters<typeof currentAutopayOccurrence>[0]
+        );
+        if (!occDate) return;
+        const cfg = t.autopay;
+        cfg.paidDates = cfg.paidDates ? [...cfg.paidDates, occDate] : [occDate];
+      };
       const existing = cur.editingId && d.transactions.find((x) => x.id === cur.editingId);
       if (existing) {
         const before = { ...existing };
@@ -331,6 +342,7 @@ const saveAdd = () => {
             note: a.note, merchantId: a.merchantId,
             autopay: autopayToSave,
           });
+          markAutopayPaidForMonth(t);
           savSync(doc, prev, t);
           doc.settings.lastCategoryId = a.categoryId;
           doc.settings.lastMerchantId = a.merchantId;
@@ -353,20 +365,7 @@ const saveAdd = () => {
         doc.settings.lastDate = a.date;
         doc.settings.lastCategoryId = a.categoryId;
         doc.settings.lastMerchantId = a.merchantId;
-        // Auto-mark current month's autopay occurrence as paid
-        if (txn.autopay?.isActive) {
-          const occDate = currentAutopayOccurrence(
-            txn as unknown as Parameters<typeof currentAutopayOccurrence>[0]
-          );
-          if (occDate) {
-            const t = doc.transactions.find((x) => x.id === txn.id);
-            if (t?.autopay) {
-              t.autopay.paidDates = t.autopay.paidDates
-                ? [...t.autopay.paidDates, occDate]
-                : [occDate];
-            }
-          }
-        }
+        markAutopayPaidForMonth(txn);
       });
       dispatch({ t: "OPEN_ADD", add: freshAdd(d), editingId: null });
       dispatch({ t: "CLOSE_ADD", view: cur.prevView });
