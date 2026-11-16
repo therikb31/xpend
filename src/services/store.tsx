@@ -24,7 +24,7 @@ import {
   migrateSav,
 } from "../data/migrate";
 import { monthKey, parseMk, rupees, todayStr, uid } from "../lib/format";
-import { savSync } from "../data/finance";
+import { currentAutopayOccurrence, savSync } from "../data/finance";
 import { attachGist, Gist, gistConnected, gistDirty } from "./gist";
 import { ghLoadToken } from "./githubAuth";
 import { Store } from "./storage";
@@ -315,6 +315,20 @@ const saveAdd = () => {
       }
       // Only persist autopay if it's active
       const autopayToSave = a.autopay?.isActive ? a.autopay : undefined;
+
+      // Mark current month's autopay occurrence as paid from the start so the
+      // transaction doesn't show as unpaid/upcoming and marking "paid" doesn't
+      // create a duplicate expense.
+      const markAutopayPaidForMonth = (t: Txn) => {
+        if (!t.autopay?.isActive) return;
+        const occDate = currentAutopayOccurrence(
+          t as unknown as Parameters<typeof currentAutopayOccurrence>[0]
+        );
+        if (!occDate) return;
+        const cfg = t.autopay;
+        cfg.paidDates = cfg.paidDates ? [...cfg.paidDates, occDate] : [occDate];
+      };
+
       const existing = cur.editingId && d.transactions.find((x) => x.id === cur.editingId);
       if (existing) {
         const before = { ...existing };
@@ -328,6 +342,7 @@ const saveAdd = () => {
             note: a.note, merchantId: a.merchantId,
             autopay: autopayToSave,
           });
+          markAutopayPaidForMonth(t);
           savSync(doc, prev, t);
           doc.settings.lastCategoryId = a.categoryId;
           doc.settings.lastMerchantId = a.merchantId;
@@ -350,6 +365,7 @@ const saveAdd = () => {
         doc.settings.lastDate = a.date;
         doc.settings.lastCategoryId = a.categoryId;
         doc.settings.lastMerchantId = a.merchantId;
+        markAutopayPaidForMonth(txn);
       });
       dispatch({ t: "OPEN_ADD", add: freshAdd(d), editingId: null });
       dispatch({ t: "CLOSE_ADD", view: cur.prevView });
