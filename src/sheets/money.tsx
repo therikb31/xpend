@@ -4,8 +4,7 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import { AccountAvatar } from "../components/ui";
-import { accBalance, savSync } from "../data/finance";
-import { accById } from "../data/finance";
+import { accBalance, accById, payCardBill, savSync } from "../data/finance";
 import { init, parseRupeesToPaise, rupees, todayStr, uid } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
@@ -68,11 +67,16 @@ export function TransferSheet({ prefillTo }: { prefillTo?: string }) {
       from, to, note: (note || "").trim(), createdAt: Date.now(),
     };
     mutate((d) => {
-      d.transactions.push(t);
-      savSync(d, null, t);
+      if (prefillTo && to === prefillTo) {
+        // Paying a credit card bill — update statement paid status
+        payCardBill(d, to, from, v);
+      } else {
+        d.transactions.push(t);
+        savSync(d, null, t);
+      }
     });
     closeSheet();
-    toast("Moved " + rupees(v, hide));
+    toast(prefillTo && to === prefillTo ? "Paid " + rupees(v, hide) + " towards card bill" : "Moved " + rupees(v, hide));
   };
 
   return (
