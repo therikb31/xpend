@@ -5,7 +5,6 @@ opencode.json
 xpendo logo.png
 node_modules
 dist
-docs/assets/**
 
 # Debug artifacts / dead weight — kept on disk under trash/, never tracked
 trash/
