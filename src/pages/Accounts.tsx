@@ -1,14 +1,14 @@
 // Accounts — port of App.accounts: net worth + account cards.
 
 import { AccountAvatar } from "../components/ui";
-import { accBalance, upcomingAutopayTotal } from "../data/finance";
-import { rupees, monthKey } from "../lib/format";
+import { accBalance, cardBilling, generateCardBill, upcomingAutopayTotal } from "../data/finance";
+import { rupees, monthKey, todayStr } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { Account } from "../types";
 
 export function AccountsPage() {
-  const { state, openSheet, go, setIgrp } = useApp();
+  const { state, openSheet, go, setIgrp, mutate } = useApp();
   const doc = state.doc!;
   const hide = !!doc.settings.hideBalances;
 
@@ -23,8 +23,11 @@ export function AccountsPage() {
   const openAcc = (a: Account) => openSheet({ name: "account-edit", id: a.id });
   const cards = accs.filter((a) => a.kind === "card");
   const rest = accs.filter((a) => a.kind !== "card");
+
   const renderCard = (a: Account) => {
     const bal = accBalance(doc, a.id);
+    const isCC = a.isCreditCard;
+    const billing = isCC ? cardBilling(doc, a.id) : null;
     return (
       <div key={a.id} className="card" onClick={() => openAcc(a)} role="button">
         <div className="bud-top">
@@ -41,6 +44,11 @@ export function AccountsPage() {
                 Goal account
               </div>
             )}
+            {isCC && (
+              <div className="tsub" style={{ textTransform: "capitalize" }}>
+                Credit card · Bill gen {a.billGenerationDate}th · Due {billing?.dueDate || "—"}
+              </div>
+            )}
           </span>
           <span className="tamt">
             {rupees(bal, hide)}
@@ -49,6 +57,16 @@ export function AccountsPage() {
                 Current savings
               </div>
             )}
+            {isCC && billing && (
+              <>
+                <div className="tsub" style={{ textAlign: "right", color: "var(--neg)" }}>
+                  Billed: {rupees(billing.billed, hide)}
+                </div>
+                <div className="tsub" style={{ textAlign: "right", color: "var(--muted)" }}>
+                  Unbilled: {rupees(billing.unbilled, hide)}
+                </div>
+              </>
+            )}
           </span>
         </div>
         {a.kind === "savings" ? (
@@ -56,6 +74,28 @@ export function AccountsPage() {
             <span>Previous savings</span>
             <b>{rupees(a.prev != null ? a.prev : bal, hide)}</b>
           </div>
+        ) : isCC ? (
+          <>
+            <div className="tsub" style={{ textTransform: "capitalize" }}>
+              Credit card · Bill gen {a.billGenerationDate}th{billing?.dueDate ? ` · Due ${billing.dueDate}` : ""}
+            </div>
+            {billing && billing.statement && billing.statement.status !== "paid" && (
+              <button className="btn ghost small" style={{ marginTop: 8 }} onClick={() => {
+                openSheet({ name: "transfer" });
+              }}>
+                Pay bill
+              </button>
+            )}
+            {(!billing || !billing.statement || billing.statement.status === "paid") && (
+              <button className="btn small" style={{ marginTop: 8 }} onClick={() => {
+                mutate((d) => {
+                  generateCardBill(d, a.id, todayStr());
+                });
+              }}>
+                Generate bill
+              </button>
+            )}
+          </>
         ) : (
           <div className="tsub" style={{ textTransform: "capitalize" }}>
             {a.kind}

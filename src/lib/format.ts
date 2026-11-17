@@ -32,6 +32,12 @@ export function todayStr(): string {
   return dstr(new Date());
 }
 
+export function addDays(dateStr: string, days: number): string {
+  const d = parseD(dateStr);
+  d.setDate(d.getDate() + days);
+  return dstr(d);
+}
+
 export function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }

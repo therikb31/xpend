@@ -100,5 +100,6 @@ export function defaultDoc(): Doc {
     budgets: [],
     shortcuts: [],
     groceryLists: [],
+    cardStatements: [],
   };
 }

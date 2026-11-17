@@ -103,6 +103,11 @@ export function AccountAddSheet() {
   const [opening, setOpening] = useState("");
   const [secondary, setSecondary] = useState(false);
   const [icon, setIcon] = useState<string | null>(null);
+  // Credit card fields — only relevant when kind === "card"
+  const [isCreditCard, setIsCreditCard] = useState(false);
+  const [billGenDate, setBillGenDate] = useState("");
+  const [dueOffset, setDueOffset] = useState("");
+  const [creditLimit, setCreditLimit] = useState("");
 
   if (step === "icon") {
     return (
@@ -127,10 +132,21 @@ export function AccountAddSheet() {
       return;
     }
     const o = parseRupeesToPaise(opening || "0");
+    const bgd = billGenDate ? parseInt(billGenDate, 10) : undefined;
+    const off = dueOffset ? parseInt(dueOffset, 10) : undefined;
+    const lim = creditLimit ? parseRupeesToPaise(creditLimit) : undefined;
     mutate((d) => {
       const acc = {
-        id: "acc-u-" + uid(), name: n, kind, opening: o, color: "#7C9AA6",
+        id: "acc-u-" + uid(),
+        name: n,
+        kind,
+        opening: o,
+        color: "#7C9AA6",
         secondary: secondary === true,
+        isCreditCard: kind === "card" ? isCreditCard : undefined,
+        billGenerationDate: bgd,
+        paymentDueOffset: off,
+        creditLimit: lim,
       } as (typeof d.accounts)[number];
       if (icon) acc.icon = icon;
       if (kind === "savings") acc.prev = o;
@@ -152,6 +168,58 @@ export function AccountAddSheet() {
           </button>
         ))}
       </div>
+      {kind === "card" && (
+        <>
+          <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+            Credit card
+          </div>
+          <button className="set" style={{ marginTop: 4 }} onClick={() => setIsCreditCard((v) => !v)}>
+            <span className="s-label">
+              Mark as credit card<div className="s-sub">Enable billing cycle, due date, and credit limit tracking</div>
+            </span>
+            <span className={"switch " + (isCreditCard ? "on" : "")}></span>
+          </button>
+          {isCreditCard && (
+            <>
+              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+                Bill generation date (day of month)
+              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 5"
+                value={billGenDate}
+                onChange={(e) => setBillGenDate(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                style={{ marginTop: 0 }}
+                maxLength={2}
+              />
+              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+                Payment due offset (days after bill)
+              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 20"
+                value={dueOffset}
+                onChange={(e) => setDueOffset(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                style={{ marginTop: 0 }}
+                maxLength={2}
+              />
+              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+                Credit limit (₹)
+              </div>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="0"
+                value={creditLimit}
+                onChange={(e) => setCreditLimit(e.target.value)}
+                style={{ marginTop: 0 }}
+              />
+            </>
+          )}
+        </>
+      )}
       <div className="tsub" style={{ margin: "8px 2px 4px" }}>
         Opening balance (₹)
       </div>
@@ -207,6 +275,11 @@ function AccountEditBody({ id }: { id: string }) {
   const [name, setName] = useState(a.name);
   const [kind, setKind] = useState<AccountKind>(a.kind || "cash");
   const [armed, setArmed] = useState(false);
+  // Credit card fields
+  const [isCreditCard, setIsCreditCard] = useState(!!a.isCreditCard);
+  const [billGenDate, setBillGenDate] = useState(a.billGenerationDate ? String(a.billGenerationDate) : "");
+  const [dueOffset, setDueOffset] = useState(a.paymentDueOffset ? String(a.paymentDueOffset) : "");
+  const [creditLimit, setCreditLimit] = useState(a.creditLimit != null ? String(a.creditLimit / 100) : "");
 
   if (step === "icon") {
     return (
@@ -241,6 +314,10 @@ function AccountEditBody({ id }: { id: string }) {
       if (!t) return;
       t.name = n;
       t.kind = kind;
+      t.isCreditCard = kind === "card" ? isCreditCard : undefined;
+      t.billGenerationDate = kind === "card" && isCreditCard && billGenDate ? parseInt(billGenDate, 10) : undefined;
+      t.paymentDueOffset = kind === "card" && isCreditCard && dueOffset ? parseInt(dueOffset, 10) : undefined;
+      t.creditLimit = kind === "card" && isCreditCard && creditLimit ? parseRupeesToPaise(creditLimit) : undefined;
       if (t.kind === "savings" && t.prev == null) t.prev = t.opening || 0;
     });
     closeSheet();
@@ -293,6 +370,58 @@ function AccountEditBody({ id }: { id: string }) {
           </button>
         ))}
       </div>
+      {kind === "card" && (
+        <>
+          <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+            Credit card
+          </div>
+          <button className="set" style={{ marginTop: 4 }} onClick={() => setIsCreditCard((v) => !v)}>
+            <span className="s-label">
+              Mark as credit card<div className="s-sub">Enable billing cycle, due date, and credit limit tracking</div>
+            </span>
+            <span className={"switch " + (isCreditCard ? "on" : "")}></span>
+          </button>
+          {isCreditCard && (
+            <>
+              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+                Bill generation date (day of month)
+              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 5"
+                value={billGenDate}
+                onChange={(e) => setBillGenDate(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                style={{ marginTop: 0 }}
+                maxLength={2}
+              />
+              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+                Payment due offset (days after bill)
+              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 20"
+                value={dueOffset}
+                onChange={(e) => setDueOffset(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                style={{ marginTop: 0 }}
+                maxLength={2}
+              />
+              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+                Credit limit (₹)
+              </div>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="0"
+                value={creditLimit}
+                onChange={(e) => setCreditLimit(e.target.value)}
+                style={{ marginTop: 0 }}
+              />
+            </>
+          )}
+        </>
+      )}
       <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
         Balances come from transactions only.
       </div>
