@@ -160,7 +160,20 @@ export function AccountAddSheet() {
     <>
       <Grab />
       <div className="sh-title">New account</div>
-      <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="set" style={{ marginTop: 0 }} onClick={() => setStep("icon")}>
+          <span className="csel" id="ai-prev">
+            {icon ? (
+              <AccountAvatar a={{ id: "tmp", name, kind: "cash", opening: 0, color: "#7C9AA6", icon }} />
+            ) : (
+              <span className="ccircle" style={{ ["--c" as string]: "#7C9AA6" } as CSSProperties}>
+                {init(name || "") || "•"}
+              </span>
+            )}
+          </span>
+        </button>
+      </div>
       <div className="chip-row" style={{ marginTop: 4 }}>
         {(["cash", "card", "savings", "goal"] as const).map((k) => (
           <button key={k} className={"chip " + (kind === k ? "on" : "")} onClick={() => setKind(k)}>
@@ -181,40 +194,38 @@ export function AccountAddSheet() {
           </button>
           {isCreditCard && (
             <>
-              <div style={{ margin: "6px 2px 4px", display: "flex", gap: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <label className="field note-field">
-                    <span className="ficon">📅</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      className="note-inline"
-                      placeholder="e.g. 5"
-                      value={billGenDate}
-                      onChange={(e) => setBillGenDate(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                      maxLength={2}
-                    />
-                  </label>
-                  <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
-                    Bill gen date (day)
-                  </div>
+              <div style={{ margin: "6px 2px 4px" }}>
+                <label className="field note-field">
+                  <span className="ficon">📅</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="note-inline"
+                    placeholder="e.g. 5"
+                    value={billGenDate}
+                    onChange={(e) => setBillGenDate(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                    maxLength={2}
+                  />
+                </label>
+                <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Bill gen date (day)
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label className="field note-field">
-                    <span className="ficon">📆</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      className="note-inline"
-                      placeholder="e.g. 20"
-                      value={dueOffset}
-                      onChange={(e) => setDueOffset(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                      maxLength={2}
-                    />
-                  </label>
-                  <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
-                    Due offset (days)
-                  </div>
+              </div>
+              <div style={{ margin: "6px 2px 4px" }}>
+                <label className="field note-field">
+                  <span className="ficon">📆</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="note-inline"
+                    placeholder="e.g. 20"
+                    value={dueOffset}
+                    onChange={(e) => setDueOffset(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                    maxLength={2}
+                  />
+                </label>
+                <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Due offset (days)
                 </div>
               </div>
               <div style={{ margin: "6px 2px 4px" }}>
@@ -237,23 +248,27 @@ export function AccountAddSheet() {
           )}
         </>
       )}
-      <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-        Opening balance (₹)
-      </div>
-      <input
-        type="text"
-        inputMode="decimal"
-        placeholder="0"
-        value={opening}
-        onChange={(e) => setOpening(e.target.value)}
-        style={{ marginTop: 0 }}
-      />
-      <button className="set" style={{ marginTop: 14 }} onClick={() => setSecondary((v) => !v)}>
-        <span className="s-label">
-          Secondary account<div className="s-sub">Excluded from net worth (e.g. meal card)</div>
-        </span>
-        <span className={"switch " + (secondary ? "on" : "")}></span>
-      </button>
+      {!isCreditCard && (
+        <>
+          <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+            Opening balance (₹)
+          </div>
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="0"
+            value={opening}
+            onChange={(e) => setOpening(e.target.value)}
+            style={{ marginTop: 0 }}
+          />
+          <button className="set" style={{ marginTop: 14 }} onClick={() => setSecondary((v) => !v)}>
+            <span className="s-label">
+              Secondary account<div className="s-sub">Excluded from net worth (e.g. meal card)</div>
+            </span>
+            <span className={"switch " + (secondary ? "on" : "")}></span>
+          </button>
+        </>
+      )}
       <button className="set" style={{ marginTop: 14 }} onClick={() => setStep("icon")}>
         <span className="s-label">
           Logo<div className="s-sub">Bank or card logo shown on the account</div>
@@ -379,7 +394,14 @@ function AccountEditBody({ id }: { id: string }) {
     <>
       <Grab />
       <div className="sh-title">Edit account</div>
-      <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="set" style={{ marginTop: 0 }} onClick={() => setStep("icon")}>
+          <span className="csel" id="ai-prev">
+            <AccountAvatar a={a} />
+          </span>
+        </button>
+      </div>
       <div className="tsub" style={{ margin: "8px 2px 4px" }}>
         Type
       </div>
@@ -403,40 +425,38 @@ function AccountEditBody({ id }: { id: string }) {
           </button>
           {isCreditCard && (
             <>
-              <div style={{ margin: "6px 2px 4px", display: "flex", gap: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <label className="field note-field">
-                    <span className="ficon">📅</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      className="note-inline"
-                      placeholder="e.g. 5"
-                      value={billGenDate}
-                      onChange={(e) => setBillGenDate(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                      maxLength={2}
-                    />
-                  </label>
-                  <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
-                    Bill gen date (day)
-                  </div>
+              <div style={{ margin: "6px 2px 4px" }}>
+                <label className="field note-field">
+                  <span className="ficon">📅</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="note-inline"
+                    placeholder="e.g. 5"
+                    value={billGenDate}
+                    onChange={(e) => setBillGenDate(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                    maxLength={2}
+                  />
+                </label>
+                <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Bill gen date (day)
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label className="field note-field">
-                    <span className="ficon">📆</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      className="note-inline"
-                      placeholder="e.g. 20"
-                      value={dueOffset}
-                      onChange={(e) => setDueOffset(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                      maxLength={2}
-                    />
-                  </label>
-                  <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
-                    Due offset (days)
-                  </div>
+              </div>
+              <div style={{ margin: "6px 2px 4px" }}>
+                <label className="field note-field">
+                  <span className="ficon">📆</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="note-inline"
+                    placeholder="e.g. 20"
+                    value={dueOffset}
+                    onChange={(e) => setDueOffset(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                    maxLength={2}
+                  />
+                </label>
+                <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Due offset (days)
                 </div>
               </div>
               <div style={{ margin: "6px 2px 4px" }}>
@@ -504,20 +524,22 @@ function AccountEditBody({ id }: { id: string }) {
           {IC.chev}
         </button>
       )}
-      <button
-        className="set"
-        onClick={() =>
-          mutate((d) => {
-            const t = d.accounts.find((x) => x.id === id);
-            if (t) t.secondary = !t.secondary;
-          })
-        }
-      >
-        <span className="s-label">
-          Secondary account<div className="s-sub">Excluded from net worth (e.g. meal card)</div>
-        </span>
-        <span className={"switch " + (a.secondary ? "on" : "")}></span>
-      </button>
+      {!isCreditCard && (
+        <button
+          className="set"
+          onClick={() =>
+            mutate((d) => {
+              const t = d.accounts.find((x) => x.id === id);
+              if (t) t.secondary = !t.secondary;
+            })
+          }
+        >
+          <span className="s-label">
+            Secondary account<div className="s-sub">Excluded from net worth (e.g. meal card)</div>
+          </span>
+          <span className={"switch " + (a.secondary ? "on" : "")}></span>
+        </button>
+      )}
       <button className="set" style={{ marginTop: 14 }} onClick={() => setStep("icon")}>
         <span className="s-label">
           Logo<div className="s-sub">Bank or card logo shown on the account</div>
