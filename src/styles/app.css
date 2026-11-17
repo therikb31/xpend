@@ -637,7 +637,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
   transition:opacity .3s ease;
 }
 #scrim.on{opacity:1;pointer-events:auto}
-#sheet{position:fixed;left:0;right:0;bottom:0;z-index:70;display:flex;justify-content:center;pointer-events:none}
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:70;display:flex;justify-content:center}
 .sheet{
   pointer-events:auto;
   width:100%;max-width:460px;
@@ -1166,19 +1166,14 @@ input[type=month]::-webkit-datetime-edit,input[type=date]::-webkit-datetime-edit
   position: relative;
 }
 
-/* Inline date picker popover */
+/* Inline date picker — rendered in normal flow below the date field buttons */
 .date-picker-inline {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  margin-bottom: 8px;
   background: var(--surface);
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: var(--r-card);
   box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  z-index: 100;
   padding: 12px;
+  margin-top: 8px;
   animation: popover-in 150ms ease-out;
 }
 

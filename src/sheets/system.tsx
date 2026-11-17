@@ -560,31 +560,6 @@ return (
         {IC.right}
       </button>
 
-      {/* Active toggle switch - match Add Expense .field style */}
-      <button className="field" onClick={() => setIsActive(!isActive)} style={{ cursor: "default" }}>
-        <span className="ficon">⚙️</span>
-        <span className="f-name">Status</span>
-        <div className="toggle-switch-wrapper">
-          <div
-            role="switch"
-            tabIndex={0}
-            aria-checked={isActive}
-            className={`toggle-switch ${isActive ? "is-on" : ""}`}
-            onClick={(e) => { e.stopPropagation(); setIsActive(!isActive); }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setIsActive(!isActive);
-              }
-            }}
-          >
-            <div className="toggle-track" aria-hidden="true">
-              <div className="toggle-thumb" aria-hidden="true"></div>
-            </div>
-          </div>
-        </div>
-      </button>
-
       {/* Inline date picker (rendered inline when a date field is focused) */}
       {datePickerField && (
         <div className="date-picker-inline">
@@ -621,6 +596,31 @@ return (
           </div>
         </div>
       )}
+
+      {/* Active toggle switch - match Add Expense .field style */}
+      <button className="field" onClick={() => setIsActive(!isActive)} style={{ cursor: "default" }}>
+        <span className="ficon">⚙️</span>
+        <span className="f-name">Status</span>
+        <div className="toggle-switch-wrapper">
+          <div
+            role="switch"
+            tabIndex={0}
+            aria-checked={isActive}
+            className={`toggle-switch ${isActive ? "is-on" : ""}`}
+            onClick={(e) => { e.stopPropagation(); setIsActive(!isActive); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setIsActive(!isActive);
+              }
+            }}
+          >
+            <div className="toggle-track" aria-hidden="true">
+              <div className="toggle-thumb" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+      </button>
 
       {/* Button row with Cancel */}
       <div className="button-row">
