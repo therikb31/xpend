@@ -161,7 +161,9 @@ export function AccountAddSheet() {
       <Grab />
       <div className="sh-title">New account</div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%" }} />
+        </div>
         <button className="set" style={{ marginTop: 0, flexShrink: 0 }} onClick={() => setStep("icon")}>
           <span className="csel" id="ai-prev">
             {icon ? (
@@ -395,7 +397,9 @@ function AccountEditBody({ id }: { id: string }) {
       <Grab />
       <div className="sh-title">Edit account</div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%" }} />
+        </div>
         <button className="set" style={{ marginTop: 0, flexShrink: 0 }} onClick={() => setStep("icon")}>
           <span className="csel" id="ai-prev">
             <AccountAvatar a={a} />
