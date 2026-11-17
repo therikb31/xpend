@@ -395,7 +395,7 @@ function AccountEditBody({ id }: { id: string }) {
       <Grab />
       <div className="sh-title">Edit account</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, marginBottom: 4 }}>
-        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%" }} />
         <button className="set" style={{ marginTop: 0 }} onClick={() => setStep("icon")}>
           <span className="csel" id="ai-prev">
             <AccountAvatar a={a} />
@@ -540,14 +540,6 @@ function AccountEditBody({ id }: { id: string }) {
           <span className={"switch " + (a.secondary ? "on" : "")}></span>
         </button>
       )}
-      <button className="set" style={{ marginTop: 14 }} onClick={() => setStep("icon")}>
-        <span className="s-label">
-          Logo<div className="s-sub">Bank or card logo shown on the account</div>
-        </span>
-        <span className="csel" id="ai-prev">
-          <AccountAvatar a={a} />
-        </span>
-      </button>
       <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
         <button className="btn ghost" style={{ flex: 1 }} onClick={closeSheet}>
           Cancel
