@@ -100,7 +100,7 @@ export function AccountAddSheet() {
   const [step, setStep] = useState<"main" | "icon">("main");
   const [name, setName] = useState("");
   const [kind, setKind] = useState<AccountKind>("cash");
-  const [opening, setOpening] = useState("");
+  const [opening] = useState("");
   const [secondary, setSecondary] = useState(false);
   const [icon, setIcon] = useState<string | null>(null);
   // Credit card fields — only relevant when kind === "card"
@@ -250,17 +250,6 @@ export function AccountAddSheet() {
       )}
       {!isCreditCard && (
         <>
-          <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-            Opening balance (₹)
-          </div>
-          <input
-            type="text"
-            inputMode="decimal"
-            placeholder="0"
-            value={opening}
-            onChange={(e) => setOpening(e.target.value)}
-            style={{ marginTop: 0 }}
-          />
           <button className="set" style={{ marginTop: 14 }} onClick={() => setSecondary((v) => !v)}>
             <span className="s-label">
               Secondary account<div className="s-sub">Excluded from net worth (e.g. meal card)</div>
@@ -269,20 +258,6 @@ export function AccountAddSheet() {
           </button>
         </>
       )}
-      <button className="set" style={{ marginTop: 14 }} onClick={() => setStep("icon")}>
-        <span className="s-label">
-          Logo<div className="s-sub">Bank or card logo shown on the account</div>
-        </span>
-        <span className="csel" id="ai-prev">
-          {icon ? (
-            <AccountAvatar a={{ id: "tmp", name, kind: "cash", opening: 0, color: "#7C9AA6", icon }} />
-          ) : (
-            <span className="ccircle" style={{ ["--c" as string]: "#7C9AA6" } as CSSProperties}>
-              {init(name || "") || "•"}
-            </span>
-          )}
-        </span>
-      </button>
       <button className="btn" style={{ marginTop: 16 }} onClick={save}>
         {IC.plus} Create account
       </button>
@@ -395,7 +370,7 @@ function AccountEditBody({ id }: { id: string }) {
       <Grab />
       <div className="sh-title">Edit account</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, marginBottom: 4 }}>
-        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%" }} />
+        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <button className="set" style={{ marginTop: 0 }} onClick={() => setStep("icon")}>
           <span className="csel" id="ai-prev">
             <AccountAvatar a={a} />
