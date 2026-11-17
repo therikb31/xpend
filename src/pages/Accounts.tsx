@@ -1,14 +1,14 @@
 // Accounts — port of App.accounts: net worth + account cards.
 
 import { AccountAvatar } from "../components/ui";
-import { accBalance, cardBilling, generateCardBill, upcomingAutopayTotal } from "../data/finance";
-import { rupees, monthKey, todayStr } from "../lib/format";
+import { accBalance, cardBilling, upcomingAutopayTotal } from "../data/finance";
+import { rupees, monthKey } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { Account } from "../types";
 
 export function AccountsPage() {
-  const { state, openSheet, go, setIgrp, mutate } = useApp();
+  const { state, openSheet, go, setIgrp } = useApp();
   const doc = state.doc!;
   const hide = !!doc.settings.hideBalances;
 
@@ -75,29 +75,9 @@ export function AccountsPage() {
             <b>{rupees(a.prev != null ? a.prev : bal, hide)}</b>
           </div>
         ) : isCC ? (
-          <>
-            <div className="tsub" style={{ textTransform: "capitalize" }}>
-              Credit card · Bill gen {a.billGenerationDate}th{billing?.dueDate ? ` · Due ${billing.dueDate}` : ""}
-            </div>
-            {billing && billing.statement && billing.statement.status !== "paid" && (
-              <button className="btn ghost small" style={{ marginTop: 8 }} onClick={(e) => {
-                e.stopPropagation();
-                openSheet({ name: "transfer" });
-              }}>
-                Pay bill
-              </button>
-            )}
-            {(!billing || !billing.statement || billing.statement.status === "paid") && (
-              <button className="btn small" style={{ marginTop: 8 }} onClick={(e) => {
-                e.stopPropagation();
-                mutate((d) => {
-                  generateCardBill(d, a.id, todayStr());
-                });
-              }}>
-                Generate bill
-              </button>
-            )}
-          </>
+          <div className="tsub" style={{ textTransform: "capitalize" }}>
+            Credit card · Bill gen {a.billGenerationDate}th{billing?.dueDate ? ` · Due ${billing.dueDate}` : ""}
+          </div>
         ) : (
           <div className="tsub" style={{ textTransform: "capitalize" }}>
             {a.kind}

@@ -4,8 +4,8 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import { AccountAvatar } from "../components/ui";
-import { accById } from "../data/finance";
-import { init, parseRupeesToPaise, uid } from "../lib/format";
+import { accById, cardBilling, generateCardBill } from "../data/finance";
+import { init, parseRupeesToPaise, rupees, todayStr, uid } from "../lib/format";
 import { ACC_ICONS, IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { AccountKind } from "../types";
@@ -280,6 +280,9 @@ function AccountEditBody({ id }: { id: string }) {
   const [billGenDate, setBillGenDate] = useState(a.billGenerationDate ? String(a.billGenerationDate) : "");
   const [dueOffset, setDueOffset] = useState(a.paymentDueOffset ? String(a.paymentDueOffset) : "");
   const [creditLimit, setCreditLimit] = useState(a.creditLimit != null ? String(a.creditLimit / 100) : "");
+  // Credit card billing state
+  const isCC = a.isCreditCard;
+  const billing = isCC ? cardBilling(doc, a.id) : null;
 
   if (step === "icon") {
     return (
@@ -420,8 +423,41 @@ function AccountEditBody({ id }: { id: string }) {
               />
             </>
           )}
-        </>
-      )}
+          {isCreditCard && billing && (
+            <>
+              <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--neg)" }}>
+                Billed: {rupees(billing.billed, !!doc.settings.hideBalances)}
+              </div>
+              <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
+                Unbilled: {rupees(billing.unbilled, !!doc.settings.hideBalances)}
+              </div>
+              {billing.statement && billing.statement.status !== "paid" && (
+                <button className="set" style={{ marginTop: 8 }} onClick={(e) => {
+                  e.stopPropagation();
+                  openSheet({ name: "transfer", id2: id });
+                }}>
+                  <span className="s-label">
+                    Pay bill<div className="s-sub">Pay from a bank account</div>
+                  </span>
+                  {IC.right}
+                </button>
+              )}
+              {(!billing || !billing.statement || billing.statement.status === "paid") && (
+                <button className="set" style={{ marginTop: 8 }} onClick={(e) => {
+                  e.stopPropagation();
+                  mutate((d) => {
+                    generateCardBill(d, a.id, todayStr());
+                  });
+                }}>
+                  <span className="s-label">
+                    Generate bill<div className="s-sub">Freeze unbilled spends into a statement</div>
+                  </span>
+                  {IC.right}
+                </button>
+              )}
+            </>
+          )}
+        </>)}
       <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
         Balances come from transactions only.
       </div>
