@@ -170,7 +170,7 @@ export function AccountAddSheet() {
       </div>
       {kind === "card" && (
         <>
-          <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+          <div className="tsub" style={{ margin: "6px 2px 4px" }}>
             Credit card
           </div>
           <button className="set" style={{ marginTop: 4 }} onClick={() => setIsCreditCard((v) => !v)}>
@@ -181,41 +181,58 @@ export function AccountAddSheet() {
           </button>
           {isCreditCard && (
             <>
-              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-                Bill generation date (day of month)
+              <div style={{ margin: "6px 2px 4px", display: "flex", gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label className="field note-field">
+                    <span className="ficon">📅</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="note-inline"
+                      placeholder="e.g. 5"
+                      value={billGenDate}
+                      onChange={(e) => setBillGenDate(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                      maxLength={2}
+                    />
+                  </label>
+                  <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                    Bill gen date (day)
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="field note-field">
+                    <span className="ficon">📆</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="note-inline"
+                      placeholder="e.g. 20"
+                      value={dueOffset}
+                      onChange={(e) => setDueOffset(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                      maxLength={2}
+                    />
+                  </label>
+                  <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                    Due offset (days)
+                  </div>
+                </div>
               </div>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="e.g. 5"
-                value={billGenDate}
-                onChange={(e) => setBillGenDate(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                style={{ marginTop: 0 }}
-                maxLength={2}
-              />
-              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-                Payment due offset (days after bill)
+              <div style={{ margin: "6px 2px 4px" }}>
+                <label className="field note-field">
+                  <span className="ficon">💳</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className="note-inline"
+                    placeholder="0"
+                    value={creditLimit}
+                    onChange={(e) => setCreditLimit(e.target.value)}
+                  />
+                </label>
+                <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Credit limit (₹)
+                </div>
               </div>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="e.g. 20"
-                value={dueOffset}
-                onChange={(e) => setDueOffset(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                style={{ marginTop: 0 }}
-                maxLength={2}
-              />
-              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-                Credit limit (₹)
-              </div>
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="0"
-                value={creditLimit}
-                onChange={(e) => setCreditLimit(e.target.value)}
-                style={{ marginTop: 0 }}
-              />
             </>
           )}
         </>
@@ -386,41 +403,58 @@ function AccountEditBody({ id }: { id: string }) {
           </button>
           {isCreditCard && (
             <>
-              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-                Bill generation date (day of month)
+              <div style={{ margin: "6px 2px 4px", display: "flex", gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label className="field note-field">
+                    <span className="ficon">📅</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="note-inline"
+                      placeholder="e.g. 5"
+                      value={billGenDate}
+                      onChange={(e) => setBillGenDate(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                      maxLength={2}
+                    />
+                  </label>
+                  <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                    Bill gen date (day)
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="field note-field">
+                    <span className="ficon">📆</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="note-inline"
+                      placeholder="e.g. 20"
+                      value={dueOffset}
+                      onChange={(e) => setDueOffset(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                      maxLength={2}
+                    />
+                  </label>
+                  <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                    Due offset (days)
+                  </div>
+                </div>
               </div>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="e.g. 5"
-                value={billGenDate}
-                onChange={(e) => setBillGenDate(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                style={{ marginTop: 0 }}
-                maxLength={2}
-              />
-              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-                Payment due offset (days after bill)
+              <div style={{ margin: "6px 2px 4px" }}>
+                <label className="field note-field">
+                  <span className="ficon">💳</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className="note-inline"
+                    placeholder="0"
+                    value={creditLimit}
+                    onChange={(e) => setCreditLimit(e.target.value)}
+                  />
+                </label>
+                <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Credit limit (₹)
+                </div>
               </div>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="e.g. 20"
-                value={dueOffset}
-                onChange={(e) => setDueOffset(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                style={{ marginTop: 0 }}
-                maxLength={2}
-              />
-              <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-                Credit limit (₹)
-              </div>
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="0"
-                value={creditLimit}
-                onChange={(e) => setCreditLimit(e.target.value)}
-                style={{ marginTop: 0 }}
-              />
             </>
           )}
           {isCreditCard && billing && (
