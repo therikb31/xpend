@@ -160,7 +160,20 @@ export function AccountAddSheet() {
     <>
       <Grab />
       <div className="sh-title">New account</div>
-      <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%" }} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, marginBottom: 4 }}>
+        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="set" style={{ marginTop: 0 }} onClick={() => setStep("icon")}>
+          <span className="csel" id="ai-prev">
+            {icon ? (
+              <AccountAvatar a={{ id: "tmp", name, kind: "cash", opening: 0, color: "#7C9AA6", icon }} />
+            ) : (
+              <span className="ccircle" style={{ ["--c" as string]: "#7C9AA6" } as CSSProperties}>
+                {init(name || "") || "•"}
+              </span>
+            )}
+          </span>
+        </button>
+      </div>
       <div className="chip-row" style={{ marginTop: 4 }}>
         {(["cash", "card", "savings", "goal"] as const).map((k) => (
           <button key={k} className={"chip " + (kind === k ? "on" : "")} onClick={() => setKind(k)}>
@@ -381,7 +394,14 @@ function AccountEditBody({ id }: { id: string }) {
     <>
       <Grab />
       <div className="sh-title">Edit account</div>
-      <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%" }} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, marginBottom: 4 }}>
+        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="set" style={{ marginTop: 0 }} onClick={() => setStep("icon")}>
+          <span className="csel" id="ai-prev">
+            <AccountAvatar a={a} />
+          </span>
+        </button>
+      </div>
       <div className="tsub" style={{ margin: "8px 2px 4px" }}>
         Type
       </div>
