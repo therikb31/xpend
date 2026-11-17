@@ -80,14 +80,16 @@ export function AccountsPage() {
               Credit card · Bill gen {a.billGenerationDate}th{billing?.dueDate ? ` · Due ${billing.dueDate}` : ""}
             </div>
             {billing && billing.statement && billing.statement.status !== "paid" && (
-              <button className="btn ghost small" style={{ marginTop: 8 }} onClick={() => {
+              <button className="btn ghost small" style={{ marginTop: 8 }} onClick={(e) => {
+                e.stopPropagation();
                 openSheet({ name: "transfer" });
               }}>
                 Pay bill
               </button>
             )}
             {(!billing || !billing.statement || billing.statement.status === "paid") && (
-              <button className="btn small" style={{ marginTop: 8 }} onClick={() => {
+              <button className="btn small" style={{ marginTop: 8 }} onClick={(e) => {
+                e.stopPropagation();
                 mutate((d) => {
                   generateCardBill(d, a.id, todayStr());
                 });
