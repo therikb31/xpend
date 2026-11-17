@@ -6,3 +6,11 @@ xpendo logo.png
 node_modules
 dist
 docs/assets/**
+
+# Debug artifacts / dead weight — kept on disk under trash/, never tracked
+trash/
+debug.log
+legacy-index.html
+apex-bars*.png
+gutter-*.png
+txn-glyphs*.png
