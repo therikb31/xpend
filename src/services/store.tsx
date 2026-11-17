@@ -23,11 +23,8 @@ import {
   migrateNeeds,
   migrateSav,
 } from "../data/migrate";
-import {
-  currentAutopayOccurrence,
-} from "../data/finance";
 import { monthKey, parseMk, rupees, todayStr, uid } from "../lib/format";
-import { savSync } from "../data/finance";
+import { currentAutopayOccurrence, savSync } from "../data/finance";
 import { attachGist, Gist, gistConnected, gistDirty } from "./gist";
 import { ghLoadToken } from "./githubAuth";
 import { Store } from "./storage";
@@ -302,7 +299,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       dispatch({ t: "SET_ADD", patch: { amount: a.amount } });
     };
 const saveAdd = () => {
-      const cur = s();
+      const cur = ref.current;
       const d = cur.doc;
       if (!d) return;
       const a = cur.add;
@@ -318,8 +315,10 @@ const saveAdd = () => {
       }
       // Only persist autopay if it's active
       const autopayToSave = a.autopay?.isActive ? a.autopay : undefined;
-      // A transaction that already exists and is (now) autopay satisfies this
-      // month's occurrence, so mark it paid from the start.
+
+      // Mark current month's autopay occurrence as paid from the start so the
+      // transaction doesn't show as unpaid/upcoming and marking "paid" doesn't
+      // create a duplicate expense.
       const markAutopayPaidForMonth = (t: Txn) => {
         if (!t.autopay?.isActive) return;
         const occDate = currentAutopayOccurrence(
@@ -329,10 +328,11 @@ const saveAdd = () => {
         const cfg = t.autopay;
         cfg.paidDates = cfg.paidDates ? [...cfg.paidDates, occDate] : [occDate];
       };
+
       const existing = cur.editingId && d.transactions.find((x) => x.id === cur.editingId);
       if (existing) {
         const before = { ...existing };
-        mutate((doc) => {
+        dispatch({ t: "MUTATE", fn: (doc) => {
           const t = doc.transactions.find((x) => x.id === cur.editingId);
           if (!t || t.dir === "trans") return;
           const prev: Txn = { ...before } as Txn;
@@ -346,7 +346,7 @@ const saveAdd = () => {
           savSync(doc, prev, t);
           doc.settings.lastCategoryId = a.categoryId;
           doc.settings.lastMerchantId = a.merchantId;
-        });
+        }});
         const amt = Math.round(v * 100);
         dispatch({ t: "OPEN_ADD", add: freshAdd(d), editingId: null });
         dispatch({ t: "CLOSE_ADD", view: cur.prevView });
@@ -359,14 +359,14 @@ const saveAdd = () => {
         name: "", note: a.note, createdAt: Date.now(),
         autopay: autopayToSave,
       };
-      mutate((doc) => {
+      dispatch({ t: "MUTATE", fn: (doc) => {
         doc.transactions.push(txn);
         savSync(doc, null, txn);
         doc.settings.lastDate = a.date;
         doc.settings.lastCategoryId = a.categoryId;
         doc.settings.lastMerchantId = a.merchantId;
         markAutopayPaidForMonth(txn);
-      });
+      }});
       dispatch({ t: "OPEN_ADD", add: freshAdd(d), editingId: null });
       dispatch({ t: "CLOSE_ADD", view: cur.prevView });
       toast("Added " + rupees(txn.amount, !!d.settings.hideBalances));

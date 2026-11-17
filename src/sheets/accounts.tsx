@@ -4,8 +4,8 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import { AccountAvatar } from "../components/ui";
-import { accById } from "../data/finance";
-import { init, parseRupeesToPaise, uid } from "../lib/format";
+import { accById, cardBilling, generateCardBill } from "../data/finance";
+import { init, parseRupeesToPaise, rupees, todayStr, uid } from "../lib/format";
 import { ACC_ICONS, IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { AccountKind } from "../types";
@@ -100,9 +100,14 @@ export function AccountAddSheet() {
   const [step, setStep] = useState<"main" | "icon">("main");
   const [name, setName] = useState("");
   const [kind, setKind] = useState<AccountKind>("cash");
-  const [opening, setOpening] = useState("");
+  const [opening] = useState("");
   const [secondary, setSecondary] = useState(false);
   const [icon, setIcon] = useState<string | null>(null);
+  // Credit card fields — only relevant when kind === "card"
+  const [isCreditCard, setIsCreditCard] = useState(false);
+  const [billGenDate, setBillGenDate] = useState("");
+  const [dueOffset, setDueOffset] = useState("");
+  const [creditLimit, setCreditLimit] = useState("");
 
   if (step === "icon") {
     return (
@@ -127,10 +132,21 @@ export function AccountAddSheet() {
       return;
     }
     const o = parseRupeesToPaise(opening || "0");
+    const bgd = billGenDate ? parseInt(billGenDate, 10) : undefined;
+    const off = dueOffset ? parseInt(dueOffset, 10) : undefined;
+    const lim = creditLimit ? parseRupeesToPaise(creditLimit) : undefined;
     mutate((d) => {
       const acc = {
-        id: "acc-u-" + uid(), name: n, kind, opening: o, color: "#7C9AA6",
+        id: "acc-u-" + uid(),
+        name: n,
+        kind,
+        opening: o,
+        color: "#7C9AA6",
         secondary: secondary === true,
+        isCreditCard: kind === "card" ? isCreditCard : undefined,
+        billGenerationDate: bgd,
+        paymentDueOffset: off,
+        creditLimit: lim,
       } as (typeof d.accounts)[number];
       if (icon) acc.icon = icon;
       if (kind === "savings") acc.prev = o;
@@ -144,7 +160,20 @@ export function AccountAddSheet() {
     <>
       <Grab />
       <div className="sh-title">New account</div>
-      <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, marginBottom: 4 }}>
+        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%" }} />
+        <button className="set" style={{ marginTop: 0 }} onClick={() => setStep("icon")}>
+          <span className="csel" id="ai-prev">
+            {icon ? (
+              <AccountAvatar a={{ id: "tmp", name, kind: "cash", opening: 0, color: "#7C9AA6", icon }} />
+            ) : (
+              <span className="ccircle" style={{ ["--c" as string]: "#7C9AA6" } as CSSProperties}>
+                {init(name || "") || "•"}
+              </span>
+            )}
+          </span>
+        </button>
+      </div>
       <div className="chip-row" style={{ marginTop: 4 }}>
         {(["cash", "card", "savings", "goal"] as const).map((k) => (
           <button key={k} className={"chip " + (kind === k ? "on" : "")} onClick={() => setKind(k)}>
@@ -152,37 +181,83 @@ export function AccountAddSheet() {
           </button>
         ))}
       </div>
-      <div className="tsub" style={{ margin: "8px 2px 4px" }}>
-        Opening balance (₹)
-      </div>
-      <input
-        type="text"
-        inputMode="decimal"
-        placeholder="0"
-        value={opening}
-        onChange={(e) => setOpening(e.target.value)}
-        style={{ marginTop: 0 }}
-      />
-      <button className="set" style={{ marginTop: 14 }} onClick={() => setSecondary((v) => !v)}>
-        <span className="s-label">
-          Secondary account<div className="s-sub">Excluded from net worth (e.g. meal card)</div>
-        </span>
-        <span className={"switch " + (secondary ? "on" : "")}></span>
-      </button>
-      <button className="set" style={{ marginTop: 14 }} onClick={() => setStep("icon")}>
-        <span className="s-label">
-          Logo<div className="s-sub">Bank or card logo shown on the account</div>
-        </span>
-        <span className="csel" id="ai-prev">
-          {icon ? (
-            <AccountAvatar a={{ id: "tmp", name, kind: "cash", opening: 0, color: "#7C9AA6", icon }} />
-          ) : (
-            <span className="ccircle" style={{ ["--c" as string]: "#7C9AA6" } as CSSProperties}>
-              {init(name || "") || "•"}
+      {kind === "card" && (
+        <>
+          <div className="tsub" style={{ margin: "6px 2px 4px" }}>
+            Credit card
+          </div>
+          <button className="set" style={{ marginTop: 4 }} onClick={() => setIsCreditCard((v) => !v)}>
+            <span className="s-label">
+              Mark as credit card<div className="s-sub">Enable billing cycle, due date, and credit limit tracking</div>
             </span>
+            <span className={"switch " + (isCreditCard ? "on" : "")}></span>
+          </button>
+          {isCreditCard && (
+            <>
+              <div style={{ margin: "6px 2px 4px" }}>
+                <label className="field note-field">
+                  <span className="ficon">📅</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="note-inline"
+                    placeholder="e.g. 5"
+                    value={billGenDate}
+                    onChange={(e) => setBillGenDate(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                    maxLength={2}
+                  />
+                </label>
+                <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Bill gen date (day)
+                </div>
+              </div>
+              <div style={{ margin: "6px 2px 4px" }}>
+                <label className="field note-field">
+                  <span className="ficon">📆</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="note-inline"
+                    placeholder="e.g. 20"
+                    value={dueOffset}
+                    onChange={(e) => setDueOffset(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                    maxLength={2}
+                  />
+                </label>
+                <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Due offset (days)
+                </div>
+              </div>
+              <div style={{ margin: "6px 2px 4px" }}>
+                <label className="field note-field">
+                  <span className="ficon">💳</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className="note-inline"
+                    placeholder="0"
+                    value={creditLimit}
+                    onChange={(e) => setCreditLimit(e.target.value)}
+                  />
+                </label>
+                <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Credit limit (₹)
+                </div>
+              </div>
+            </>
           )}
-        </span>
-      </button>
+        </>
+      )}
+      {!isCreditCard && (
+        <>
+          <button className="set" style={{ marginTop: 14 }} onClick={() => setSecondary((v) => !v)}>
+            <span className="s-label">
+              Secondary account<div className="s-sub">Excluded from net worth (e.g. meal card)</div>
+            </span>
+            <span className={"switch " + (secondary ? "on" : "")}></span>
+          </button>
+        </>
+      )}
       <button className="btn" style={{ marginTop: 16 }} onClick={save}>
         {IC.plus} Create account
       </button>
@@ -207,6 +282,14 @@ function AccountEditBody({ id }: { id: string }) {
   const [name, setName] = useState(a.name);
   const [kind, setKind] = useState<AccountKind>(a.kind || "cash");
   const [armed, setArmed] = useState(false);
+  // Credit card fields
+  const [isCreditCard, setIsCreditCard] = useState(!!a.isCreditCard);
+  const [billGenDate, setBillGenDate] = useState(a.billGenerationDate ? String(a.billGenerationDate) : "");
+  const [dueOffset, setDueOffset] = useState(a.paymentDueOffset ? String(a.paymentDueOffset) : "");
+  const [creditLimit, setCreditLimit] = useState(a.creditLimit != null ? String(a.creditLimit / 100) : "");
+  // Credit card billing state
+  const isCC = a.isCreditCard;
+  const billing = isCC ? cardBilling(doc, a.id) : null;
 
   if (step === "icon") {
     return (
@@ -241,6 +324,10 @@ function AccountEditBody({ id }: { id: string }) {
       if (!t) return;
       t.name = n;
       t.kind = kind;
+      t.isCreditCard = kind === "card" ? isCreditCard : undefined;
+      t.billGenerationDate = kind === "card" && isCreditCard && billGenDate ? parseInt(billGenDate, 10) : undefined;
+      t.paymentDueOffset = kind === "card" && isCreditCard && dueOffset ? parseInt(dueOffset, 10) : undefined;
+      t.creditLimit = kind === "card" && isCreditCard && creditLimit ? parseRupeesToPaise(creditLimit) : undefined;
       if (t.kind === "savings" && t.prev == null) t.prev = t.opening || 0;
     });
     closeSheet();
@@ -282,7 +369,14 @@ function AccountEditBody({ id }: { id: string }) {
     <>
       <Grab />
       <div className="sh-title">Edit account</div>
-      <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, marginBottom: 4 }}>
+        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="set" style={{ marginTop: 0 }} onClick={() => setStep("icon")}>
+          <span className="csel" id="ai-prev">
+            <AccountAvatar a={a} />
+          </span>
+        </button>
+      </div>
       <div className="tsub" style={{ margin: "8px 2px 4px" }}>
         Type
       </div>
@@ -293,6 +387,106 @@ function AccountEditBody({ id }: { id: string }) {
           </button>
         ))}
       </div>
+      {kind === "card" && (
+        <>
+          <div className="tsub" style={{ margin: "8px 2px 4px" }}>
+            Credit card
+          </div>
+          <button className="set" style={{ marginTop: 4 }} onClick={() => setIsCreditCard((v) => !v)}>
+            <span className="s-label">
+              Mark as credit card<div className="s-sub">Enable billing cycle, due date, and credit limit tracking</div>
+            </span>
+            <span className={"switch " + (isCreditCard ? "on" : "")}></span>
+          </button>
+          {isCreditCard && (
+            <>
+              <div style={{ margin: "6px 2px 4px" }}>
+                <label className="field note-field">
+                  <span className="ficon">📅</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="note-inline"
+                    placeholder="e.g. 5"
+                    value={billGenDate}
+                    onChange={(e) => setBillGenDate(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                    maxLength={2}
+                  />
+                </label>
+                <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Bill gen date (day)
+                </div>
+              </div>
+              <div style={{ margin: "6px 2px 4px" }}>
+                <label className="field note-field">
+                  <span className="ficon">📆</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="note-inline"
+                    placeholder="e.g. 20"
+                    value={dueOffset}
+                    onChange={(e) => setDueOffset(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                    maxLength={2}
+                  />
+                </label>
+                <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Due offset (days)
+                </div>
+              </div>
+              <div style={{ margin: "6px 2px 4px" }}>
+                <label className="field note-field">
+                  <span className="ficon">💳</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className="note-inline"
+                    placeholder="0"
+                    value={creditLimit}
+                    onChange={(e) => setCreditLimit(e.target.value)}
+                  />
+                </label>
+                <div className="tsub" style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Credit limit (₹)
+                </div>
+              </div>
+            </>
+          )}
+          {isCreditCard && billing && (
+            <>
+              <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--neg)" }}>
+                Billed: {rupees(billing.billed, !!doc.settings.hideBalances)}
+              </div>
+              <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
+                Unbilled: {rupees(billing.unbilled, !!doc.settings.hideBalances)}
+              </div>
+              {billing.statement && billing.statement.status !== "paid" && (
+                <button className="set" style={{ marginTop: 8 }} onClick={(e) => {
+                  e.stopPropagation();
+                  openSheet({ name: "transfer", id2: id });
+                }}>
+                  <span className="s-label">
+                    Pay bill<div className="s-sub">Pay from a bank account</div>
+                  </span>
+                  {IC.right}
+                </button>
+              )}
+              {(!billing || !billing.statement || billing.statement.status === "paid") && (
+                <button className="set" style={{ marginTop: 8 }} onClick={(e) => {
+                  e.stopPropagation();
+                  mutate((d) => {
+                    generateCardBill(d, a.id, todayStr());
+                  });
+                }}>
+                  <span className="s-label">
+                    Generate bill<div className="s-sub">Freeze unbilled spends into a statement</div>
+                  </span>
+                  {IC.right}
+                </button>
+              )}
+            </>
+          )}
+        </>)}
       <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
         Balances come from transactions only.
       </div>
@@ -305,28 +499,22 @@ function AccountEditBody({ id }: { id: string }) {
           {IC.chev}
         </button>
       )}
-      <button
-        className="set"
-        onClick={() =>
-          mutate((d) => {
-            const t = d.accounts.find((x) => x.id === id);
-            if (t) t.secondary = !t.secondary;
-          })
-        }
-      >
-        <span className="s-label">
-          Secondary account<div className="s-sub">Excluded from net worth (e.g. meal card)</div>
-        </span>
-        <span className={"switch " + (a.secondary ? "on" : "")}></span>
-      </button>
-      <button className="set" style={{ marginTop: 14 }} onClick={() => setStep("icon")}>
-        <span className="s-label">
-          Logo<div className="s-sub">Bank or card logo shown on the account</div>
-        </span>
-        <span className="csel" id="ai-prev">
-          <AccountAvatar a={a} />
-        </span>
-      </button>
+      {!isCreditCard && (
+        <button
+          className="set"
+          onClick={() =>
+            mutate((d) => {
+              const t = d.accounts.find((x) => x.id === id);
+              if (t) t.secondary = !t.secondary;
+            })
+          }
+        >
+          <span className="s-label">
+            Secondary account<div className="s-sub">Excluded from net worth (e.g. meal card)</div>
+          </span>
+          <span className={"switch " + (a.secondary ? "on" : "")}></span>
+        </button>
+      )}
       <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
         <button className="btn ghost" style={{ flex: 1 }} onClick={closeSheet}>
           Cancel

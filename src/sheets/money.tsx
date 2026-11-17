@@ -4,15 +4,14 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import { AccountAvatar } from "../components/ui";
-import { accBalance, savSync } from "../data/finance";
-import { accById } from "../data/finance";
+import { accBalance, accById, payCardBill, savSync } from "../data/finance";
 import { init, parseRupeesToPaise, rupees, todayStr, uid } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import type { Txn } from "../types";
 import { Grab } from "./Sheet";
 
-export function TransferSheet() {
+export function TransferSheet({ prefillTo }: { prefillTo?: string }) {
   const { state, mutate, closeSheet, toast } = useApp();
   const doc = state.doc!;
   const hide = !!doc.settings.hideBalances;
@@ -20,7 +19,7 @@ export function TransferSheet() {
 
   const [step, setStep] = useState<"main" | "from" | "to">("main");
   const [from, setFrom] = useState(accs[0] ? accs[0].id : "");
-  const [to, setTo] = useState(accs[1] ? accs[1].id : accs[0] ? accs[0].id : "");
+  const [to, setTo] = useState(prefillTo || (accs[1] ? accs[1].id : accs[0] ? accs[0].id : ""));
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
 
@@ -68,11 +67,16 @@ export function TransferSheet() {
       from, to, note: (note || "").trim(), createdAt: Date.now(),
     };
     mutate((d) => {
-      d.transactions.push(t);
-      savSync(d, null, t);
+      if (prefillTo && to === prefillTo) {
+        // Paying a credit card bill — update statement paid status
+        payCardBill(d, to, from, v);
+      } else {
+        d.transactions.push(t);
+        savSync(d, null, t);
+      }
     });
     closeSheet();
-    toast("Moved " + rupees(v, hide));
+    toast(prefillTo && to === prefillTo ? "Paid " + rupees(v, hide) + " towards card bill" : "Moved " + rupees(v, hide));
   };
 
   return (
@@ -85,11 +89,14 @@ export function TransferSheet() {
         <span className="f-val">From</span>
         {IC.right}
       </button>
-      <button className="field" onClick={() => setStep("to")}>
+      <button
+        className={"field" + (prefillTo ? " disabled" : "")}
+        onClick={prefillTo ? undefined : () => setStep("to")}
+      >
         <span className="ficon">💵</span>
         <span className="f-name">{toAcc.name}</span>
-        <span className="f-val">To</span>
-        {IC.right}
+        <span className="f-val">{prefillTo ? "To (card)" : "To"}</span>
+        {!prefillTo ? IC.right : null}
       </button>
       <label className="field note-field">
         <span className="ficon">₹</span>

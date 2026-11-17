@@ -58,7 +58,7 @@ function Content({ sheet }: { sheet: SheetSpec }) {
     case "merchant-edit":
       return <MerchantEditorSheet id={sheet.id} />;
     case "transfer":
-      return <TransferSheet />;
+      return <TransferSheet prefillTo={sheet.id2 || undefined} />;
     case "sav-move":
       return <SavMoveSheet id={sheet.id!} />;
     case "account-filter":

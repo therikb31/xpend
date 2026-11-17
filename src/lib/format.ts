@@ -1,7 +1,7 @@
 // Pure formatting + date helpers — verbatim ports of the legacy global helpers.
 // rupees()/shortAmt() take `hide` explicitly (legacy read App.data.settings).
 
-export const APP_VER = "170";
+export const APP_VER = "184";
 
 export function getAppVersion(): string {
   return APP_VER;
@@ -30,6 +30,12 @@ export function parseMk(k: string): Date {
 
 export function todayStr(): string {
   return dstr(new Date());
+}
+
+export function addDays(dateStr: string, days: number): string {
+  const d = parseD(dateStr);
+  d.setDate(d.getDate() + days);
+  return dstr(d);
 }
 
 export function uid(): string {

@@ -1,11 +1,12 @@
 // Pure domain logic — ports of the App.* query/calc methods.
 // Every function takes the doc explicitly; nothing here touches React or storage.
 
-import { getAppVersion, monthKey, parseMk, rupees, uid } from "../lib/format";
+import { addDays, dstr, getAppVersion, monthKey, parseD, parseMk, rupees, todayStr, uid } from "../lib/format";
 import type {
   Account,
   AutopayConfig,
   Budget,
+  CardStatement,
   Category,
   Doc,
   ExpenseTxn,
@@ -13,6 +14,7 @@ import type {
   Goal,
   Merchant,
   Txn,
+  TransferTxn,
   View,
 } from "../types";
 
@@ -615,6 +617,154 @@ export function savSync(doc: Doc, oldT: Txn | null, newT: Txn | null): void {
   };
   apply(oldT, -1);
   apply(newT, 1);
+}
+
+// ---------------- Credit card billing ----------------
+
+export interface UnbilledCalc {
+  unbilled: number;      // paise — spends since last bill date up to today
+  billed: number;      // paise — outstanding from latest unpaid statement
+  paid: number;        // paise — paid toward latest statement
+  statement: CardStatement | null; // latest unpaid statement
+  nextBillDate: string | null;     // YYYY-MM-DD — next bill generation date
+  dueDate: string | null;          // YYYY-MM-DD — payment due date
+  availableCredit: number | null;  // paise — creditLimit - (billed + unbilled)
+}
+
+/* Compute credit card billing state for an account.
+   Unbilled = expense transactions dated after lastBillGeneratedAt up to today.
+   Billed = totalAmount - paidAmount of the latest unpaid statement. */
+export function cardBilling(doc: Doc, accountId: string): UnbilledCalc {
+  const a = accById(doc, accountId);
+  if (!a || !a.isCreditCard) {
+    return { unbilled: 0, billed: 0, paid: 0, statement: null, nextBillDate: null, dueDate: null, availableCredit: null };
+  }
+  const now = new Date();
+  const today = todayStr();
+  const lastBill = a.lastBillGeneratedAt || null;
+
+  // Unbilled: expense transactions after last bill date, up to today
+  let unbilled = 0;
+  for (const t of doc.transactions) {
+    if (t.dir !== "expense" || t.accountId !== accountId) continue;
+    if (lastBill && t.date <= lastBill) continue;
+    if (t.date > today) continue;
+    unbilled += t.amount;
+  }
+
+  // Latest unpaid statement
+  const stmts = (doc.cardStatements || [])
+    .filter((s) => s.accountId === accountId && s.status !== "paid")
+    .sort((x, y) => (y.statementDate || "").localeCompare(x.statementDate || ""));
+  const statement = stmts[0] || null;
+  const total = statement ? statement.totalAmount : 0;
+  const paid = statement ? statement.paidAmount : 0;
+  const billed = Math.max(0, total - paid);
+
+  // Next bill date: same day next month after lastBillGeneratedAt (or today if never billed)
+  let nextBill: string | null = null;
+  if (a.billGenerationDate) {
+    const base = lastBill ? parseD(lastBill) : now;
+    const y = base.getFullYear();
+    const m = base.getMonth();
+    let nb = new Date(y, m + 1, a.billGenerationDate);
+    // If already passed this month, go to next month
+    if (nb <= now) nb = new Date(y, m + 2, a.billGenerationDate);
+    nextBill = dstr(nb);
+  }
+
+  let due: string | null = null;
+  if (statement && a.paymentDueOffset) {
+    due = addDays(statement.statementDate, a.paymentDueOffset);
+  }
+
+  let avail: number | null = null;
+  if (a.creditLimit != null) {
+    avail = Math.max(0, a.creditLimit - billed - unbilled);
+  }
+
+  return { unbilled, billed, paid, statement, nextBillDate: nextBill, dueDate: due, availableCredit: avail };
+}
+
+/* Generate a bill for a credit card account (manual trigger).
+   Freezes all unbilled spends since lastBillGeneratedAt into a statement.
+   Must be called inside a MUTATE. */
+export function generateCardBill(doc: Doc, accountId: string, today: string): CardStatement | null {
+  const a = accById(doc, accountId);
+  if (!a || !a.isCreditCard || !a.billGenerationDate) return null;
+
+  const lastBill = a.lastBillGeneratedAt || null;
+  const cycleStart = lastBill ? addDays(lastBill, 1) : today;
+
+  // Sum unbilled spends in [cycleStart, today]
+  let total = 0;
+  for (const t of doc.transactions) {
+    if (t.dir !== "expense" || t.accountId !== accountId) continue;
+    if (lastBill && t.date <= lastBill) continue;
+    if (t.date > today) continue;
+    if (t.date < cycleStart) continue;
+    total += t.amount;
+  }
+
+  const statementDate = today;
+  const dueDate = a.paymentDueOffset ? addDays(statementDate, a.paymentDueOffset) : statementDate;
+
+  const stmt: CardStatement = {
+    id: "stmt-" + uid(),
+    accountId,
+    cycleStart,
+    cycleEnd: today,
+    statementDate,
+    dueDate,
+    totalAmount: total,
+    paidAmount: 0,
+    status: total > 0 ? "unpaid" : "paid",
+  };
+
+  doc.cardStatements = doc.cardStatements || [];
+  doc.cardStatements.push(stmt);
+  a.lastBillGeneratedAt = today;
+  return stmt;
+}
+
+/* Pay toward a credit card statement (manual trigger).
+   Creates a transfer transaction from `fromAccountId` to the credit card account.
+   Must be called inside a MUTATE. Returns the transfer Txn or null. */
+export function payCardBill(doc: Doc, accountId: string, fromAccountId: string, amountPaise: number, note?: string): Txn | null {
+  const a = accById(doc, accountId);
+  if (!a || !a.isCreditCard) return null;
+
+  const stmts = (doc.cardStatements || [])
+    .filter((s) => s.accountId === accountId && s.status !== "paid")
+    .sort((x, y) => (y.statementDate || "").localeCompare(x.statementDate || ""));
+  const statement = stmts[0];
+  if (!statement) return null;
+
+  const payAmt = Math.min(amountPaise, statement.totalAmount - statement.paidAmount);
+  if (payAmt <= 0) return null;
+
+  const txn: TransferTxn = {
+    id: uid(),
+    date: todayStr(),
+    dir: "trans",
+    amount: payAmt,
+    from: fromAccountId,
+    to: accountId,
+    name: "",
+    note: note || `Card payment: ${a.name}`,
+    createdAt: Date.now(),
+  };
+  doc.transactions.push(txn);
+
+  statement.paidAmount += payAmt;
+  if (statement.paidAmount >= statement.totalAmount) {
+    statement.status = "paid";
+  } else {
+    statement.status = "partial";
+  }
+
+  savSync(doc, null, txn);
+  return txn;
 }
 
 export function trNames(doc: Doc, t: Extract<Txn, { dir: "trans" }>): string {
