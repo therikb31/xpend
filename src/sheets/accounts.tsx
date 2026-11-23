@@ -274,6 +274,74 @@ export function AccountEditSheet({ id }: { id: string }) {
   return <AccountEditBody key={id} id={id} />;
 }
 
+export function MoveToBilledSheet({ accountId }: { accountId: string }) {
+  const { state, mutate, closeSheet, toast } = useApp();
+  const doc = state.doc!;
+  const a = accById(doc, accountId);
+  if (!a || !a.isCreditCard) return null;
+
+  const billing = cardBilling(doc, accountId);
+  const unbilled = billing?.unbilled ?? 0;
+  const hide = !!doc.settings.hideBalances;
+
+  const [amount, setAmount] = useState(unbilled.toString());
+  const [note, setNote] = useState("");
+
+  const save = () => {
+    const v = parseRupeesToPaise(amount);
+    if (!isFinite(v) || v <= 0) {
+      toast("Enter a valid amount");
+      return;
+    }
+    if (v > unbilled) {
+      toast(`Cannot move more than unbilled balance of ₹${rupees(unbilled, hide)}`);
+      return;
+    }
+    mutate((d) => {
+      const stmt = generateCardBill(d, accountId, todayStr(), v);
+      if (stmt) toast("Moved " + rupees(v, hide) + " to billed");
+    });
+    closeSheet();
+    toast("Moved " + rupees(v, hide) + " to billed");
+  };
+
+  return (
+    <>
+      <Grab />
+      <div className="sh-title">Move to billed</div>
+      <div className="tsub">Available unbilled: {rupees(unbilled, hide)}</div>
+      <label className="field note-field">
+        <span className="ficon">₹</span>
+        <input
+          id="mb-amt"
+          className="note-inline"
+          inputMode="decimal"
+          placeholder="Amount"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+      </label>
+      <label className="field note-field">
+        <span className="ficon">{IC.note}</span>
+        <input
+          id="mb-note"
+          className="note-inline"
+          maxLength={120}
+          placeholder="Note (optional)"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </label>
+      <button className="btn" onClick={save}>
+        {IC.check} Move
+      </button>
+      <button className="btn ghost" onClick={closeSheet}>
+        {IC.x} Cancel
+      </button>
+    </>
+  );
+}
+
 function AccountEditBody({ id }: { id: string }) {
   const { state, mutate, closeSheet, openSheet, toast } = useApp();
   const doc = state.doc!;
@@ -474,12 +542,10 @@ function AccountEditBody({ id }: { id: string }) {
               {(!billing || !billing.statement || billing.statement.status === "paid") && (
                 <button className="set" style={{ marginTop: 8 }} onClick={(e) => {
                   e.stopPropagation();
-                  mutate((d) => {
-                    generateCardBill(d, a.id, todayStr());
-                  });
+                  openSheet({ name: "move-to-billed", id2: id });
                 }}>
                   <span className="s-label">
-                    Generate bill<div className="s-sub">Freeze unbilled spends into a statement</div>
+                    Move to billed<div className="s-sub">Shift amount from unbilled to billed</div>
                   </span>
                   {IC.right}
                 </button>

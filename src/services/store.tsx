@@ -44,7 +44,8 @@ export type SheetName =
   | "grocery-item" | "grocery-list" | "grocery-share" | "grocery-join" | "grocery-more"
   | "friend-add" | "github-link" | "import-merge" | "open-in-app" | "day-txns"
   | "autopay" | "autopay-detail"
-  | "date-picker";
+  | "date-picker"
+  | "move-to-billed";
 
 export interface SheetSpec {
   name: SheetName;
