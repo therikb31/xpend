@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useApp } from "../services/store";
 import type { SheetSpec } from "../services/store";
-import { AccountAddSheet, AccountEditSheet, AccountsMoreSheet } from "./accounts";
+import { AccountAddSheet, AccountEditSheet, AccountsMoreSheet, MoveToBilledSheet } from "./accounts";
 import { BudgetDetailSheet, BudgetFormSheet } from "./budget";
 import { DayTxnsSheet } from "./daytxns";
 import { FriendAddSheet, OpenInAppSheet } from "./friends";
@@ -93,6 +93,8 @@ function Content({ sheet }: { sheet: SheetSpec }) {
       return <AccountEditSheet id={sheet.id!} />;
     case "accounts-more":
       return <AccountsMoreSheet />;
+    case "move-to-billed":
+      return <MoveToBilledSheet accountId={sheet.id2!} />;
     case "gist-setup":
       return <GistSetupSheet />;
     case "gist-unlock":
