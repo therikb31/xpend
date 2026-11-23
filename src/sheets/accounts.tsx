@@ -298,8 +298,8 @@ export function MoveToBilledSheet({ accountId }: { accountId: string }) {
       return;
     }
     mutate((d) => {
-      const stmt = generateCardBill(d, accountId, todayStr(), v);
-      if (stmt) toast("Moved " + rupees(v, hide) + " to billed");
+      generateCardBill(d, accountId, todayStr(), v);
+      toast("Moved " + rupees(v, hide) + " to billed");
     });
     closeSheet();
     toast("Moved " + rupees(v, hide) + " to billed");
@@ -528,18 +528,7 @@ function AccountEditBody({ id }: { id: string }) {
               <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
                 Unbilled: {rupees(billing.unbilled, !!doc.settings.hideBalances)}
               </div>
-              {billing.statement && billing.statement.status !== "paid" && (
-                <button className="set" style={{ marginTop: 8 }} onClick={(e) => {
-                  e.stopPropagation();
-                  openSheet({ name: "transfer", id2: id });
-                }}>
-                  <span className="s-label">
-                    Pay bill<div className="s-sub">Pay from a bank account</div>
-                  </span>
-                  {IC.right}
-                </button>
-              )}
-              {(!billing || !billing.statement || billing.statement.status === "paid") && (
+              {(!billing || true) && (
                 <button className="set" style={{ marginTop: 8 }} onClick={(e) => {
                   e.stopPropagation();
                   openSheet({ name: "move-to-billed", id2: id });

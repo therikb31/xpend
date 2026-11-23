@@ -61,18 +61,8 @@ export interface Account {
   paymentDueOffset?: number;   // days after bill generation when payment is due
   creditLimit?: number;        // paise, optional credit limit
   lastBillGeneratedAt?: string; // YYYY-MM-DD of last manual bill generation
-}
-
-export interface CardStatement {
-  id: string;
-  accountId: string;
-  cycleStart: string;   // YYYY-MM-DD — day after last bill
-  cycleEnd: string;     // YYYY-MM-DD — today when bill was generated
-  statementDate: string;// YYYY-MM-DD — bill generation date
-  dueDate: string;      // YYYY-MM-DD — payment due date
-  totalAmount: number;  // paise — frozen billed outstanding
-  paidAmount: number;   // paise — payments applied to this statement
-  status: "unpaid" | "paid" | "partial";
+  totalBilledAmount?: number;  // paise — cumulative amount ever moved to billed (never decreases)
+  billedBalance?: number;      // paise — current outstanding billed amount
 }
 
 export type CategoryKind = "expense" | "income";
@@ -247,7 +237,6 @@ export interface Doc {
   goals: Goal[];
   shortcuts: Shortcut[];
   groceryLists: GroceryList[];
-  cardStatements: CardStatement[];
 }
 
 // --- UI state (ports of App.view/prevView/mkey/flt/add/tr) ---

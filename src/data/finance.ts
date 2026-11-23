@@ -1,12 +1,11 @@
 // Pure domain logic — ports of the App.* query/calc methods.
 // Every function takes the doc explicitly; nothing here touches React or storage.
 
-import { addDays, dstr, getAppVersion, monthKey, parseD, parseMk, rupees, todayStr, uid } from "../lib/format";
+import { addDays, dstr, getAppVersion, monthKey, parseMk, rupees, todayStr, uid } from "../lib/format";
 import type {
   Account,
   AutopayConfig,
   Budget,
-  CardStatement,
   Category,
   Doc,
   ExpenseTxn,
@@ -622,10 +621,9 @@ export function savSync(doc: Doc, oldT: Txn | null, newT: Txn | null): void {
 // ---------------- Credit card billing ----------------
 
 export interface UnbilledCalc {
-  unbilled: number;      // paise — spends since last bill date up to today
-  billed: number;      // paise — outstanding from latest unpaid statement
-  paid: number;        // paise — paid toward latest statement
-  statement: CardStatement | null; // latest unpaid statement
+  unbilled: number;      // paise — total expenses minus total ever moved to billed
+  billed: number;        // paise — current outstanding billed balance
+  paid: number;          // paise — paid toward bills
   nextBillDate: string | null;     // YYYY-MM-DD — next bill generation date
   dueDate: string | null;          // YYYY-MM-DD — payment due date
   availableCredit: number | null;  // paise — creditLimit - (billed + unbilled)
@@ -633,12 +631,12 @@ export interface UnbilledCalc {
 
 /* Compute credit card billing state for an account.
    Unbilled = total card expenses minus everything ever moved to billed (via generateCardBill).
-   Billed = sum of totalAmount - paidAmount across all unpaid statements.
+   Billed = current outstanding billed balance.
    No date gating on unbilled — all card expenses are considered. */
 export function cardBilling(doc: Doc, accountId: string): UnbilledCalc {
   const a = accById(doc, accountId);
   if (!a || !a.isCreditCard) {
-    return { unbilled: 0, billed: 0, paid: 0, statement: null, nextBillDate: null, dueDate: null, availableCredit: null };
+    return { unbilled: 0, billed: 0, paid: 0, nextBillDate: null, dueDate: null, availableCredit: null };
   }
 
   // Step A: total card expenses ever (no date filter, no lastBill gate)
@@ -648,29 +646,16 @@ export function cardBilling(doc: Doc, accountId: string): UnbilledCalc {
     totalExpenses += t.amount;
   }
 
-  // Step B: everything ever moved to billed (all statements, even paid ones)
-  const stmts = doc.cardStatements || [];
-  const totalBilled = stmts.reduce((sum, s) => sum + (s.accountId === accountId ? s.totalAmount : 0), 0);
-  const totalPaid   = stmts.reduce((sum, s) => sum + (s.accountId === accountId ? s.paidAmount   : 0), 0);
+  // Step B: unbilled = totalExpenses minus total ever moved to billed
+  const unbilled = Math.max(0, totalExpenses - (a.totalBilledAmount ?? 0));
 
-  // Step C: UNBILLED — not date bound
-  // Every expense not yet moved to billed
-  const unbilled = Math.max(0, totalExpenses - totalBilled);
+  // Step C: billed = current outstanding billed balance
+  const billed = a.billedBalance ?? 0;
 
-  // Step D: BILED — outstanding on unpaid statements only
-  const unpaidStmts = stmts.filter((s) => s.accountId === accountId && s.status !== "paid");
-  const billed = Math.max(0, unpaidStmts.reduce((sum, s) => sum + s.totalAmount - s.paidAmount, 0));
-
-  // Step E: due date from latest unpaid statement
-  const statement = unpaidStmts.length > 0
-    ? unpaidStmts.sort((x, y) => (y.statementDate || "").localeCompare(x.statementDate || ""))[0]
-    : null;
-  const due = statement && a.paymentDueOffset ? addDays(statement.statementDate, a.paymentDueOffset) : null;
-
-  // Step F: next bill date (keep existing day-of-month logic)
+  // Step D: due date (keep existing day-of-month logic)
   let nextBill: string | null = null;
   if (a.billGenerationDate) {
-    const base = statement ? parseD(statement.statementDate) : new Date();
+    const base = new Date();
     const y = base.getFullYear();
     const m = base.getMonth();
     let nb = new Date(y, m + 1, a.billGenerationDate);
@@ -679,72 +664,54 @@ export function cardBilling(doc: Doc, accountId: string): UnbilledCalc {
     nextBill = dstr(nb);
   }
 
+  let due: string | null = null;
+  if (a.paymentDueOffset) {
+    due = addDays(todayStr(), a.paymentDueOffset);
+  }
+
   let avail: number | null = null;
   if (a.creditLimit != null) {
     avail = Math.max(0, a.creditLimit - billed - unbilled);
   }
 
-  return { unbilled, billed, paid: totalPaid, statement, nextBillDate: nextBill, dueDate: due, availableCredit: avail };
+  return { unbilled, billed, paid: 0, nextBillDate: nextBill, dueDate: due, availableCredit: avail };
 }
 
 /* Generate a bill for a credit card account (manual trigger).
    Moves the specified amount from unbilled to billed — does NOT auto-sweep everything.
    Must be called inside a MUTATE. amountPaise is in paise. */
-export function generateCardBill(doc: Doc, accountId: string, today: string, amountPaise: number): CardStatement | null {
+export function generateCardBill(doc: Doc, accountId: string, today: string, amountPaise: number): void {
   const a = accById(doc, accountId);
-  if (!a || !a.isCreditCard || !a.billGenerationDate) return null;
-  if (!isFinite(amountPaise) || amountPaise <= 0) return null;
+  if (!a || !a.isCreditCard || !a.billGenerationDate) return;
+  if (!isFinite(amountPaise) || amountPaise <= 0) return;
 
-  // Derive current unbilled: total expenses minus all statements' totalAmount
+  // Derive current unbilled: total expenses minus total ever moved to billed
   let totalExpenses = 0;
   for (const t of doc.transactions) {
     if (t.dir !== "expense" || t.accountId !== accountId) continue;
     totalExpenses += t.amount;
   }
-  const totalBilled = (doc.cardStatements || [])
-    .reduce((sum, s) => sum + (s.accountId === accountId ? s.totalAmount : 0), 0);
-  const unbilled = Math.max(0, totalExpenses - totalBilled);
-  if (amountPaise > unbilled) return null;  // cannot bill more than is unbilled
+  const unbilled = Math.max(0, totalExpenses - (a.totalBilledAmount ?? 0));
+  if (amountPaise > unbilled) return;  // cannot bill more than is unbilled
 
-  const prev = (doc.cardStatements || [])
-    .filter((s) => s.accountId === accountId)
-    .sort((x, y) => (y.statementDate || "").localeCompare(x.statementDate || ""))[0];
-  const cycleStart = prev ? addDays(prev.cycleEnd, 1) : today;
-
-  const dueDate = a.paymentDueOffset ? addDays(today, a.paymentDueOffset) : today;
-
-  const stmt: CardStatement = {
-    id: "stmt-" + uid(),
-    accountId,
-    cycleStart,
-    cycleEnd: today,
-    statementDate: today,
-    dueDate,
-    totalAmount: amountPaise,
-    paidAmount: 0,
-    status: "unpaid",
-  };
-
-  doc.cardStatements = doc.cardStatements || [];
-  doc.cardStatements.push(stmt);
+  // Move amount from unbilled → billed
+  a.totalBilledAmount = (a.totalBilledAmount ?? 0) + amountPaise;
+  a.billedBalance = (a.billedBalance ?? 0) + amountPaise;
   a.lastBillGeneratedAt = today;
-  return stmt;
 }
 
 /* Pay toward a credit card statement (manual trigger).
+   Creates a transfer transaction from `fromAccountId` to the credit card account.
+   Must be called inside a MUTATE. Returns the transfer Txn or null. */
+/* Pay toward a credit card bill (manual trigger).
    Creates a transfer transaction from `fromAccountId` to the credit card account.
    Must be called inside a MUTATE. Returns the transfer Txn or null. */
 export function payCardBill(doc: Doc, accountId: string, fromAccountId: string, amountPaise: number, note?: string): Txn | null {
   const a = accById(doc, accountId);
   if (!a || !a.isCreditCard) return null;
 
-  const stmts = (doc.cardStatements || [])
-    .filter((s) => s.accountId === accountId && s.status !== "paid")
-    .sort((x, y) => (y.statementDate || "").localeCompare(x.statementDate || ""));
-  const statement = stmts[0];
-  if (!statement) return null;
-
-  const payAmt = Math.min(amountPaise, statement.totalAmount - statement.paidAmount);
+  // Cap payment at current billed balance
+  const payAmt = Math.min(amountPaise, a.billedBalance ?? 0);
   if (payAmt <= 0) return null;
 
   const txn: TransferTxn = {
@@ -760,12 +727,8 @@ export function payCardBill(doc: Doc, accountId: string, fromAccountId: string, 
   };
   doc.transactions.push(txn);
 
-  statement.paidAmount += payAmt;
-  if (statement.paidAmount >= statement.totalAmount) {
-    statement.status = "paid";
-  } else {
-    statement.status = "partial";
-  }
+  // Reduce outstanding billed balance
+  a.billedBalance = (a.billedBalance ?? 0) - payAmt;
 
   savSync(doc, null, txn);
   return txn;
