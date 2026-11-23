@@ -427,8 +427,8 @@ const saveAdd = () => {
       if (d.accounts) {
         for (const a of d.accounts) {
           if (a.isCreditCard) {
-            (a as any).totalBilledAmount ??= 0;
-            (a as any).billedBalance ??= 0;
+            (a as any).totalBilledAmount = 0;
+            (a as any).billedBalance = 0;
           }
         }
         dirty = true;
