@@ -418,6 +418,21 @@ const saveAdd = () => {
       d.transactions = d.transactions || [];
       if (migrateGrocery(d)) dirty = true;
       if (migrateNeeds(d)) dirty = true;
+      // NEW: Strip stale CardStatement data and init credit card fields
+      // cardStatements removed from Doc type in v191+ — clean up any old stored data
+      if ("cardStatements" in d) {
+        (d as any).cardStatements = undefined;
+        dirty = true;
+      }
+      if (d.accounts) {
+        for (const a of d.accounts) {
+          if (a.isCreditCard) {
+            (a as any).totalBilledAmount ??= 0;
+            (a as any).billedBalance ??= 0;
+          }
+        }
+        dirty = true;
+      }
       if (!Array.isArray(d.merchants) || !d.merchants.length) {
         if (!migrateMerch(d)) {
           d.merchants = [];
