@@ -22,7 +22,7 @@ export const DEF_CATS: Category[] = [
 
 export const DEF_ACCS: Account[] = [
   { id: "acc-cash", name: "Cash", kind: "cash", opening: 0, color: "#7C9AA6" },
-  { id: "acc-card", name: "Card", kind: "card", opening: 0, color: "#8CA683" },
+  { id: "acc-card", name: "Card", kind: "card", opening: 0, color: "#8CA683", totalBilledAmount: 0, billedBalance: 0 },
 ];
 
 export const DEF_MERCHS: Merchant[] = [

@@ -147,6 +147,8 @@ export function AccountAddSheet() {
         billGenerationDate: bgd,
         paymentDueOffset: off,
         creditLimit: lim,
+        totalBilledAmount: 0,
+        billedBalance: 0,
       } as (typeof d.accounts)[number];
       if (icon) acc.icon = icon;
       if (kind === "savings") acc.prev = o;
@@ -396,6 +398,8 @@ function AccountEditBody({ id }: { id: string }) {
       t.billGenerationDate = kind === "card" && isCreditCard && billGenDate ? parseInt(billGenDate, 10) : undefined;
       t.paymentDueOffset = kind === "card" && isCreditCard && dueOffset ? parseInt(dueOffset, 10) : undefined;
       t.creditLimit = kind === "card" && isCreditCard && creditLimit ? parseRupeesToPaise(creditLimit) : undefined;
+      t.totalBilledAmount = 0;
+      t.billedBalance = 0;
       if (t.kind === "savings" && t.prev == null) t.prev = t.opening || 0;
     });
     closeSheet();
