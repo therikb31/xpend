@@ -1,7 +1,7 @@
 // Pure formatting + date helpers — verbatim ports of the legacy global helpers.
 // rupees()/shortAmt() take `hide` explicitly (legacy read App.data.settings).
 
-export const APP_VER = "192";
+export const APP_VER = "193";
 
 export function getAppVersion(): string {
   return APP_VER;
