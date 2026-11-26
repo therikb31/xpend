@@ -674,9 +674,30 @@ export function cardBilling(doc: Doc, accountId: string): UnbilledCalc {
   return { unbilled, billed, paid: 0, nextBillDate: nextBill, dueDate: due, availableCredit: avail };
 }
 
-/* Generate a bill for a credit card account (manual trigger).
-   Moves the specified amount from unbilled to billed — does NOT auto-sweep everything.
-   Must be called inside a MUTATE. amountPaise is in paise. */
+/* Bill-move ledger helpers: a move between billed/unbilled is recorded as a
+   self-transfer on the card (from === to, balance-neutral) tagged by note. */
+export function isBillMoveTxn(t: Txn): boolean {
+  if (t.dir !== "trans") return false;
+  const n = (t.note || "").toLowerCase();
+  return n.startsWith("bill generated") || n.startsWith("bill moved back");
+}
+
+export function reverseBillMoveTxn(d: Doc, t: Txn): void {
+  if (t.dir !== "trans") return;
+  const a = accById(d, t.to);
+  if (!a || !a.isCreditCard) return;
+  const n = (t.note || "").toLowerCase();
+  if (n.startsWith("bill moved back")) {
+    // Undo billed→unbilled: put the amount back into billed.
+    a.billedBalance = (a.billedBalance ?? 0) + t.amount;
+    a.totalBilledAmount = Math.max(0, (a.totalBilledAmount ?? 0) + t.amount);
+  } else if (n.startsWith("bill generated")) {
+    // Undo unbilled→billed: take the amount back out of billed.
+    a.billedBalance = Math.max(0, (a.billedBalance ?? 0) - t.amount);
+    a.totalBilledAmount = Math.max(0, (a.totalBilledAmount ?? 0) - t.amount);
+  }
+}
+
 export function generateCardBill(doc: Doc, accountId: string, today: string, amountPaise: number): boolean {
   const a = accById(doc, accountId);
   if (!a || !a.isCreditCard) return false; // bill-cycle date is optional; cap below guards the move
@@ -692,6 +713,18 @@ export function generateCardBill(doc: Doc, accountId: string, today: string, amo
   a.totalBilledAmount = (a.totalBilledAmount ?? 0) + amountPaise;
   a.billedBalance = (a.billedBalance ?? 0) + amountPaise;
   a.lastBillGeneratedAt = today;
+  // Ledger entry so the bill move shows up in Activity/Overview (self-transfer on the card; neutral to balances).
+  doc.transactions.push({
+    id: uid(),
+    date: today,
+    dir: "trans",
+    amount: amountPaise,
+    from: accountId,
+    to: accountId,
+    name: "",
+    note: `Bill generated: ${rupees(amountPaise)}`,
+    createdAt: Date.now(),
+  });
   return true;
 }
 
@@ -709,6 +742,18 @@ export function moveCardBillBack(doc: Doc, accountId: string, amountPaise: numbe
   a.billedBalance = billed - amountPaise;
   a.totalBilledAmount = Math.max(0, (a.totalBilledAmount ?? 0) - amountPaise);
   a.lastBillGeneratedAt = todayStr();
+  // Ledger entry for the reverse move (billed→unbilled).
+  doc.transactions.push({
+    id: uid(),
+    date: todayStr(),
+    dir: "trans",
+    amount: amountPaise,
+    from: accountId,
+    to: accountId,
+    name: "",
+    note: "Bill moved back to unbilled",
+    createdAt: Date.now(),
+  });
   return true;
 }
 

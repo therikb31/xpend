@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { catById, accById, savSync, trNames, currentAutopayOccurrence, isAutopayOccurrencePaid, setAutopayPaid } from "../data/finance";
+import { catById, accById, savSync, trNames, currentAutopayOccurrence, isAutopayOccurrencePaid, setAutopayPaid, isBillMoveTxn, reverseBillMoveTxn } from "../data/finance";
 import { catEmoji, parseD, rupees } from "../lib/format";
 import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
@@ -24,13 +24,18 @@ export function TxnSheet({ id }: { id: string }) {
       d.transactions = d.transactions.filter((x) => x.id !== id);
       if (gone) {
         savSync(d, gone, null);
-        // Deleting a move that pays a credit card bill must also reverse the billed
-        // counter, so the move is fully inverted (ledger leg + billing state) exactly
-        // like any other account-to-account move.
         if (gone.dir === "trans") {
-          const dest = accById(d, gone.to);
-          if (dest?.isCreditCard) {
-            dest.billedBalance = (dest.billedBalance ?? 0) + gone.amount;
+          if (isBillMoveTxn(gone)) {
+            // Deleting a billed↔unbilled move entry restores the billed/unbilled split.
+            reverseBillMoveTxn(d, gone);
+          } else {
+            // Deleting a move that pays a credit card bill must also reverse the billed
+            // counter, so the move is fully inverted (ledger leg + billing state) exactly
+            // like any other account-to-account move.
+            const dest = accById(d, gone.to);
+            if (dest?.isCreditCard) {
+              dest.billedBalance = (dest.billedBalance ?? 0) + gone.amount;
+            }
           }
         }
       }
