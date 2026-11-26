@@ -286,7 +286,7 @@ export function MoveToBilledSheet({ accountId }: { accountId: string }) {
   const unbilled = billing?.unbilled ?? 0;
   const hide = !!doc.settings.hideBalances;
 
-  const [amount, setAmount] = useState(unbilled.toString());
+  const [amount, setAmount] = useState((unbilled / 100).toFixed(2));
   const [note, setNote] = useState("");
 
   const save = () => {
