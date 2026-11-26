@@ -204,9 +204,25 @@ export function ImportAllSheet() {
         try {
           const imported: any = JSON.parse(e.target!.result as string);
 
-          // Basic validation
+          // Validate required fields
           if (!imported || !imported.schemaVersion) {
             toast("Invalid export file — missing schemaVersion");
+            return;
+          }
+          if (!imported.data?.accounts || !Array.isArray(imported.data.accounts) || imported.data.accounts.length === 0) {
+            toast("Invalid export file — missing or empty accounts");
+            return;
+          }
+          if (!imported.data?.categories || !Array.isArray(imported.data.categories)) {
+            toast("Invalid export file — missing or empty categories");
+            return;
+          }
+          if (!imported.data?.transactions || !Array.isArray(imported.data.transactions)) {
+            toast("Invalid export file — missing or empty transactions");
+            return;
+          }
+          if (!imported.data?.settings) {
+            toast("Invalid export file — missing settings");
             return;
           }
 
