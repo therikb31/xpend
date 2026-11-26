@@ -679,7 +679,7 @@ export function cardBilling(doc: Doc, accountId: string): UnbilledCalc {
    Must be called inside a MUTATE. amountPaise is in paise. */
 export function generateCardBill(doc: Doc, accountId: string, today: string, amountPaise: number): boolean {
   const a = accById(doc, accountId);
-  if (!a || !a.isCreditCard || !a.billGenerationDate) return false;
+  if (!a || !a.isCreditCard) return false; // bill-cycle date is optional; cap below guards the move
   if (!isFinite(amountPaise) || amountPaise <= 0) return false;
 
   // Current unbilled = everything owed on the card minus what's already billed

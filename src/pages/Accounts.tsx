@@ -46,7 +46,7 @@ export function AccountsPage() {
             )}
             {isCC && (
               <div className="tsub" style={{ textTransform: "capitalize" }}>
-                Credit card · Bill gen {a.billGenerationDate}th · Due {billing?.dueDate || "—"}
+                Credit card · Bill gen {a.billGenerationDate ? a.billGenerationDate + "th" : "—"} · Due {billing?.dueDate || "—"}
               </div>
             )}
           </span>
@@ -76,7 +76,8 @@ export function AccountsPage() {
           </div>
         ) : isCC ? (
           <div className="tsub" style={{ textTransform: "capitalize" }}>
-            Credit card · Bill gen {a.billGenerationDate}th{billing?.dueDate ? ` · Due ${billing.dueDate}` : ""}
+            Credit card · Bill gen {a.billGenerationDate ? a.billGenerationDate + "th" : "—"}
+            {billing?.dueDate ? ` · Due ${billing.dueDate}` : ""}
           </div>
         ) : (
           <div className="tsub" style={{ textTransform: "capitalize" }}>
