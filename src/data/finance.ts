@@ -621,7 +621,7 @@ export function savSync(doc: Doc, oldT: Txn | null, newT: Txn | null): void {
 // ---------------- Credit card billing ----------------
 
 export interface UnbilledCalc {
-  unbilled: number;      // paise — total expenses minus total ever moved to billed
+  unbilled: number;      // paise — owed − billed (everything not on a bill yet)
   billed: number;        // paise — current outstanding billed balance
   paid: number;          // paise — paid toward bills
   nextBillDate: string | null;     // YYYY-MM-DD — next bill generation date
@@ -630,29 +630,26 @@ export interface UnbilledCalc {
 }
 
 /* Compute credit card billing state for an account.
-   Unbilled = total card expenses minus everything ever moved to billed (via generateCardBill).
    Billed = current outstanding billed balance.
-   No date gating on unbilled — all card expenses are considered. */
+   Unbilled = everything else still owed on the card (accBalance magnitude),
+   i.e. unbilled = owed − billed. Derived from the ledger balance rather than
+   expense transactions alone, so transfers and opening balance are included. */
 export function cardBilling(doc: Doc, accountId: string): UnbilledCalc {
   const a = accById(doc, accountId);
   if (!a || !a.isCreditCard) {
     return { unbilled: 0, billed: 0, paid: 0, nextBillDate: null, dueDate: null, availableCredit: null };
   }
 
-  // Step A: total card expenses ever (no date filter, no lastBill gate)
-  let totalExpenses = 0;
-  for (const t of doc.transactions) {
-    if (t.dir !== "expense" || t.accountId !== accountId) continue;
-    totalExpenses += t.amount;
-  }
-
-  // Step B: unbilled = totalExpenses minus total ever moved to billed
-  const unbilled = Math.max(0, totalExpenses - (a.totalBilledAmount ?? 0));
-
-  // Step C: billed = current outstanding billed balance
+  // Step A: billed = current outstanding billed balance
   const billed = a.billedBalance ?? 0;
 
-  // Step D: due date (keep existing day-of-month logic)
+  // Step B: unbilled = total owed on the card minus the billed portion.
+  // accBalance = opening + every ledger leg; a card shows negative when
+  // money is owed, so owed is its magnitude.
+  const owed = Math.max(0, -accBalance(doc, accountId));
+  const unbilled = Math.max(0, owed - billed);
+
+  // Step C: due date (keep existing day-of-month logic)
   let nextBill: string | null = null;
   if (a.billGenerationDate) {
     const base = new Date();
@@ -685,16 +682,13 @@ export function generateCardBill(doc: Doc, accountId: string, today: string, amo
   if (!a || !a.isCreditCard || !a.billGenerationDate) return;
   if (!isFinite(amountPaise) || amountPaise <= 0) return;
 
-  // Derive current unbilled: total expenses minus total ever moved to billed
-  let totalExpenses = 0;
-  for (const t of doc.transactions) {
-    if (t.dir !== "expense" || t.accountId !== accountId) continue;
-    totalExpenses += t.amount;
-  }
-  const unbilled = Math.max(0, totalExpenses - (a.totalBilledAmount ?? 0));
+  // Current unbilled = everything owed on the card minus what's already billed
+  // (same derivation as cardBilling, so the cap matches the displayed number).
+  const owed = Math.max(0, -accBalance(doc, accountId));
+  const unbilled = Math.max(0, owed - (a.billedBalance ?? 0));
   if (amountPaise > unbilled) return;  // cannot bill more than is unbilled
 
-  // Move amount from unbilled → billed
+  // Move amount from unbilled → billed. billedBalance goes up; owed is unchanged.
   a.totalBilledAmount = (a.totalBilledAmount ?? 0) + amountPaise;
   a.billedBalance = (a.billedBalance ?? 0) + amountPaise;
   a.lastBillGeneratedAt = today;
