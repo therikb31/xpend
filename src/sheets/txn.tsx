@@ -22,7 +22,18 @@ export function TxnSheet({ id }: { id: string }) {
     mutate((d) => {
       const gone = d.transactions.find((x) => x.id === id);
       d.transactions = d.transactions.filter((x) => x.id !== id);
-      if (gone) savSync(d, gone, null);
+      if (gone) {
+        savSync(d, gone, null);
+        // Deleting a move that pays a credit card bill must also reverse the billed
+        // counter, so the move is fully inverted (ledger leg + billing state) exactly
+        // like any other account-to-account move.
+        if (gone.dir === "trans") {
+          const dest = accById(d, gone.to);
+          if (dest?.isCreditCard) {
+            dest.billedBalance = (dest.billedBalance ?? 0) + gone.amount;
+          }
+        }
+      }
     });
     closeSheet();
     toast("Deleted");

@@ -4,7 +4,7 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import { AccountAvatar } from "../components/ui";
-import { accById, cardBilling, generateCardBill } from "../data/finance";
+import { accById, cardBilling, generateCardBill, moveCardBillBack } from "../data/finance";
 import { init, parseRupeesToPaise, rupees, todayStr, uid } from "../lib/format";
 import { ACC_ICONS, IC } from "../lib/icons";
 import { useApp } from "../services/store";
@@ -307,6 +307,18 @@ export function MoveToBilledSheet({ accountId }: { accountId: string }) {
     toast("Moved " + rupees(v, hide) + " to billed");
   };
 
+  const moveBack = () => {
+    if (!(billing.billed > 0)) {
+      toast("No billed amount to move back");
+      return;
+    }
+    mutate((d) => {
+      const ok = moveCardBillBack(d, accountId, billing.billed);
+      toast(ok ? "Moved " + rupees(billing.billed, hide) + " back to unbilled" : "Nothing to move back");
+    });
+    closeSheet();
+  };
+
   return (
     <>
       <Grab />
@@ -336,6 +348,13 @@ export function MoveToBilledSheet({ accountId }: { accountId: string }) {
       </label>
       <button className="btn" onClick={save}>
         {IC.check} Move
+      </button>
+      <button
+        className="btn ghost"
+        style={{ marginTop: 10 }}
+        onClick={moveBack}
+      >
+        {IC.refresh} Move billed back to unbilled
       </button>
       <button className="btn ghost" onClick={closeSheet}>
         {IC.x} Cancel

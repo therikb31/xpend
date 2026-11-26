@@ -694,6 +694,23 @@ export function generateCardBill(doc: Doc, accountId: string, today: string, amo
   a.lastBillGeneratedAt = today;
 }
 
+/* Move billed amount back to unbilled (reverse of generating a bill).
+   Must be called inside a MUTATE. Validation: amount must be > 0 and <= billedBalance,
+   so moving back is always safe (never moves back more than is billed).
+   Moves the amount from billed back to unbilled; the owed balance is unchanged. */
+export function moveCardBillBack(doc: Doc, accountId: string, amountPaise: number): boolean {
+  const a = accById(doc, accountId);
+  if (!a || !a.isCreditCard) return false;
+  const billed = a.billedBalance ?? 0;
+  if (!isFinite(amountPaise) || amountPaise <= 0) return false;
+  if (amountPaise > billed) return false;  // cannot move back more than is billed
+  // Move amount from billed back to unbilled. owed is unchanged.
+  a.billedBalance = billed - amountPaise;
+  a.totalBilledAmount = Math.max(0, (a.totalBilledAmount ?? 0) - amountPaise);
+  a.lastBillGeneratedAt = todayStr();
+  return true;
+}
+
 /* Pay toward a credit card statement (manual trigger).
    Creates a transfer transaction from `fromAccountId` to the credit card account.
    Must be called inside a MUTATE. Returns the transfer Txn or null. */
