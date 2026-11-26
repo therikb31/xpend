@@ -300,8 +300,10 @@ export function MoveToBilledSheet({ accountId }: { accountId: string }) {
       return;
     }
     let moved = false;
+    const probe = structuredClone(doc);
+    moved = generateCardBill(probe, accountId, todayStr(), v);
     mutate((d) => {
-      moved = generateCardBill(d, accountId, todayStr(), v);
+      generateCardBill(d, accountId, todayStr(), v);
     });
     closeSheet();
     toast(moved ? "Moved " + rupees(v, hide) + " to billed" : "Could not move to billed");
@@ -312,11 +314,14 @@ export function MoveToBilledSheet({ accountId }: { accountId: string }) {
       toast("No billed amount to move back");
       return;
     }
+    let ok = false;
+    const probe = structuredClone(doc);
+    ok = moveCardBillBack(probe, accountId, billing.billed);
     mutate((d) => {
-      const ok = moveCardBillBack(d, accountId, billing.billed);
-      toast(ok ? "Moved " + rupees(billing.billed, hide) + " back to unbilled" : "Nothing to move back");
+      moveCardBillBack(d, accountId, billing.billed);
     });
     closeSheet();
+    toast(ok ? "Moved " + rupees(billing.billed, hide) + " back to unbilled" : "Nothing to move back");
   };
 
   return (
