@@ -12,7 +12,6 @@ import { Gist, gistCfg } from "../services/gist";
 import { Grab } from "./Sheet";
 import { dayLabel, pad, todayStr, monthKey, rupees, getAppVersion } from "../lib/format";
 import type { AutopayConfig, Doc } from "../types";
-import { mergeDocs } from "../lib/mergeDoc";
 
 /* Module-level date picker config (set by AutopaySheet before opening) */
 interface DatePickerConfig {
@@ -189,8 +188,8 @@ export function ExportAllSheet() {
   );
 }
 
-export function ImportAllSheet({ replace = false }: { replace?: boolean }) {
-  const { state, toast, loadDoc, closeSheet } = useApp();
+export function ImportAllSheet() {
+  const { toast, loadDoc, closeSheet } = useApp();
 
   // Trigger file picker
   const triggerImport = () => {
@@ -211,18 +210,9 @@ export function ImportAllSheet({ replace = false }: { replace?: boolean }) {
             return;
           }
 
-          // If replacing, we need to load the full doc
-          if (replace) {
-            // Wipe existing and replace
-            loadDoc(imported as Doc);
-            toast("Instance data replaced — all data loaded from export");
-          } else {
-            // Merge mode — union by id
-            if (!state.doc) return;
-            const merged = mergeDocs(state.doc, imported as Doc);
-            loadDoc(merged);
-            toast("Instance data merged — new items added, existing preserved");
-          }
+          // Always replace — wipe existing and load export entirely
+          loadDoc(imported as Doc);
+          toast("Instance data replaced — all data loaded from export");
           closeSheet();
         } catch (err) {
           toast("Failed to parse export file: " + (err instanceof Error ? err.message : "unknown error"));
@@ -240,7 +230,6 @@ export function ImportAllSheet({ replace = false }: { replace?: boolean }) {
       <div className="tsub" style={{ margin: "0 2px 14px", color: "var(--muted)" }}>
         Restores your entire Xpend instance from a backup JSON file. Choose the file you exported earlier.
         • [Replace] — wipe current data and load the export entirely
-        • [Merge] — add new items from the export while keeping existing data
       </div>
       <button className="sh-row" onClick={triggerImport}>
         <span className="ccircle" style={{ ["--c" as string]: "rgba(82,229,165,.16)" } as CSSProperties}>

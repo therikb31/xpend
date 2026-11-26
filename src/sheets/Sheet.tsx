@@ -107,7 +107,7 @@ function Content({ sheet }: { sheet: SheetSpec }) {
     case "export-all":
       return <ExportAllSheet />;
     case "import-all":
-      return <ImportAllSheet replace={sheet.id2 === "replace"} />;
+      return <ImportAllSheet />;
     case "pwa-help":
       return <PwaHelpSheet />;
     case "budget-form":
