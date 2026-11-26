@@ -237,6 +237,12 @@ export function SettingsPage() {
           <button className="cbtn small" onClick={() => openSheet({ name: "export" })} aria-label="Export data">
             {IC.dots}
           </button>
+          <button className="cbtn small" style={{ marginLeft: 8 }} onClick={() => openSheet({ name: "export-all" })} aria-label="Export all data">
+            ↻
+          </button>
+          <button className="cbtn small" style={{ marginLeft: 8 }} onClick={() => openSheet({ name: "import-all" })} aria-label="Import all data">
+            ↺
+          </button>
         </div>
       </header>
 

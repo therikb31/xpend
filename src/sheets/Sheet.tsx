@@ -7,6 +7,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { useApp } from "../services/store";
 import type { SheetSpec } from "../services/store";
 import { AccountAddSheet, AccountEditSheet, AccountsMoreSheet, MoveToBilledSheet } from "./accounts";
+import { ExportAllSheet, ImportAllSheet } from "./system";
 import { BudgetDetailSheet, BudgetFormSheet } from "./budget";
 import { DayTxnsSheet } from "./daytxns";
 import { FriendAddSheet, OpenInAppSheet } from "./friends";
@@ -103,6 +104,10 @@ function Content({ sheet }: { sheet: SheetSpec }) {
       return <GistRestoreSheet />;
     case "export":
       return <ExportSheet />;
+    case "export-all":
+      return <ExportAllSheet />;
+    case "import-all":
+      return <ImportAllSheet replace={sheet.id2 === "replace"} />;
     case "pwa-help":
       return <PwaHelpSheet />;
     case "budget-form":

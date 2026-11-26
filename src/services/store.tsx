@@ -40,7 +40,7 @@ export type SheetName =
   | "goal-fund" | "goal-move" | "goal-whatif" | "goal-delete"
   | "account-add" | "account-edit" | "account-icon" | "accounts-more"
   | "gist-setup" | "gist-unlock" | "gist-restore"
-  | "export" | "pwa-help" | "budget-form" | "budget-detail"
+  | "export" | "export-all" | "import-all" | "pwa-help" | "budget-form" | "budget-detail"
   | "grocery-item" | "grocery-list" | "grocery-share" | "grocery-join" | "grocery-more"
   | "friend-add" | "github-link" | "import-merge" | "open-in-app" | "day-txns"
   | "autopay" | "autopay-detail"

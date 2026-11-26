@@ -10,8 +10,9 @@ import { IC } from "../lib/icons";
 import { useApp } from "../services/store";
 import { Gist, gistCfg } from "../services/gist";
 import { Grab } from "./Sheet";
-import { dayLabel, pad, todayStr, monthKey, rupees } from "../lib/format";
-import type { AutopayConfig } from "../types";
+import { dayLabel, pad, todayStr, monthKey, rupees, getAppVersion } from "../lib/format";
+import type { AutopayConfig, Doc } from "../types";
+import { mergeDocs } from "../lib/mergeDoc";
 
 /* Module-level date picker config (set by AutopaySheet before opening) */
 interface DatePickerConfig {
@@ -107,6 +108,144 @@ export function ExportSheet() {
           {IC.share}
         </span>
         <span className="rname">Copy {label} JSON</span>
+        {IC.right}
+      </button>
+    </>
+  );
+}
+
+/* Full instance export / import sheet */
+
+export function ExportAllSheet() {
+  const { state, toast } = useApp();
+  const doc = state.doc!;
+
+  // Build payload exactly like the default expData case
+  const env = useMemo(
+    () => ({
+      app: "Xpend",
+      version: getAppVersion(),
+      view: "settings",
+      exportedAt: new Date().toISOString(),
+      month: doc.settings?.catV ? new Date().toLocaleDateString("en-IN", { month: "long" }) : "",
+      monthLabel: "This month",
+      filters: { ...state.flt },
+      stats: { spent: 0, income: 0, netWorth: 0 }, // placeholder — not critical for full backup
+      data: {
+        categories: doc.categories || [],
+        accounts: doc.accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          kind: a.kind,
+          opening: a.opening,
+          balance: a.opening, // opening is the base; actual balance recomputed on import via transactions
+          icon: a.icon || null,
+          color: a.color,
+          secondary: !!a.secondary,
+          prev: a.prev != null ? a.prev : null,
+        })),
+        merchants: doc.merchants || [],
+        budgets: doc.budgets || [],
+        goals: doc.goals || [],
+        shortcuts: doc.shortcuts || [],
+        groceryLists: doc.groceryLists || [],
+        transactions: doc.transactions || [],
+        settings: doc.settings,
+        counts: { transactions: doc.transactions?.length || 0 },
+      },
+    }),
+    [doc, state.flt]
+  );
+
+  const size = (new TextEncoder().encode(JSON.stringify(env)).length / 1024).toFixed(1) + " KB";
+  const onCopy = () => {
+    const blob = new Blob([JSON.stringify(env, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `xpend-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("Exported instance JSON • " + size + " KB");
+  };
+
+  return (
+    <>
+      <Grab />
+      <div className="sh-title">Export all data</div>
+      <div className="tsub" style={{ margin: "0 2px 14px", color: "var(--muted)" }}>
+        Copies a full JSON snapshot of your entire Xpend instance — all transactions, accounts, balances, goals, budgets, grocery lists, merchants, categories, and settings. This can be imported into another device.
+        {size}.
+      </div>
+      <button className="sh-row" onClick={onCopy}>
+        <span className="ccircle" style={{ ["--c" as string]: "rgba(82,229,165,.16)" } as CSSProperties}>
+          {IC.share}
+        </span>
+        <span className="rname">Export all data JSON</span>
+        {IC.right}
+      </button>
+    </>
+  );
+}
+
+export function ImportAllSheet({ replace = false }: { replace?: boolean }) {
+  const { state, toast, loadDoc, closeSheet } = useApp();
+
+  // Trigger file picker
+  const triggerImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const imported: any = JSON.parse(e.target!.result as string);
+
+          // Basic validation
+          if (!imported || !imported.schemaVersion) {
+            toast("Invalid export file — missing schemaVersion");
+            return;
+          }
+
+          // If replacing, we need to load the full doc
+          if (replace) {
+            // Wipe existing and replace
+            loadDoc(imported as Doc);
+            toast("Instance data replaced — all data loaded from export");
+          } else {
+            // Merge mode — union by id
+            if (!state.doc) return;
+            const merged = mergeDocs(state.doc, imported as Doc);
+            loadDoc(merged);
+            toast("Instance data merged — new items added, existing preserved");
+          }
+          closeSheet();
+        } catch (err) {
+          toast("Failed to parse export file: " + (err instanceof Error ? err.message : "unknown error"));
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  return (
+    <>
+      <Grab />
+      <div className="sh-title">Import all data</div>
+      <div className="tsub" style={{ margin: "0 2px 14px", color: "var(--muted)" }}>
+        Restores your entire Xpend instance from a backup JSON file. Choose the file you exported earlier.
+        • [Replace] — wipe current data and load the export entirely
+        • [Merge] — add new items from the export while keeping existing data
+      </div>
+      <button className="sh-row" onClick={triggerImport}>
+        <span className="ccircle" style={{ ["--c" as string]: "rgba(82,229,165,.16)" } as CSSProperties}>
+          {IC.upload}
+        </span>
+        <span className="rname">Choose export file</span>
         {IC.right}
       </button>
     </>
