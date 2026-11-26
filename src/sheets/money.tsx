@@ -18,9 +18,18 @@ export function TransferSheet({ prefillTo }: { prefillTo?: string }) {
   const accs = doc.accounts;
 
   const [step, setStep] = useState<"main" | "from" | "to">("main");
-  const [from, setFrom] = useState(accs[0] ? accs[0].id : "");
+  const payCard = prefillTo ? accById(doc, prefillTo) : null;
+  const defFrom =
+    (prefillTo ? accs.find((a) => a.id !== prefillTo && !a.isCreditCard) : null) ||
+    accs.find((a) => a.id !== prefillTo) ||
+    accs[0];
+  const [from, setFrom] = useState(defFrom ? defFrom.id : "");
   const [to, setTo] = useState(prefillTo || (accs[1] ? accs[1].id : accs[0] ? accs[0].id : ""));
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(
+    prefillTo && payCard && (payCard.billedBalance ?? 0) > 0
+      ? (payCard.billedBalance! / 100).toFixed(2)
+      : ""
+  );
   const [note, setNote] = useState("");
 
   if (step !== "main") {

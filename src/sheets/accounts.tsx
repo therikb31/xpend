@@ -554,6 +554,17 @@ function AccountEditBody({ id }: { id: string }) {
               <div className="tsub" style={{ margin: "8px 2px 4px", color: "var(--muted)" }}>
                 Unbilled: {rupees(billing.unbilled, !!doc.settings.hideBalances)}
               </div>
+              {billing.billed > 0 && (
+                <button className="set" style={{ marginTop: 8 }} onClick={(e) => {
+                  e.stopPropagation();
+                  openSheet({ name: "transfer", id2: id });
+                }}>
+                  <span className="s-label">
+                    Pay bill<div className="s-sub">Pay down the billed balance from another account</div>
+                  </span>
+                  {IC.right}
+                </button>
+              )}
               {(!billing || true) && (
                 <button className="set" style={{ marginTop: 8 }} onClick={(e) => {
                   e.stopPropagation();

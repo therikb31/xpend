@@ -29,11 +29,12 @@ export function TxnSheet({ id }: { id: string }) {
             // Deleting a billed↔unbilled move entry restores the billed/unbilled split.
             reverseBillMoveTxn(d, gone);
           } else {
-            // Deleting a move that pays a credit card bill must also reverse the billed
-            // counter, so the move is fully inverted (ledger leg + billing state) exactly
-            // like any other account-to-account move.
+            // Deleting a card PAYMENT (bank/cash → card, note "Card payment: …") reverses
+            // the billed counter. A plain "Move money" transfer into a card never touched
+            // billedBalance, so it must NOT be reversed here.
             const dest = accById(d, gone.to);
-            if (dest?.isCreditCard) {
+            const n = (gone.note || "").toLowerCase();
+            if (dest?.isCreditCard && n.startsWith("card payment")) {
               dest.billedBalance = (dest.billedBalance ?? 0) + gone.amount;
             }
           }
