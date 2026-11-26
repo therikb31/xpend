@@ -82,7 +82,7 @@ function screenEl(): HTMLElement | null {
 }
 
 export function freshAdd(doc: Doc): AddDraft {
-  const s = doc.settings;
+  const s = doc.settings || {};
   const cid = s.lastCategoryId || "cat-gro";
   const mid =
     s.lastMerchantId && (doc.merchants || []).some((m) => m.id === s.lastMerchantId)
@@ -91,8 +91,8 @@ export function freshAdd(doc: Doc): AddDraft {
   return {
     amount: "",
     dir: "expense",
-    categoryId: doc.categories.some((c) => c.id === cid) ? cid : "cat-gro",
-    accountId: doc.accounts[0] ? doc.accounts[0].id : "",
+    categoryId: doc.categories?.some((c) => c.id === cid) ? cid : "cat-gro",
+    accountId: doc.accounts?.[0]?.id ? doc.accounts[0].id : "",
     date: s.lastDate || todayStr(),
     note: "",
     merchantId: mid,
