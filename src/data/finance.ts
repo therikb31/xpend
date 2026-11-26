@@ -677,21 +677,22 @@ export function cardBilling(doc: Doc, accountId: string): UnbilledCalc {
 /* Generate a bill for a credit card account (manual trigger).
    Moves the specified amount from unbilled to billed — does NOT auto-sweep everything.
    Must be called inside a MUTATE. amountPaise is in paise. */
-export function generateCardBill(doc: Doc, accountId: string, today: string, amountPaise: number): void {
+export function generateCardBill(doc: Doc, accountId: string, today: string, amountPaise: number): boolean {
   const a = accById(doc, accountId);
-  if (!a || !a.isCreditCard || !a.billGenerationDate) return;
-  if (!isFinite(amountPaise) || amountPaise <= 0) return;
+  if (!a || !a.isCreditCard || !a.billGenerationDate) return false;
+  if (!isFinite(amountPaise) || amountPaise <= 0) return false;
 
   // Current unbilled = everything owed on the card minus what's already billed
   // (same derivation as cardBilling, so the cap matches the displayed number).
   const owed = Math.max(0, -accBalance(doc, accountId));
   const unbilled = Math.max(0, owed - (a.billedBalance ?? 0));
-  if (amountPaise > unbilled) return;  // cannot bill more than is unbilled
+  if (amountPaise > unbilled) return false;  // cannot bill more than is unbilled
 
   // Move amount from unbilled → billed. billedBalance goes up; owed is unchanged.
   a.totalBilledAmount = (a.totalBilledAmount ?? 0) + amountPaise;
   a.billedBalance = (a.billedBalance ?? 0) + amountPaise;
   a.lastBillGeneratedAt = today;
+  return true;
 }
 
 /* Move billed amount back to unbilled (reverse of generating a bill).

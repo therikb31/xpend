@@ -299,12 +299,12 @@ export function MoveToBilledSheet({ accountId }: { accountId: string }) {
       toast(`Cannot move more than unbilled balance of ₹${rupees(unbilled, hide)}`);
       return;
     }
+    let moved = false;
     mutate((d) => {
-      generateCardBill(d, accountId, todayStr(), v);
-      toast("Moved " + rupees(v, hide) + " to billed");
+      moved = generateCardBill(d, accountId, todayStr(), v);
     });
     closeSheet();
-    toast("Moved " + rupees(v, hide) + " to billed");
+    toast(moved ? "Moved " + rupees(v, hide) + " to billed" : "Could not move to billed");
   };
 
   const moveBack = () => {
