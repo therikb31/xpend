@@ -226,6 +226,25 @@ export function ImportAllSheet() {
             return;
           }
 
+          // Patch settings with defaults for any missing fields
+          const defaults = {
+            currency: "INR",
+            monthStartDay: 1,
+            weekStartsOn: 1,
+            hideBalances: false,
+            highlightNoMerchant: true,
+            lastDate: null,
+            lastCategoryId: null,
+            lastMerchantId: "",
+            gist: null,
+            deviceName: "My device",
+            friends: [],
+            catV: 2,
+            goalV: 1,
+            merchV: 2,
+          };
+          imported.data.settings = { ...defaults, ...imported.data.settings };
+
           // Always replace — wipe existing and load export entirely
           loadDoc(imported as Doc);
           toast("Instance data replaced — all data loaded from export");
