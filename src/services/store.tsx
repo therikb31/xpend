@@ -83,6 +83,8 @@ function screenEl(): HTMLElement | null {
 
 export function freshAdd(doc: Doc): AddDraft {
   const s = doc.settings || {};
+  const categories = doc.categories || [];
+  const accounts = doc.accounts || [];
   const cid = s.lastCategoryId || "cat-gro";
   const mid =
     s.lastMerchantId && (doc.merchants || []).some((m) => m.id === s.lastMerchantId)
@@ -91,13 +93,68 @@ export function freshAdd(doc: Doc): AddDraft {
   return {
     amount: "",
     dir: "expense",
-    categoryId: doc.categories?.some((c) => c.id === cid) ? cid : "cat-gro",
-    accountId: doc.accounts?.[0]?.id ? doc.accounts[0].id : "",
+    categoryId: categories.some((c) => c.id === cid) ? cid : "cat-gro",
+    accountId: accounts[0]?.id || "",
     date: s.lastDate || todayStr(),
     note: "",
     merchantId: mid,
     autopay: undefined,
   };
+}
+
+/**
+ * Repair/normalize a doc so every consumer can assume the full Doc shape.
+ * Runs on boot AND after an instance import — an exported payload is an older
+ * snapshot, so it needs the same defaults + migrations a fresh boot gets.
+ */
+export function normalizeDoc(raw: Doc): { doc: Doc; dirty: boolean } {
+  const d = raw;
+  let dirty = false;
+  if (!d.settings) d.settings = defaultDoc().settings;
+  if (!Array.isArray(d.categories) || !d.categories.length)
+    d.categories = defaultDoc().categories;
+  if (migrateCats(d)) dirty = true;
+  if (migrateSav(d)) dirty = true;
+  if (!Array.isArray(d.accounts) || !d.accounts.length) {
+    d.accounts = defaultDoc().accounts;
+    dirty = true;
+  }
+  d.goals = d.goals || [];
+  d.shortcuts = d.shortcuts || [];
+  d.transactions = d.transactions || [];
+  if (migrateGrocery(d)) dirty = true;
+  if (migrateNeeds(d)) dirty = true;
+  // cardStatements removed from Doc type in v191+ — clean up any old stored data
+  if ("cardStatements" in d) {
+    (d as any).cardStatements = undefined;
+    dirty = true;
+  }
+  // Init the two billing counters once, only when absent. Never reset here:
+  // restored exports carry their own billed state and must survive reload.
+  if (d.accounts) {
+    for (const a of d.accounts) {
+      if (a.isCreditCard) {
+        if (typeof a.totalBilledAmount !== "number") {
+          (a as any).totalBilledAmount = 0;
+          dirty = true;
+        }
+        if (typeof a.billedBalance !== "number") {
+          (a as any).billedBalance = 0;
+          dirty = true;
+        }
+      }
+    }
+  }
+  if (!Array.isArray(d.merchants) || !d.merchants.length) {
+    if (!migrateMerch(d)) {
+      d.merchants = [];
+      dirty = true;
+    } else dirty = true;
+  }
+  if (mergePool(d)) dirty = true;
+  migrateBud(d);
+  if (migrateGoals(d)) dirty = true;
+  return { doc: d, dirty };
 }
 
 type Action =
@@ -403,48 +460,13 @@ const saveAdd = () => {
         d = null;
       }
       if (!d) d = defaultDoc();
-      if (!d.settings) d.settings = defaultDoc().settings;
-      if (!Array.isArray(d.categories) || !d.categories.length)
-        d.categories = defaultDoc().categories;
-      let dirty = false;
-      if (migrateCats(d)) dirty = true;
-      if (migrateSav(d)) dirty = true;
-      if (!Array.isArray(d.accounts) || !d.accounts.length) {
-        d.accounts = defaultDoc().accounts;
-        dirty = true;
-      }
-      d.goals = d.goals || [];
-      d.shortcuts = d.shortcuts || [];
-      d.transactions = d.transactions || [];
-      if (migrateGrocery(d)) dirty = true;
-      if (migrateNeeds(d)) dirty = true;
-      // NEW: Strip stale CardStatement data and init credit card fields
-      // cardStatements removed from Doc type in v191+ — clean up any old stored data
-      if ("cardStatements" in d) {
-        (d as any).cardStatements = undefined;
-        dirty = true;
-      }
-      if (d.accounts) {
-        for (const a of d.accounts) {
-          if (a.isCreditCard) {
-            (a as any).totalBilledAmount = 0;
-            (a as any).billedBalance = 0;
-          }
-        }
-        dirty = true;
-      }
-      if (!Array.isArray(d.merchants) || !d.merchants.length) {
-        if (!migrateMerch(d)) {
-          d.merchants = [];
-          dirty = true;
-        } else dirty = true;
-      }
-      if (mergePool(d)) dirty = true;
-      migrateBud(d);
-      if (migrateGoals(d)) dirty = true;
-      if (dirty) Store.set("doc", d).catch(() => undefined);
+      // Shared repair path (defaults + migrations + card billing init) — also
+      // used by ImportAllSheet so a restore boots exactly like a fresh load.
+      const norm = normalizeDoc(d);
+      const nd = norm.doc;
+      if (norm.dirty) Store.set("doc", nd).catch(() => undefined);
       if (dead) return;
-      dispatch({ t: "BOOT", doc: d });
+      dispatch({ t: "BOOT", doc: nd });
       ghLoadToken();
 
       attachGist({

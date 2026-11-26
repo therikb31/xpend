@@ -1,6 +1,6 @@
 /* Xpend service worker — network-first so a home-screen (standalone) install always
    picks up the latest deploy, with an offline cache fallback. */
-const V="v1";
+const V="v2";
 
 self.addEventListener("install",e=>self.skipWaiting());
 

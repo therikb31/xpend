@@ -3,11 +3,11 @@
 
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { expData, expLabel, insightLabel, insightsExport, setAutopayPaid, accById, merchById } from "../data/finance";
+import { expData, expLabel, insightLabel, insightsExport, setAutopayPaid, accById, merchById, accBalance } from "../data/finance";
 import type { InsightGroup } from "../data/finance";
 import { C } from "../lib/crypto";
 import { IC } from "../lib/icons";
-import { useApp } from "../services/store";
+import { useApp, normalizeDoc } from "../services/store";
 import { Gist, gistCfg } from "../services/gist";
 import { Grab } from "./Sheet";
 import { dayLabel, pad, todayStr, monthKey, rupees, getAppVersion } from "../lib/format";
@@ -132,16 +132,14 @@ export function ExportAllSheet() {
       filters: { ...state.flt },
       stats: { spent: 0, income: 0, netWorth: 0 }, // placeholder — not critical for full backup
       data: {
+        // Round-trip safe: keep every Doc field. Accounts are spread wholesale
+        // so credit-card state (isCreditCard, billedBalance, totalBilledAmount,
+        // creditLimit, bill dates…) survives a restore.
+        meta: doc.meta,
         categories: doc.categories || [],
         accounts: doc.accounts.map((a) => ({
-          id: a.id,
-          name: a.name,
-          kind: a.kind,
-          opening: a.opening,
-          balance: a.opening, // opening is the base; actual balance recomputed on import via transactions
-          icon: a.icon || null,
-          color: a.color,
-          secondary: !!a.secondary,
+          ...a,
+          balance: accBalance(doc, a.id),
           prev: a.prev != null ? a.prev : null,
         })),
         merchants: doc.merchants || [],
@@ -226,6 +224,8 @@ export function ImportAllSheet() {
             return;
           }
 
+          const data = imported.data;
+
           // Patch settings with defaults for any missing fields
           const defaults = {
             currency: "INR",
@@ -243,10 +243,34 @@ export function ImportAllSheet() {
             goalV: 1,
             merchV: 2,
           };
-          imported.data.settings = { ...defaults, ...imported.data.settings };
+          data.settings = { ...defaults, ...data.settings };
+
+          // The export wraps the doc under `data` — rebuild a real Doc here.
+          // (Passing the wrapper itself left `settings` undefined and crashed
+          // freshAdd inside LOAD_DOC → black screen.)
+          const doc: Doc = {
+            schemaVersion: imported.schemaVersion === 1 ? 1 : 2,
+            meta:
+              data.meta && typeof data.meta.createdAt === "string"
+                ? data.meta
+                : { createdAt: new Date().toISOString() },
+            settings: data.settings,
+            accounts: data.accounts,
+            categories: data.categories,
+            merchants: data.merchants || [],
+            transactions: data.transactions,
+            budgets: data.budgets || [],
+            goals: data.goals || [],
+            shortcuts: data.shortcuts || [],
+            groceryLists: data.groceryLists || [],
+          };
+
+          // Same repair path as boot: defaults + migrations, so a restored
+          // doc is indistinguishable from one loaded fresh from storage.
+          const { doc: normalized } = normalizeDoc(doc);
 
           // Always replace — wipe existing and load export entirely
-          loadDoc(imported as Doc);
+          loadDoc(normalized);
           toast("Instance data replaced — all data loaded from export");
           closeSheet();
         } catch (err) {
