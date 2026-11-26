@@ -123,6 +123,7 @@ export function ExportAllSheet() {
   // Build payload exactly like the default expData case
   const env = useMemo(
     () => ({
+      schemaVersion: doc.schemaVersion,
       app: "Xpend",
       version: getAppVersion(),
       view: "settings",
